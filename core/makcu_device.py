@@ -26,7 +26,28 @@ Usage:
 
 import threading
 import time
+import asyncio
+import inspect
 from core.state import state
+
+
+def _run(result):
+    """
+    Handle makcu's maybe_async wrapper.
+    If a call returns a coroutine, run it synchronously.
+    """
+    if inspect.iscoroutine(result):
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                future = asyncio.run_coroutine_threadsafe(result, loop)
+                return future.result(timeout=5)
+            else:
+                return loop.run_until_complete(result)
+        except Exception:
+            asyncio.run(result)
+    return result
 
 try:
     from makcu import create_controller, MouseButton
@@ -84,8 +105,8 @@ class MakcuDevice:
                 if name:
                     self._button_states[name] = pressed
 
-            controller.set_button_callback(on_button_event)
-            controller.enable_button_monitoring(True)
+            _run(controller.set_button_callback(on_button_event))
+            _run(controller.enable_button_monitoring(True))
 
             with self._conn_lock:
                 self._controller = controller
@@ -106,7 +127,7 @@ class MakcuDevice:
         with self._conn_lock:
             if self._controller:
                 try:
-                    self._controller.disconnect()
+                    _run(self._controller.disconnect())
                 except Exception:
                     pass
                 self._controller = None

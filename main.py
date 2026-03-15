@@ -13,7 +13,7 @@ Startup sequence:
 Run:
     python main.py
     
-Then open http://localhost:8000 (Windows) or http://<pi-ip>:8000 (Pi/Linux).
+Then open http://localhost:8888 (Windows) or http://<pi-ip>:8000 (Pi/Linux).
 """
 
 import os
@@ -34,16 +34,12 @@ async def lifespan(app: FastAPI):
     # ── Startup ───────────────────────────────────────────────────────────────
     print("\n================================")
     print(" Cearum Web")
-    print(" http://localhost:8000")
+    print(" http://localhost:8888")
     print(" Ctrl+C to stop")
     print("================================\n")
 
-    # Connect to MAKCU — non-fatal if not present at startup
-    connected = device.connect()
-    if not connected:
-        print("[startup] MAKCU not connected — will keep retrying in background.")
-
-    # Background reconnect watchdog (checks every 3 seconds)
+    # Start reconnect watchdog first — it runs in its own thread
+    # so MAKCU calls don't conflict with the async event loop
     device.reconnect_loop(interval=3.0)
 
     # Start the recoil loop thread
@@ -78,4 +74,4 @@ def index():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=8888, reload=False)
