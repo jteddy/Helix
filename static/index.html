@@ -543,7 +543,7 @@ function applyStatus(d){
   card('sc-script',hs?'on':'');$('sc-script-v').textContent=d.loaded_script||'NONE';
   const cb=$('r-en');if(cb&&cb.checked!==d.recoil_enabled)cb.checked=d.recoil_enabled;
   const ms=$('s-mst');if(ms){ms.textContent=d.makcu_connected?'Connected':'Not connected';ms.style.color=d.makcu_connected?'var(--green)':'var(--red)';}
-  if(hs){$('s-name-inp').value=d.loaded_script.split('/').pop();}
+  if(hs&&document.activeElement!==$('s-name-inp')){$('s-name-inp').value=d.loaded_script.split('/').pop();}
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}
 
