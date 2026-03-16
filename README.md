@@ -1,8 +1,8 @@
 # Cearum Web
 
-> **Fork of [dev-boog/Cearum-Recoil](https://github.com/dev-boog/Cearum-Recoil/)** — reworked with a web UI front-end so the controls are accessible from any browser on your network.
+**Fork of [dev-boog/Cearum-Recoil](https://github.com/dev-boog/Cearum-Recoil/)** — reworked with a web UI front-end so the controls are accessible from any browser on your network.
 
-Recoil control system with a web UI. Runs as a FastAPI server on Linux connected to a MAKCU via USB. Open from any browser on your network — phone, tablet, or second monitor.
+Recoil control system with a web UI. Runs as a FastAPI server on Linux connected to a MAKCU via USB. 
 
 ---
 
