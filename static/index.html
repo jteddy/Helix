@@ -229,6 +229,8 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 #ve-rv{display:none;height:100%;flex-direction:column;padding:5px;gap:4px;}
 #ve-rv.active{display:flex;}
 #ve-rta{flex:1;resize:none;background:var(--bg1);border:1px solid var(--border);color:var(--text);font-family:var(--fm);font-size:11px;border-radius:var(--rs);padding:5px;line-height:1.6;outline:none;}
+#ve-raw-save{transition:background .2s,border-color .2s,color .2s;}
+#ve-raw-save.dirty{background:var(--accent);border-color:var(--accent);color:#000;font-weight:600;}
 
 /* Button row — centred */
 #ve-br{display:flex;gap:5px;padding:5px 8px;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;justify-content:center;align-items:center;}
@@ -347,7 +349,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     <!-- Bottom: loaded name + save controls -->
     <div class="s-bot">
       <span class="s-loaded none" id="s-loaded-lbl">no script loaded</span>
-      <input type="text" id="s-name-inp" placeholder="name" style="width:90px;flex-shrink:0">
+      <input type="text" id="s-name-inp" placeholder="script name" style="flex:1;min-width:0">
       <button class="btn sm pri" onclick="saveScript()">Save</button>
       <button class="btn sm" onclick="newScript()">New</button>
     </div>
@@ -452,8 +454,8 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
                 <table><thead><tr><th>#</th><th>X</th><th>Y</th><th>ms</th><th></th></tr></thead><tbody id="ve-tb2"></tbody></table>
               </div>
               <div id="ve-rv">
-                <textarea id="ve-rta" spellcheck="false" placeholder="x,y,ms"></textarea>
-                <button class="btn" id="ve-br2-btn" onclick="veApplyRaw()">Apply</button>
+                <textarea id="ve-rta" spellcheck="false" placeholder="x,y,ms" oninput="veRawDirty()"></textarea>
+                <button class="btn" id="ve-raw-save" onclick="veApplyRaw()">Save</button>
               </div>
             </div>
           </div>
@@ -704,7 +706,7 @@ document.addEventListener('keydown',e=>{
 // ═══════════════════════════════════════════════════════════════════════════
 let veS=[],veI=-1,veScale=400,vePX=0,vePY=0,vePan=false,vePSX=0,vePSY=0,vePOX=0,vePOY=0;
 let veSp=false,veDI=-1,veDOX=0,veDOY=0,veVM='table',veAG=[],veEG=new Set(),veAP=null;
-const GRID=40,DR=5;
+const DR=5;
 const veW=$('ve-cw'),veC=$('recoil-canvas'),veX=veC.getContext('2d');
 
 function veResize(){veC.width=veW.clientWidth;veC.height=veW.clientHeight;if(!vePX&&!vePY){vePX=veC.width>>1;vePY=Math.floor(veC.height*.15);}veDraw();}
@@ -713,6 +715,10 @@ function veCum(){const o=[];let cx=vePX,cy=vePY;for(const s of veS){cx+=s.x*veSc
 function veDraw(){
   const W=veC.width,H=veC.height;
   veX.clearRect(0,0,W,H);veX.fillStyle='#0b0c0e';veX.fillRect(0,0,W,H);
+  // Grid: choose unit size so grid spacing is ~40px
+  const GUNITS=[0.1,0.5,1,5,10,50,100];
+  let gu=GUNITS.find(u=>u*veScale>=30)||100;
+  const GRID=gu*veScale;
   veX.strokeStyle='#1a1c20';veX.lineWidth=1;veX.beginPath();
   const ox=((vePX%GRID)+GRID)%GRID,oy=((vePY%GRID)+GRID)%GRID;
   for(let x=ox;x<W;x+=GRID){veX.moveTo(x,0);veX.lineTo(x,H);}
@@ -749,15 +755,31 @@ veC.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))veSp=true;});
 document.addEventListener('keyup',e=>{if(e.code==='Space'){veSp=false;vePan=false;}});
 $('ve-zr').addEventListener('input',e=>{veScale=parseFloat(e.target.value);$('ve-zv').textContent=(veScale/100).toFixed(1)+'x';veDraw();});
-function veFit(){vePX=veC.width>>1;vePY=Math.floor(veC.height*.15);veDraw();}
+function veFit(){
+  if(!veS.length){vePX=veC.width>>1;vePY=Math.floor(veC.height*.15);veDraw();return;}
+  // Work in coordinate space (same as original vector editor)
+  let xs=[0],ys=[0],cx=0,cy=0;
+  for(const s of veS){cx+=s.x;cy+=s.y;xs.push(cx);ys.push(cy);}
+  const mnX=Math.min(...xs),mxX=Math.max(...xs),mnY=Math.min(...ys),mxY=Math.max(...ys);
+  const pad=50;
+  veScale=Math.max(10,Math.min(2000,Math.min(
+    (veC.width -pad*2)/(mxX-mnX||1),
+    (veC.height-pad*2)/(mxY-mnY||1)
+  )));
+  vePX=Math.floor(veC.width/2-(mnX+(mxX-mnX)/2)*veScale);
+  vePY=Math.floor(pad-mnY*veScale);
+  $('ve-zr').value=veScale;
+  $('ve-zv').textContent=(veScale/100).toFixed(1)+'x';
+  veDraw();
+}
 function veTable(){
   const tb=$('ve-tb2');tb.innerHTML='';$('ve-sc').textContent=veS.length+' shots';
   veS.forEach((s,i)=>{
     const tr=document.createElement('tr');if(i===veI)tr.classList.add('sel');
     tr.innerHTML=`<td style="color:var(--text3);text-align:right;padding-right:4px">${i+1}</td>
       <td><input type="number" value="${s.x}" step="0.001" data-i="${i}" data-f="x" onchange="veUpd(this)" onfocus="veI=${i};veDraw()"></td>
-      <td><input type="number" value="${s.y}" step="0.001" data-i="${i}" data-f="y" onchange="veUpd(this)" onfocus="veI=${i};veDraw()"></td>
-      <td><input type="number" value="${s.ms}" step="1" data-i="${i}" data-f="ms" onchange="veUpd(this)" onfocus="veI=${i};veDraw()"></td>
+      <td><input type="number" value="${s.y}" step="1"     data-i="${i}" data-f="y" onchange="veUpd(this)" onfocus="veI=${i};veDraw()"></td>
+      <td><input type="number" value="${s.ms}" step="1"   data-i="${i}" data-f="ms" onchange="veUpd(this)" onfocus="veI=${i};veDraw()"></td>
       <td><button class="tdel" onclick="veDel(${i})">✕</button></td>`;
     tb.appendChild(tr);
   });
@@ -770,8 +792,11 @@ function veClear(){if(!veS.length||confirm('Clear all shots?')){veS=[];veI=-1;ve
 function veSmooth(){if(veS.length<3)return;for(let i=1;i<veS.length-1;i++){veS[i].x=(veS[i-1].x+veS[i].x+veS[i+1].x)/3;veS[i].y=(veS[i-1].y+veS[i].y+veS[i+1].y)/3;}veTable();veDraw();}
 function veView(v){veVM=v;$('ve-bt').classList.toggle('active',v==='table');$('ve-br2').classList.toggle('active',v==='raw');$('ve-tv').style.display=v==='table'?'':'none';$('ve-rv').classList.toggle('active',v==='raw');if(v==='raw')$('ve-rta').value=veToTxt();}
 
+function veRawDirty(){const b=$('ve-raw-save');if(b){b.classList.add('dirty');}}
+
 // Raw apply — also saves to current loaded pattern
 async function veApplyRaw(){
+  const b=$('ve-raw-save');if(b)b.classList.remove('dirty');
   veS=veParse($('ve-rta').value);veI=-1;veTable();veDraw();
   if(veAP){
     try{
