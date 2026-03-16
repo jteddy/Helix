@@ -8,6 +8,7 @@ import asyncio
 import json
 import os
 import threading
+from contextlib import asynccontextmanager
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -21,11 +22,37 @@ from features.recoil.recoil import recoil as recoil_feature
 from features.flashlight.flashlight import flashlight as flashlight_feature
 import config_manager
 
-app   = FastAPI(title="Cearum Web")
 state = AppState()
 ws_clients: List[WebSocket] = []
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+# ── Lifespan (replaces deprecated @app.on_event) ──────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── Startup ───────────────────────────────────────────────────────────────
+    os.makedirs(state.scripts_dir, exist_ok=True)
+    config_manager.load(state)
+
+    def _connect():
+        if makcu_controller.connect() is None:
+            print("[MAKCU] Failed to connect — check USB connection")
+        else:
+            print("[MAKCU] Connected")
+
+    threading.Thread(target=_connect,                                             daemon=True).start()
+    threading.Thread(target=recoil_feature.run_recoil,    args=(state,),         daemon=True).start()
+    threading.Thread(target=flashlight_feature.run_flashlight, args=(state,),    daemon=True).start()
+
+    asyncio.create_task(_broadcast_loop())
+    asyncio.create_task(_autosave_loop())
+
+    yield
+    # ── Shutdown (add cleanup here if needed) ─────────────────────────────────
+
+
+app = FastAPI(title="Cearum Web", lifespan=lifespan)
 
 # ── Static / root ─────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
@@ -154,15 +181,17 @@ async def cycle_script():
 class ScriptSave(BaseModel):
     name: str
     content: str
-    game: Optional[str] = None   # if provided, saves to saved_scripts/<game>/<name>.txt
+    game: Optional[str] = None   # if provided, saves to saved_scripts/<game>/<n>.txt
 
 @app.post("/api/scripts/save")
 async def save_script(s: ScriptSave):
     state.save_script(s.name, s.content, s.game)
-    # If this file is currently loaded, refresh in-memory vectors immediately
+    # If this file is currently loaded, refresh in-memory vectors via lock-safe load_script
     full_name = f"{s.game}/{s.name}" if s.game else s.name
     if state.loaded_script in (full_name, s.name):
-        state.vectors = state._parse_vectors(s.content)
+        state.load_script(s.name, s.game)
+    # persist state after updating vectors
+    config_manager.save(state)
     return {"ok": True}
 
 @app.delete("/api/scripts/{game}/{name}")
@@ -188,7 +217,7 @@ class FlashlightUpdate(BaseModel):
 
 @app.post("/api/flashlight/toggle")
 async def toggle_flashlight():
-    state.flashlight_enabled = not state.flashlight_enabled
+    state.toggle_flashlight()
     config_manager.save(state)
     return {"enabled": state.flashlight_enabled}
 
@@ -241,10 +270,10 @@ async def save_pattern(game: str, weapon: str, request: Request):
     body = await request.body()
     content = body.decode()
     state.save_script(weapon, content, game)
-    # If this pattern is the currently loaded script, refresh vectors immediately
+    # If this pattern is the currently loaded script, refresh vectors via lock-safe load_script
     full_name = f"{game}/{weapon}"
     if state.loaded_script in (full_name, weapon):
-        state.vectors = state._parse_vectors(content)
+        state.load_script(weapon, game)
     return {"saved": True}
 
 @app.delete("/api/patterns/{game}/{weapon}")
@@ -262,25 +291,7 @@ async def streamdeck_state():
         "script":     state.loaded_script,
     }
 
-# ── Startup ───────────────────────────────────────────────────────────────────
-@app.on_event("startup")
-async def startup():
-    os.makedirs(state.scripts_dir, exist_ok=True)
-    config_manager.load(state)
-
-    def _connect():
-        if makcu_controller.connect() is None:
-            print("[MAKCU] Failed to connect — check USB connection")
-        else:
-            print("[MAKCU] Connected")
-
-    threading.Thread(target=_connect,                                        daemon=True).start()
-    threading.Thread(target=recoil_feature.run_recoil,    args=(state,),    daemon=True).start()
-    threading.Thread(target=flashlight_feature.run_flashlight, args=(state,), daemon=True).start()
-
-    asyncio.create_task(_broadcast_loop())
-    asyncio.create_task(_autosave_loop())
-
+# ── Background tasks ──────────────────────────────────────────────────────────
 async def _broadcast_loop():
     while True:
         if ws_clients:

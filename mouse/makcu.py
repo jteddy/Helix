@@ -139,7 +139,8 @@ class makcu_controller:
             return True
         except Exception as e:
             print(f"[MAKCU] Click error: {e}")
-            makcu_controller.is_connected_flag = False
+            with makcu_controller.connection_lock:
+                makcu_controller.is_connected_flag = False
             return False
 
     @staticmethod
@@ -152,7 +153,8 @@ class makcu_controller:
             return True
         except Exception as e:
             print(f"[MAKCU] Move error: {e}")
-            makcu_controller.is_connected_flag = False
+            with makcu_controller.connection_lock:
+                makcu_controller.is_connected_flag = False
             return False
 
     @staticmethod
@@ -189,7 +191,8 @@ class makcu_controller:
             return True
         except Exception as e:
             print(f"[MAKCU] Smooth move error: {e}")
-            makcu_controller.is_connected_flag = False
+            with makcu_controller.connection_lock:
+                makcu_controller.is_connected_flag = False
             return False
 
     @staticmethod

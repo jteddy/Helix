@@ -78,7 +78,7 @@ Status updates via WebSocket every 200ms — pressing M5 on your MAKCU reflects 
 
 See **`streamdeck/SETUP.md`** for full button-by-button instructions.
 
-Short version: install the free *HTTP Request by BarRaider* plugin, then:
+Short version: install the free *Web Requests by Adrián* plugin from the Stream Deck Store, then:
 ```
 POST http://<server-ip>:8000/api/recoil/toggle
 POST http://<server-ip>:8000/api/flashlight/toggle
@@ -104,7 +104,7 @@ cearum-web/
 ├── static/index.html             ← Entire frontend (4 tabs, self-contained)
 ├── patterns/                     ← Vector Editor patterns
 ├── saved_scripts/                ← Recoil scripts
-├── config.json                   ← Auto-saved every 30s
+├── config.json                   ← Auto-saved every 30s (gitignored)
 └── streamdeck/SETUP.md           ← Stream Deck configuration guide
 ```
 
