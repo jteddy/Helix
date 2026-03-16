@@ -98,6 +98,16 @@ async def toggle_recoil():
     return {"enabled": state.recoil_enabled}
 
 # ── REST: Scripts ─────────────────────────────────────────────────────────────
+@app.get("/api/scripts/content/{name}")
+async def get_script_content(name: str):
+    """Return raw text content of a saved script for editing in the browser."""
+    path = os.path.join(state.scripts_dir, f"{name}.txt")
+    if not os.path.exists(path):
+        raise HTTPException(404, "Script not found")
+    with open(path) as f:
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(f.read())
+
 @app.get("/api/scripts")
 async def list_scripts():
     return {"scripts": state.list_scripts(), "loaded": state.loaded_script}
