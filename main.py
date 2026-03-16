@@ -77,6 +77,10 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 async def root():
     return FileResponse(os.path.join(BASE_DIR, "static", "index.html"))
 
+@app.get("/workshop")
+async def workshop():
+    return FileResponse(os.path.join(BASE_DIR, "static", "workshop.html"))
+
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/api/health")
 async def health():
