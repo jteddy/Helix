@@ -1,67 +1,98 @@
 # Stream Deck Setup for Cearum Web
 
-The Stream Deck runs on your **gaming PC (Windows)** and talks to the Cearum server over your LAN.
+The Stream Deck runs on your **gaming PC (Windows)** and talks to the Cearum server over your LAN via HTTP.
 
 ---
 
-## Prerequisites
+## Plugin to Install
 
-Install the free **HTTP Request by BarRaider** plugin from the Stream Deck Store:
+From the Stream Deck Store, install:
 
-1. Open Stream Deck software → click the Store icon (bottom right)
-2. Search: `HTTP Request`
-3. Install **"HTTP Request" by BarRaider**
+> **Web Requests** by Adrián — Free
 
----
-
-## Server Address
-
-Replace `CEARUM_IP` in all examples below with your server's IP address, e.g. `192.168.1.50`.
-
-You can find the IP on the **Settings tab** of the Cearum web UI.
+Search "http request" in the store and it will appear in the results.
 
 ---
 
-## Button Configurations
+## Your Server Address
+
+Replace `CEARUM_IP` in all examples below with your server's actual IP address, e.g. `192.168.1.50`.
+
+Find it on the **Settings tab** of the Cearum web UI, or run on the server:
+```bash
+hostname -I
+```
+
+---
+
+## Button Setup (Web Requests plugin)
+
+Each button uses the **Web Requests** action. The fields you fill in are:
+
+| Field | Notes |
+|-------|-------|
+| **URL** | Full address including port 8000 |
+| **Method** | GET or POST depending on the button |
+| **Body** | Leave empty for toggle/cycle actions |
+
+---
 
 ### Button 1 — Toggle Recoil ON/OFF
 
-| Field | Value |
-|-------|-------|
-| Action | HTTP Request |
-| URL | `http://CEARUM_IP:8000/api/recoil/toggle` |
-| Method | POST |
-| Body | *(empty)* |
-| Title | Recoil |
-
-**Dynamic title (shows current state):**
-- Set a second HTTP Request button with GET `http://CEARUM_IP:8000/api/streamdeck`
-- Use the `recoil` field from the JSON response to update the title
+```
+Method : POST
+URL    : http://CEARUM_IP:8000/api/recoil/toggle
+Body   : (empty)
+Title  : Recoil
+```
 
 ---
 
 ### Button 2 — Toggle Flashlight ON/OFF
 
-| Field | Value |
-|-------|-------|
-| Action | HTTP Request |
-| URL | `http://CEARUM_IP:8000/api/flashlight/toggle` |
-| Method | POST |
-| Body | *(empty)* |
-| Title | Flash |
+```
+Method : POST
+URL    : http://CEARUM_IP:8000/api/flashlight/toggle
+Body   : (empty)
+Title  : Flash
+```
 
 ---
 
-### Button 3 — MAKCU Status (read-only poll)
+### Button 3 — Cycle to Next Script
 
-| Field | Value |
-|-------|-------|
-| Action | HTTP Request (polling mode) |
-| URL | `http://CEARUM_IP:8000/api/streamdeck` |
-| Method | GET |
-| Poll Interval | 1 second |
+```
+Method : POST
+URL    : http://CEARUM_IP:8000/api/scripts/cycle
+Body   : (empty)
+Title  : Cycle Script
+```
 
-The response JSON:
+---
+
+### Button 4 — Load a Specific Script
+
+```
+Method : POST
+URL    : http://CEARUM_IP:8000/api/scripts/load/ak47
+Body   : (empty)
+Title  : AK-47
+```
+
+Replace `ak47` with the exact script name (no `.txt` extension, case-sensitive).
+
+---
+
+### Button 5 — Check Status (MAKCU / Recoil state)
+
+```
+Method : GET
+URL    : http://CEARUM_IP:8000/api/streamdeck
+Body   : (empty)
+Title  : Status
+```
+
+The response is JSON — Web Requests can display it as the button title:
 ```json
 {
   "recoil":     true,
@@ -71,59 +102,16 @@ The response JSON:
 }
 ```
 
-Use BarRaider's **JSONPath** feature to extract fields:
-- `$.recoil` → show on Recoil button title
-- `$.makcu` → show on MAKCU button
-- `$.script` → show currently loaded script name
+If Web Requests supports a title template, use `{recoil}` to show ON/OFF on the button face.
 
 ---
 
-### Button 4 — Cycle Script
-
-| Field | Value |
-|-------|-------|
-| Action | HTTP Request |
-| URL | `http://CEARUM_IP:8000/api/scripts/cycle` |
-| Method | POST |
-| Body | *(empty)* |
-| Title | Cycle Script |
-
----
-
-### Button 5 — Load a specific script
-
-| Field | Value |
-|-------|-------|
-| Action | HTTP Request |
-| URL | `http://CEARUM_IP:8000/api/scripts/load/ak47` |
-| Method | POST |
-| Body | *(empty)* |
-| Title | AK-47 |
-
-Replace `ak47` with the exact script name (no `.txt` extension).
-
----
-
-## Advanced: Multi-Action Toggle with State Icon
-
-Using BarRaider's **"Toggle"** action type:
-
-1. **State 0** (Recoil OFF icon): POST `/api/recoil/toggle`
-2. **State 1** (Recoil ON icon): POST `/api/recoil/toggle`
-
-Combine with a polling GET to `/api/streamdeck` every 500ms to keep the icon in sync even when toggled via MAKCU button (M4/M5).
-
----
-
-## Recommended Profile Layout (5×3 deck)
+## Recommended Layout (5-button row)
 
 ```
 ┌──────────┬──────────┬──────────┬──────────┬──────────┐
-│  RECOIL  │  FLASH   │  MAKCU   │  CYCLE   │ SCRIPT 1 │
-│  ON/OFF  │  ON/OFF  │  STATUS  │  SCRIPT  │  (ak47)  │
-├──────────┼──────────┼──────────┼──────────┼──────────┤
-│ SCRIPT 2 │ SCRIPT 3 │          │          │          │
-│ (m4a1)   │ (mp5)    │          │          │          │
+│  RECOIL  │  FLASH   │  CYCLE   │  AK-47   │  STATUS  │
+│  TOGGLE  │  TOGGLE  │  SCRIPT  │  (load)  │  (poll)  │
 └──────────┴──────────┴──────────┴──────────┴──────────┘
 ```
 
@@ -131,15 +119,14 @@ Combine with a polling GET to `/api/streamdeck` every 500ms to keep the icon in 
 
 ## Troubleshooting
 
-**Button does nothing:**
-- Check that `CEARUM_IP` is correct
-- Confirm the Cearum server is running: open `http://CEARUM_IP:8000` in a browser
-- Check Windows Firewall isn't blocking outbound HTTP on port 8000
+**Button does nothing / times out:**
+- Confirm the Cearum server is running — open `http://CEARUM_IP:8000` in a browser on the gaming PC
+- Check Windows Firewall isn't blocking outbound connections on port 8000
+- Make sure gaming PC and Cearum server are on the same LAN
 
-**State out of sync:**
-- Add a polling GET to `/api/streamdeck` on a 1-second interval
-- Use JSONPath extraction to update button titles dynamically
+**Wrong IP:**
+- The server IP can change on DHCP. Consider assigning a static IP to the Cearum server in your router settings, or use its hostname if your router supports it.
 
-**Connection refused:**
-- The Cearum service may have stopped: `sudo systemctl status cearum-web`
+**Server stopped:**
+- On the Cearum server: `sudo systemctl restart cearum-web`
 - Check logs: `sudo journalctl -u cearum-web -n 50`
