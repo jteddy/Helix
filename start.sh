@@ -1,7 +1,10 @@
 #!/bin/bash
-cd "$(dirname "$0")"
-echo "Starting Cearum Web..."
 IP=$(hostname -I | awk '{print $1}')
-echo "Open http://${IP}:8888 in your browser"
+echo "========================================"
+echo "  Cearum Web"
+echo "  http://localhost:8000"
+echo "  http://${IP}:8000  (network)"
+echo "  Ctrl+C to stop"
+echo "========================================"
 echo ""
 python3 main.py
