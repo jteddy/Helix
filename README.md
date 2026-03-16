@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Cearum Web
 
 **Fork of [dev-boog/Cearum-Recoil](https://github.com/dev-boog/Cearum-Recoil/)** — reworked with a web UI front-end so the controls are accessible from any browser on your network.
