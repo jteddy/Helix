@@ -197,12 +197,12 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 
 /* Zoom bar — compact, uniform height */
 #ve-zbar{
-  display:flex;align-items:center;gap:6px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
   padding:4px 8px;height:30px;
   background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;
 }
 #ve-zbar label{font-size:10px;color:var(--text3);flex-shrink:0;}
-#ve-zr{flex:1;max-width:120px;}
+#ve-zr{width:140px;flex-shrink:0;}
 #ve-zv{font-size:10px;color:var(--accent);min-width:34px;flex-shrink:0;}
 /* Buttons in zoom bar inherit btn but override height to match bar */
 #ve-zbar .btn{height:22px;padding:0 8px;font-size:10px;}
@@ -435,7 +435,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
             </div>
             <div id="ve-zbar">
               <label>Zoom</label>
-              <input type="range" id="ve-zr" min="50" max="2000" step="10" value="400">
+              <input type="range" id="ve-zr" min="5" max="2000" step="5" value="400">
               <span id="ve-zv">1.0x</span>
               <button class="btn" onclick="veFit()">Fit All</button>
             </div>
@@ -716,8 +716,10 @@ function veDraw(){
   const W=veC.width,H=veC.height;
   veX.clearRect(0,0,W,H);veX.fillStyle='#0b0c0e';veX.fillRect(0,0,W,H);
   // Grid: choose unit size so grid spacing is ~40px
-  const GUNITS=[0.1,0.5,1,5,10,50,100];
-  let gu=GUNITS.find(u=>u*veScale>=30)||100;
+  // Grid: 10-unit base, scale up/down by 10x to keep box 40-200px
+  let gu=10;
+  while(gu*veScale<40)  gu*=10;
+  while(gu*veScale>200) gu/=10;
   const GRID=gu*veScale;
   veX.strokeStyle='#1a1c20';veX.lineWidth=1;veX.beginPath();
   const ox=((vePX%GRID)+GRID)%GRID,oy=((vePY%GRID)+GRID)%GRID;
@@ -750,7 +752,7 @@ let veRDT=0,veRDX=0,veRDY=0;
 veC.addEventListener('mousedown',e=>{if(e.button===2){veRDT=Date.now();veRDX=e.clientX;veRDY=e.clientY;const rc=veC.getBoundingClientRect();vePan=true;vePSX=e.clientX-rc.left;vePSY=e.clientY-rc.top;vePOX=vePX;vePOY=vePY;}},true);
 veC.addEventListener('mouseup',e=>{if(e.button===2){const dt=Date.now()-veRDT,dx=Math.abs(e.clientX-veRDX),dy=Math.abs(e.clientY-veRDY);if(dt<300&&dx<5&&dy<5){const rc=veC.getBoundingClientRect(),h=veHit(e.clientX-rc.left,e.clientY-rc.top);if(h>=0){veS.splice(h,1);veI=Math.min(veI,veS.length-1);veTable();veDraw();}}vePan=false;}if(e.button===0)veDI=-1;if(e.button===1)vePan=false;});
 veC.addEventListener('mousemove',e=>{const rc=veC.getBoundingClientRect(),cx=e.clientX-rc.left,cy=e.clientY-rc.top;if(vePan){vePX=vePOX+(cx-vePSX);vePY=vePOY+(cy-vePSY);veDraw();return;}if(veDI>=0){const nx=cx-veDOX,ny=cy-veDOY,pos=veCum(),px2=veDI>0?pos[veDI-1][0]:vePX,py2=veDI>0?pos[veDI-1][1]:vePY;veS[veDI].x=+((nx-px2)/veScale).toFixed(3);veS[veDI].y=+((ny-py2)/veScale).toFixed(3);veTable();veDraw();}});
-veC.addEventListener('wheel',e=>{e.preventDefault();const rc=veC.getBoundingClientRect(),mx=e.clientX-rc.left,my=e.clientY-rc.top;const f=e.deltaY<0?1.1:0.9,old=veScale;veScale=Math.max(50,Math.min(2000,veScale*f));const ratio=veScale/old;vePX=mx+(vePX-mx)*ratio;vePY=my+(vePY-my)*ratio;$('ve-zr').value=veScale;$('ve-zv').textContent=(veScale/100).toFixed(1)+'x';veDraw();},{passive:false});
+veC.addEventListener('wheel',e=>{e.preventDefault();const rc=veC.getBoundingClientRect(),mx=e.clientX-rc.left,my=e.clientY-rc.top;const f=e.deltaY<0?1.1:0.9,old=veScale;veScale=Math.max(5,Math.min(2000,veScale*f));const ratio=veScale/old;vePX=mx+(vePX-mx)*ratio;vePY=my+(vePY-my)*ratio;$('ve-zr').value=veScale;$('ve-zv').textContent=(veScale/100).toFixed(1)+'x';veDraw();},{passive:false});
 veC.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))veSp=true;});
 document.addEventListener('keyup',e=>{if(e.code==='Space'){veSp=false;vePan=false;}});
@@ -762,7 +764,7 @@ function veFit(){
   for(const s of veS){cx+=s.x;cy+=s.y;xs.push(cx);ys.push(cy);}
   const mnX=Math.min(...xs),mxX=Math.max(...xs),mnY=Math.min(...ys),mxY=Math.max(...ys);
   const pad=50;
-  veScale=Math.max(10,Math.min(2000,Math.min(
+  veScale=Math.max(5,Math.min(2000,Math.min(
     (veC.width -pad*2)/(mxX-mnX||1),
     (veC.height-pad*2)/(mxY-mnY||1)
   )));
