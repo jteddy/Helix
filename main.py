@@ -120,18 +120,19 @@ class RecoilUpdate(BaseModel):
 
 @app.post("/api/recoil")
 async def update_recoil(u: RecoilUpdate):
-    if u.enabled                 is not None: state.recoil_enabled         = u.enabled
-    if u.toggle_keybind          is not None: state.toggle_keybind         = u.toggle_keybind
-    if u.cycle_keybind           is not None: state.cycle_keybind          = u.cycle_keybind
-    if u.require_aim             is not None: state.require_aim            = u.require_aim
-    if u.loop_recoil             is not None: state.loop_recoil            = u.loop_recoil
-    if u.randomisation           is not None: state.randomisation          = u.randomisation
-    if u.return_crosshair        is not None: state.return_crosshair       = u.return_crosshair
-    if u.randomisation_strength  is not None: state.randomisation_strength = u.randomisation_strength
-    if u.recoil_scalar           is not None: state.recoil_scalar          = u.recoil_scalar
-    if u.x_control               is not None: state.x_control              = u.x_control
-    if u.y_control               is not None: state.y_control              = u.y_control
-    if u.return_speed            is not None: state.return_speed           = u.return_speed
+    with state._lock:
+        if u.enabled                 is not None: state.recoil_enabled         = u.enabled
+        if u.toggle_keybind          is not None: state.toggle_keybind         = u.toggle_keybind
+        if u.cycle_keybind           is not None: state.cycle_keybind          = u.cycle_keybind
+        if u.require_aim             is not None: state.require_aim            = u.require_aim
+        if u.loop_recoil             is not None: state.loop_recoil            = u.loop_recoil
+        if u.randomisation           is not None: state.randomisation          = u.randomisation
+        if u.return_crosshair        is not None: state.return_crosshair       = u.return_crosshair
+        if u.randomisation_strength  is not None: state.randomisation_strength = u.randomisation_strength
+        if u.recoil_scalar           is not None: state.recoil_scalar          = u.recoil_scalar
+        if u.x_control               is not None: state.x_control              = u.x_control
+        if u.y_control               is not None: state.y_control              = u.y_control
+        if u.return_speed            is not None: state.return_speed           = u.return_speed
     await _save_async()
     return {"ok": True}
 
@@ -242,12 +243,13 @@ async def toggle_flashlight():
 
 @app.post("/api/flashlight")
 async def update_flashlight(u: FlashlightUpdate):
-    if u.enabled           is not None: state.flashlight_enabled = u.enabled
-    if u.keybind           is not None: state.flashlight_keybind = u.keybind
-    if u.hold_threshold_ms is not None: state.hold_threshold_ms  = u.hold_threshold_ms
-    if u.cooldown_ms       is not None: state.cooldown_ms        = u.cooldown_ms
-    if u.pre_fire_min_ms   is not None: state.pre_fire_min_ms    = u.pre_fire_min_ms
-    if u.pre_fire_max_ms   is not None: state.pre_fire_max_ms    = u.pre_fire_max_ms
+    with state._lock:
+        if u.enabled           is not None: state.flashlight_enabled = u.enabled
+        if u.keybind           is not None: state.flashlight_keybind = u.keybind
+        if u.hold_threshold_ms is not None: state.hold_threshold_ms  = u.hold_threshold_ms
+        if u.cooldown_ms       is not None: state.cooldown_ms        = u.cooldown_ms
+        if u.pre_fire_min_ms   is not None: state.pre_fire_min_ms    = u.pre_fire_min_ms
+        if u.pre_fire_max_ms   is not None: state.pre_fire_max_ms    = u.pre_fire_max_ms
     await _save_async()
     return {"ok": True}
 
@@ -258,8 +260,9 @@ class SettingsUpdate(BaseModel):
 
 @app.post("/api/settings")
 async def update_settings(u: SettingsUpdate):
-    if u.game_scalar      is not None: state.game_scalar      = u.game_scalar
-    if u.game_sensitivity is not None: state.game_sensitivity = u.game_sensitivity
+    with state._lock:
+        if u.game_scalar      is not None: state.game_scalar      = u.game_scalar
+        if u.game_sensitivity is not None: state.game_sensitivity = u.game_sensitivity
     await _save_async()
     return {"ok": True}
 
@@ -341,8 +344,8 @@ async def _autosave_loop():
 
 async def _save_async():
     """Run config_manager.save in a thread-pool executor so it never
-    FIX: blocks the async event loop on file I/O."""
-    loop = asyncio.get_event_loop()
+    blocks the async event loop on file I/O."""
+    loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, config_manager.save, state)
 
 if __name__ == "__main__":

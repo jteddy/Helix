@@ -80,14 +80,14 @@ class recoil:
                 total_y_movement = 0
                 shot_count       = 0
                 lmb_was_pressed  = False
-                time.sleep(0.02)
+                time.sleep(0.005)
                 continue
 
             if not lmb_pressed:
                 shot_count       = 0
                 total_y_movement = 0
                 lmb_was_pressed  = False
-                time.sleep(0.02)
+                time.sleep(0.005)
                 continue
 
             # ── LMB just pressed ──────────────────────────────────────────────

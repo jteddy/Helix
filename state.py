@@ -196,10 +196,12 @@ class AppState:
         return True
 
     def save_script(self, name: str, content: str, game: Optional[str] = None) -> bool:
-        with self._lock:
-            folder = os.path.join(self.scripts_dir, game) if game else self.scripts_dir
-        os.makedirs(folder, exist_ok=True)
-        with open(os.path.join(folder, f"{name}.txt"), "w") as f:
+        try:
+            path = self._resolve_path(name, game)
+        except ValueError:
+            return False
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
             f.write(content)
         return True
 
