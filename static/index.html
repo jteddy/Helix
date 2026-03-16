@@ -533,6 +533,15 @@ function wsConnect(){
 }
 wsConnect();
 
+// ── MAKCU poll — independent of WebSocket, catches hardware disconnects ──────
+async function pollMakcu(){
+  try{
+    const d=await(await fetch('/api/streamdeck')).json();
+    applyStatus({makcu_connected:d.makcu,recoil_enabled:d.recoil,flashlight_active:d.flashlight,loaded_script:d.script});
+  }catch(e){}
+}
+setInterval(pollMakcu,7000);
+
 function applyStatus(d){
   const _mv=$('hdr-makcu-val');if(_mv){_mv.textContent=d.makcu_connected?'OK':'N/C';_mv.className=d.makcu_connected?'ok':'err';}$('ws-dot').className=d.makcu_connected?'ok':'err';
   card('sc-recoil',d.recoil_enabled?'on':'');$('sc-recoil-v').textContent=d.recoil_enabled?'ON':'OFF';
