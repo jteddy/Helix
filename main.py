@@ -159,6 +159,10 @@ class ScriptSave(BaseModel):
 @app.post("/api/scripts/save")
 async def save_script(s: ScriptSave):
     state.save_script(s.name, s.content, s.game)
+    # If this file is currently loaded, refresh in-memory vectors immediately
+    full_name = f"{s.game}/{s.name}" if s.game else s.name
+    if state.loaded_script in (full_name, s.name):
+        state.vectors = state._parse_vectors(s.content)
     return {"ok": True}
 
 @app.delete("/api/scripts/{game}/{name}")
@@ -235,7 +239,12 @@ async def get_pattern(game: str, weapon: str):
 @app.post("/api/patterns/{game}/{weapon}")
 async def save_pattern(game: str, weapon: str, request: Request):
     body = await request.body()
-    state.save_script(weapon, body.decode(), game)
+    content = body.decode()
+    state.save_script(weapon, content, game)
+    # If this pattern is the currently loaded script, refresh vectors immediately
+    full_name = f"{game}/{weapon}"
+    if state.loaded_script in (full_name, weapon):
+        state.vectors = state._parse_vectors(content)
     return {"saved": True}
 
 @app.delete("/api/patterns/{game}/{weapon}")

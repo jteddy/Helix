@@ -37,8 +37,13 @@ html,body{height:100%;background:var(--bg0);color:var(--text);font-family:var(--
 #hdr-sep{flex:1;}
 #hdr-ver{font-size:9px;color:var(--text3);}
 #ws-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .4s,box-shadow .4s;}
-#ws-dot.ok{background:var(--accent);box-shadow:0 0 5px var(--accent);}
+#ws-dot.ok{background:var(--green);box-shadow:0 0 5px var(--green);}
 #ws-dot.err{background:var(--red);box-shadow:0 0 5px var(--red);}
+#hdr-makcu{display:flex;flex-direction:column;align-items:flex-end;gap:1px;}
+#hdr-makcu-lbl{font-size:8px;color:var(--text3);font-family:var(--fu);letter-spacing:.08em;text-transform:uppercase;}
+#hdr-makcu-val{font-size:11px;font-weight:700;font-family:var(--fu);color:var(--text3);line-height:1;transition:color .3s;}
+#hdr-makcu-val.ok{color:var(--green);}
+#hdr-makcu-val.err{color:var(--red);}
 
 /* ═══ STATUS PANEL ═══ */
 #sp{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:7px 10px;background:var(--bg0);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -279,13 +284,13 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 <div id="hdr">
   <div id="hdr-logo">Cear<span>um</span></div>
   <div id="hdr-sep"></div>
-  <div id="hdr-ver">V2.0-WEB</div>
-  <div id="ws-dot" title="WebSocket"></div>
+  <div id="hdr-makcu"><div id="hdr-makcu-lbl">MAKCU</div><div id="hdr-makcu-val">—</div></div>
+  <div id="hdr-ver">V0.1</div>
+  <div id="ws-dot" title="MAKCU Status"></div>
 </div>
 
 <!-- ═══ STATUS PANEL ═══ -->
 <div id="sp">
-  <div class="sc" id="sc-makcu"><div class="sc-lbl">MAKCU</div><div class="sc-val" id="sc-makcu-v">—</div></div>
   <div class="sc tap" id="sc-recoil" onclick="toggleRecoil()"><div class="sc-lbl">Recoil</div><div class="sc-val" id="sc-recoil-v">OFF</div><div class="sc-hint">tap</div></div>
   <div class="sc tap" id="sc-flash" onclick="toggleFlashlight()"><div class="sc-lbl">Flashlight</div><div class="sc-val" id="sc-flash-v">OFF</div><div class="sc-hint">tap</div></div>
   <div class="sc wide" id="sc-script"><div class="sc-lbl">Script</div><div class="sc-val" id="sc-script-v">NONE</div></div>
@@ -321,11 +326,11 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <div class="card">
     <div class="ch">Scaling</div>
     <div class="cb" style="padding-top:3px;padding-bottom:3px">
-      <div class="sr"><div class="slbl">Recoil Scalar<span class="sval" id="v-sc">1.00</span></div><input type="range" id="r-sc" min="0" max="5" step="0.01" value="1" oninput="$('v-sc').textContent=f2(this)" onchange="p('/api/recoil',{recoil_scalar:fv(this)})"></div>
-      <div class="sr"><div class="slbl">X Control<span class="sval" id="v-xc">1.00</span></div><input type="range" id="r-xc" min="0" max="1" step="0.01" value="1" oninput="$('v-xc').textContent=f2(this)" onchange="p('/api/recoil',{x_control:fv(this)})"></div>
-      <div class="sr"><div class="slbl">Y Control<span class="sval" id="v-yc">1.00</span></div><input type="range" id="r-yc" min="0" max="1" step="0.01" value="1" oninput="$('v-yc').textContent=f2(this)" onchange="p('/api/recoil',{y_control:fv(this)})"></div>
-      <div class="sr"><div class="slbl">Randomisation Strength<span class="sval" id="v-rs">0.50</span></div><input type="range" id="r-rs" min="0" max="3" step="0.01" value="0.5" oninput="$('v-rs').textContent=f2(this)" onchange="p('/api/recoil',{randomisation_strength:fv(this)})"></div>
-      <div class="sr"><div class="slbl">Return Speed<span class="sval" id="v-rspd">0.50</span></div><input type="range" id="r-rspd" min="0" max="2" step="0.01" value="0.5" oninput="$('v-rspd').textContent=f2(this)" onchange="p('/api/recoil',{return_speed:fv(this)})"></div>
+      <div class="sr"><div class="slbl">Recoil Scalar<span class="sval" id="v-sc">1.00</span></div><input type="range" id="r-sc" min="0" max="5" step="0.01" value="1" oninput="$('v-sc').textContent=f2(this);pDebounced('sc','/api/recoil',{recoil_scalar:fv(this)})"></div>
+      <div class="sr"><div class="slbl">X Control<span class="sval" id="v-xc">1.00</span></div><input type="range" id="r-xc" min="0" max="1" step="0.01" value="1" oninput="$('v-xc').textContent=f2(this);pDebounced('xc','/api/recoil',{x_control:fv(this)})"></div>
+      <div class="sr"><div class="slbl">Y Control<span class="sval" id="v-yc">1.00</span></div><input type="range" id="r-yc" min="0" max="1" step="0.01" value="1" oninput="$('v-yc').textContent=f2(this);pDebounced('yc','/api/recoil',{y_control:fv(this)})"></div>
+      <div class="sr"><div class="slbl">Randomisation Strength<span class="sval" id="v-rs">0.50</span></div><input type="range" id="r-rs" min="0" max="3" step="0.01" value="0.5" oninput="$('v-rs').textContent=f2(this);pDebounced('rs','/api/recoil',{randomisation_strength:fv(this)})"></div>
+      <div class="sr"><div class="slbl">Return Speed<span class="sval" id="v-rspd">0.50</span></div><input type="range" id="r-rspd" min="0" max="2" step="0.01" value="0.5" oninput="$('v-rspd').textContent=f2(this);pDebounced('rspd','/api/recoil',{return_speed:fv(this)})"></div>
     </div>
   </div>
 
@@ -515,6 +520,8 @@ function st(name){
 let _nt;
 function notify(msg){const el=$('notif');el.textContent=msg;el.classList.add('show');clearTimeout(_nt);_nt=setTimeout(()=>el.classList.remove('show'),2500);}
 async function p(url,body){try{await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){notify('Network error');}}
+const _pT={};
+function pDebounced(key,url,body,delay=350){clearTimeout(_pT[key]);_pT[key]=setTimeout(()=>p(url,body),delay);}
 async function api(url,opts={}){const r=await fetch(url,opts);if(!r.ok)throw new Error(await r.text());return r.json();}
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
@@ -522,21 +529,21 @@ let ws;
 function wsConnect(){
   const proto=location.protocol==='https:'?'wss:':'ws:';
   ws=new WebSocket(`${proto}//${location.host}/ws`);
-  ws.onopen=()=>{$('ws-dot').className='ok';$('s-ws').textContent='Connected';$('s-ws').style.color='var(--green)';setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);};
+  ws.onopen=()=>{$('s-ws').textContent='Connected';$('s-ws').style.color='var(--green)';setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);};
   ws.onmessage=e=>applyStatus(JSON.parse(e.data));
   ws.onclose=()=>{$('ws-dot').className='err';$('s-ws').textContent='Reconnecting…';$('s-ws').style.color='var(--red)';setTimeout(wsConnect,2000);};
 }
 wsConnect();
 
 function applyStatus(d){
-  card('sc-makcu',d.makcu_connected?'on':'err');$('sc-makcu-v').textContent=d.makcu_connected?'OK':'N/C';
+  const _mv=$('hdr-makcu-val');if(_mv){_mv.textContent=d.makcu_connected?'OK':'N/C';_mv.className=d.makcu_connected?'ok':'err';}$('ws-dot').className=d.makcu_connected?'ok':'err';
   card('sc-recoil',d.recoil_enabled?'on':'');$('sc-recoil-v').textContent=d.recoil_enabled?'ON':'OFF';
   card('sc-flash',d.flashlight_active?'on':'');$('sc-flash-v').textContent=d.flashlight_active?'ON':'OFF';
   const hs=d.loaded_script&&d.loaded_script!=='NONE';
   card('sc-script',hs?'on':'');$('sc-script-v').textContent=d.loaded_script||'NONE';
   const cb=$('r-en');if(cb&&cb.checked!==d.recoil_enabled)cb.checked=d.recoil_enabled;
   const ms=$('s-mst');if(ms){ms.textContent=d.makcu_connected?'Connected':'Not connected';ms.style.color=d.makcu_connected?'var(--green)':'var(--red)';}
-  if(hs){$('s-name-inp').value=d.loaded_script.split('/').pop();}
+  if(hs&&document.activeElement!==$('s-name-inp')){$('s-name-inp').value=d.loaded_script.split('/').pop();}
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}
 
@@ -557,12 +564,16 @@ async function loadState(){
     $('st-game').innerHTML=games.map(g=>`<option>${g}</option>`).join('');
     sel('st-game',s.game_scalar||'Manual');num('st-sens',s.game_sensitivity??1);
     $('s-srv').textContent=location.host;
-    // Populate game selector in scripts section
-    populateGameSelector(d.games||[], '');
+    // ── Restore game directory from loaded script ─────────────────────────
+    let defaultGame = '';
+    if(r.loaded_script && r.loaded_script !== 'NONE' && r.loaded_script.includes('/')) {
+      defaultGame = r.loaded_script.split('/')[0];
+    }
+    sCurrentGame = defaultGame;
+    updateDirLabel(defaultGame);
+    populateGameSelector(d.games||[], defaultGame);
     renderScripts([],r.loaded_script||'NONE');
-    // Load scripts for root folder
-    await refreshScripts('');
-    // Load script content if one is loaded
+    await refreshScripts(defaultGame);
     if(r.loaded_script&&r.loaded_script!=='NONE') await loadScriptContent(r.loaded_script);
     applyStatus({makcu_connected:d.makcu_connected,recoil_enabled:r.enabled,flashlight_active:fl.enabled&&r.enabled,loaded_script:r.loaded_script});
   }catch(e){console.error('loadState:',e);}
@@ -576,6 +587,12 @@ function slid(sid,lid,v){const s=$(sid),l=$(lid);if(s)s.value=v;if(l)l.textConte
 let sCurrentGame = '';
 let sDir = 'saved_scripts/';
 
+function updateDirLabel(game) {
+  sDir = game ? `saved_scripts/${game}/` : 'saved_scripts/';
+  const el = $('s-dir-lbl');
+  if(el) el.textContent = sDir;
+}
+
 function populateGameSelector(games, current) {
   const sel = $('s-game-sel');
   sel.innerHTML = '<option value="">(root)</option>' +
@@ -585,6 +602,7 @@ function populateGameSelector(games, current) {
 
 async function switchGame(game) {
   sCurrentGame = game;
+  updateDirLabel(game);
   await refreshScripts(game);
 }
 
@@ -853,19 +871,10 @@ async function veLoadPat(game,weapon){
 async function veSavePat(){
   const game=$('ve-ig').value.trim()||'default',weapon=$('ve-iw').value.trim()||'pattern';
   try{
-    const txt=veToTxt();
-    await fetch(`/api/patterns/${encodeURIComponent(game)}/${encodeURIComponent(weapon)}`,{method:'POST',headers:{'Content-Type':'text/plain'},body:txt});
+    await fetch(`/api/patterns/${encodeURIComponent(game)}/${encodeURIComponent(weapon)}`,{method:'POST',headers:{'Content-Type':'text/plain'},body:veToTxt()});
     veAP={game,weapon};veEG.add(game);veStatus(`Saved ${game}/${weapon}`);veLoadPats();
-    // Refresh scripts tab — update textarea if this matches the loaded script
-    const d=await api('/api/scripts');
-    populateGameSelector(d.games||[],sCurrentGame);
-    const loadedFull=$('sc-script-v').textContent;
-    const thisFull=`${game}/${weapon}`;
-    if(loadedFull===thisFull||loadedFull===weapon){
-      $('vec-ta').value=txt;
-      $('s-name-inp').value=weapon;
-      notify(`Pattern saved & recoil script updated`);
-    }
+    // Also refresh scripts tab game selector
+    const d=await api('/api/scripts');populateGameSelector(d.games||[],sCurrentGame);
   }catch(e){alert('Save failed:'+e);}
 }
 async function veDelPat(game,weapon){
@@ -901,6 +910,37 @@ function veNewGame(){const g=$('ve-ig').value.trim();if(!g)return;veS=[];veI=-1;
 veView('table');veLoadPats();veDraw();setInterval(veLoadPats,5000);
 
 loadState();
+
+// ── MAKCU poll — independent of WebSocket, catches hardware disconnects ──────
+async function pollMakcu(){
+  try{
+    const d=await(await fetch('/api/streamdeck')).json();
+    applyStatus({makcu_connected:d.makcu,recoil_enabled:d.recoil,flashlight_active:d.flashlight,loaded_script:d.script});
+  }catch(e){}
+}
+setInterval(pollMakcu,7000);
+
+// ── Wake Lock — keep screen on while page is open ─────────────────────────────
+(async function initWakeLock(){
+  if(!('wakeLock' in navigator)) return; // not supported (older browsers)
+  let lock = null;
+
+  async function acquire(){
+    try{
+      lock = await navigator.wakeLock.request('screen');
+      lock.addEventListener('release', ()=>{ lock=null; });
+    }catch(e){
+      // User denied or browser blocked — silently ignore
+    }
+  }
+
+  // Reacquire when tab becomes visible again (e.g. switching back from another app)
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='visible' && !lock) acquire();
+  });
+
+  acquire();
+})();
 </script>
 </body>
 </html>
