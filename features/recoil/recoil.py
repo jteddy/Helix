@@ -118,30 +118,47 @@ class recoil:
                 if move_completed:
                     total_y_movement += actual_y
 
-                # ── Poll LMB during inter-shot delay ──────────────────────────
-                # If LMB is released at any point during the delay, treat this
-                # as a tap-fire: reset shot_count so the next press starts fresh.
-                elapsed   = time.perf_counter() - start_time
-                remaining = delay - elapsed
-                lmb_released_during_delay = False
-                if remaining > 0:
-                    deadline = time.perf_counter() + remaining
-                    while time.perf_counter() < deadline:
-                        if not makcu_controller.get_button_state("LMB"):
-                            lmb_released_during_delay = True
-                            break
-                        time.sleep(0.001)   # 1ms poll — tight enough to catch tap release
-
-                if lmb_released_during_delay:
-                    # LMB released mid-delay — end of burst, return crosshair if needed
+                # ── Helper: reset burst state and optionally return crosshair ─
+                def _reset_burst():
                     if total_y_movement != 0 and state.get_return_crosshair_enabled():
                         makcu_controller.move_mouse_smoothly(
                             0, -total_y_movement, 20, state.get_return_speed()
                         )
+
+                # ── Case 1: move was interrupted — LMB released during move ───
+                # Reset immediately, skip the inter-shot delay entirely.
+                # Do NOT re-check LMB here — if it bounced back to True already
+                # that will be handled cleanly at the top of the next iteration.
+                if not move_completed:
+                    _reset_burst()
                     shot_count       = 0
                     total_y_movement = 0
                     lmb_was_pressed  = False
-                    continue   # back to top — do NOT increment shot_count
+                    continue
+
+                # ── Case 2: move completed — poll LMB during inter-shot delay ─
+                # Check LMB immediately (catches release in the tiny gap between
+                # move completing and the poll starting), then keep polling every
+                # 1 ms for the remainder of the inter-shot delay.
+                elapsed   = time.perf_counter() - start_time
+                remaining = delay - elapsed
+
+                lmb_released = not makcu_controller.get_button_state("LMB")
+
+                if not lmb_released and remaining > 0:
+                    deadline = time.perf_counter() + remaining
+                    while time.perf_counter() < deadline:
+                        if not makcu_controller.get_button_state("LMB"):
+                            lmb_released = True
+                            break
+                        time.sleep(0.001)
+
+                if lmb_released:
+                    _reset_burst()
+                    shot_count       = 0
+                    total_y_movement = 0
+                    lmb_was_pressed  = False
+                    continue
 
                 shot_count += 1
             else:
