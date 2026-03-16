@@ -14,9 +14,10 @@ class makcu_controller:
         "M5":  False,
     }
 
-    connection_lock = threading.Lock()
-    command_lock    = threading.Lock()
+    connection_lock   = threading.Lock()
+    command_lock      = threading.Lock()
     is_connected_flag = False
+    _watchdog_started = False  # Ensures only one watchdog thread is ever running
 
     @staticmethod
     def is_connected():
@@ -25,6 +26,32 @@ class makcu_controller:
                 makcu_controller.is_connected_flag
                 and makcu_controller.controller is not None
             )
+
+    @staticmethod
+    def _watchdog():
+        """
+        Background daemon thread started once by connect().
+        Every 8 seconds sends a zero-movement command to verify the USB
+        handle is still alive.  On failure it clears the controller and
+        sets is_connected_flag = False so the WebSocket broadcast picks
+        up the disconnect within its next 200 ms cycle.
+        Does not attempt to reconnect — that is left to main.py startup.
+        """
+        INTERVAL = 8  # seconds — well within safe limits for the device
+        while True:
+            time.sleep(INTERVAL)
+            with makcu_controller.connection_lock:
+                if not makcu_controller.is_connected_flag or makcu_controller.controller is None:
+                    continue  # already disconnected, nothing to ping
+                ctrl = makcu_controller.controller
+            try:
+                with makcu_controller.command_lock:
+                    ctrl.move(0, 0)  # zero-move: no-op for the cursor, exercises the USB handle
+            except Exception as e:
+                print(f"[MAKCU] Watchdog detected disconnect: {e}")
+                with makcu_controller.connection_lock:
+                    makcu_controller.is_connected_flag = False
+                    makcu_controller.controller = None
 
     @staticmethod
     def connect():
@@ -53,6 +80,12 @@ class makcu_controller:
             with makcu_controller.connection_lock:
                 makcu_controller.controller = controller
                 makcu_controller.is_connected_flag = True
+
+            # Start the watchdog once, the first time we successfully connect
+            if not makcu_controller._watchdog_started:
+                makcu_controller._watchdog_started = True
+                threading.Thread(target=makcu_controller._watchdog, daemon=True, name="makcu-watchdog").start()
+                print("[MAKCU] Watchdog started (8 s interval)")
 
             return makcu_controller.controller
 
