@@ -81,6 +81,25 @@ async def root():
 async def workshop():
     return FileResponse(os.path.join(BASE_DIR, "static", "workshop.html"))
 
+# ── Workshop — measure toggle (Stream Deck / keyboard) ────────────────────────
+_workshop_measure_active = False
+
+@app.post("/api/workshop/measure/toggle")
+async def workshop_measure_toggle():
+    """Toggle the fire rate measurement timer in the Workshop.
+    Assign POST /api/workshop/measure/toggle to a Stream Deck button."""
+    global _workshop_measure_active
+    _workshop_measure_active = not _workshop_measure_active
+    msg = json.dumps({"workshop_measure": "toggle"})
+    dead = set()
+    for ws in list(ws_clients):
+        try:
+            await ws.send_text(msg)
+        except Exception:
+            dead.add(ws)
+    ws_clients.difference_update(dead)
+    return {"measuring": _workshop_measure_active}
+
 # ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/api/health")
 async def health():
