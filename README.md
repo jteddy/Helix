@@ -132,9 +132,9 @@ The Flashlight feature automates your in-game torch/flashlight key to fire autom
 | Setting | What it does |
 |---------|-------------|
 | Flashlight Keybind | Which mouse button maps to your in-game flashlight key. |
-| Hold Threshold (ms) | How long the keybind must be held before it counts as a "hold" rather than a tap — prevents accidental triggers. |
+| Hold Threshold (ms) | How long you must hold the fire button before the flashlight triggers. Short tap shots (burst fire) won't activate it — only sustained fire will. |
 | Cooldown (ms) | Minimum time between flashlight activations to avoid rapid re-triggering. |
-| Pre-Fire Delay (ms) | A randomised delay (min → max) inserted before each flashlight pulse for a more natural timing. |
+| Pre-Fire Delay (ms) | A randomised delay (min → max) added after the hold threshold is met before the flashlight actually turns on. |
 
 > Flashlight only fires when **Recoil is ON** — prevents it from triggering in menus.
 
