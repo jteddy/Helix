@@ -116,43 +116,68 @@ class AppState:
 
     # ── Script management ─────────────────────────────────────────────────────
 
-    def list_scripts(self) -> List[str]:
+    def list_games(self) -> List[str]:
         if not os.path.isdir(self.scripts_dir):
             return []
-        return sorted(f[:-4] for f in os.listdir(self.scripts_dir) if f.endswith(".txt"))
+        return sorted(d for d in os.listdir(self.scripts_dir)
+                      if os.path.isdir(os.path.join(self.scripts_dir, d)))
 
-    def load_script(self, name: str) -> bool:
-        path = os.path.join(self.scripts_dir, f"{name}.txt")
+    def list_scripts(self, game: str = None) -> List[str]:
+        folder = os.path.join(self.scripts_dir, game) if game else self.scripts_dir
+        if not os.path.isdir(folder):
+            return []
+        return sorted(f[:-4] for f in os.listdir(folder) if f.endswith(".txt"))
+
+    def _resolve_path(self, name: str, game: str = None) -> str:
+        if game:
+            return os.path.join(self.scripts_dir, game, f"{name}.txt")
+        return os.path.join(self.scripts_dir, f"{name}.txt")
+
+    def load_script(self, name: str, game: str = None) -> bool:
+        path = self._resolve_path(name, game)
         if not os.path.exists(path):
             return False
         with open(path, "r") as f:
-            content = f.read()
-        self.loaded_script = name
-        self.vectors = self._parse_vectors(content)
+            text = f.read()
+        self.loaded_script = f"{game}/{name}" if game else name
+        self.vectors = self._parse_vectors(text)
         return True
 
-    def save_script(self, name: str, content: str) -> bool:
-        os.makedirs(self.scripts_dir, exist_ok=True)
-        with open(os.path.join(self.scripts_dir, f"{name}.txt"), "w") as f:
+    def save_script(self, name: str, content: str, game: str = None) -> bool:
+        folder = os.path.join(self.scripts_dir, game) if game else self.scripts_dir
+        os.makedirs(folder, exist_ok=True)
+        with open(os.path.join(folder, f"{name}.txt"), "w") as f:
             f.write(content)
         return True
 
-    def delete_script(self, name: str) -> bool:
-        path = os.path.join(self.scripts_dir, f"{name}.txt")
+    def delete_script(self, name: str, game: str = None) -> bool:
+        path = self._resolve_path(name, game)
         if os.path.exists(path):
             os.remove(path)
+            if game:
+                folder = os.path.join(self.scripts_dir, game)
+                try:
+                    if not os.listdir(folder):
+                        os.rmdir(folder)
+                except Exception:
+                    pass
             return True
         return False
 
     def cycle_script(self):
-        scripts = self.list_scripts()
-        if not scripts:
+        all_scripts = [(None, s) for s in self.list_scripts()]
+        for g in self.list_games():
+            for s in self.list_scripts(g):
+                all_scripts.append((g, s))
+        if not all_scripts:
             return
-        if self.loaded_script in scripts:
-            idx = (scripts.index(self.loaded_script) + 1) % len(scripts)
-        else:
-            idx = 0
-        self.load_script(scripts[idx])
+        idx = 0
+        for i, (g, s) in enumerate(all_scripts):
+            if (f"{g}/{s}" if g else s) == self.loaded_script:
+                idx = (i + 1) % len(all_scripts)
+                break
+        g, s = all_scripts[idx]
+        self.load_script(s, g)
 
     @staticmethod
     def _parse_vectors(text: str) -> List[Tuple[float, float, float]]:
