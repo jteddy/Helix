@@ -219,7 +219,10 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 #ve-sab{flex:1;overflow:hidden;position:relative;}
 #ve-tv{height:100%;overflow-y:auto;}
 #ve-tv table{width:100%;border-collapse:collapse;}
-#ve-tv th{position:sticky;top:0;background:var(--bg3);font-size:10px;color:var(--text3);font-weight:500;padding:3px 5px;border-bottom:1px solid var(--border);text-align:left;letter-spacing:.04em;text-transform:uppercase;}
+#ve-tv th{position:sticky;top:0;background:var(--bg3);font-size:10px;color:var(--text3);font-weight:500;padding:3px 6px;border-bottom:1px solid var(--border);text-align:left;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;}
+#ve-tv th:nth-child(1){width:28px;text-align:right;}
+#ve-tv th:nth-child(2),#ve-tv th:nth-child(3),#ve-tv th:nth-child(4){width:33%;}
+#ve-tv td:nth-child(1){text-align:right;padding-right:6px;color:var(--text3);width:28px;}
 #ve-tv td{padding:1px 4px;border-bottom:1px solid var(--border);font-size:11px;}
 #ve-tv td input{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--fm);font-size:11px;padding:2px;outline:none;height:22px;}
 #ve-tv tr.sel{background:rgba(255,77,109,.08);}
@@ -287,7 +290,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 <div id="sp">
   <div class="sc" id="sc-makcu"><div class="sc-lbl">MAKCU</div><div class="sc-val" id="sc-makcu-v">—</div></div>
   <div class="sc tap" id="sc-recoil" onclick="toggleRecoil()"><div class="sc-lbl">Recoil</div><div class="sc-val" id="sc-recoil-v">OFF</div><div class="sc-hint">tap</div></div>
-  <div class="sc" id="sc-flash"><div class="sc-lbl">Flashlight</div><div class="sc-val" id="sc-flash-v">OFF</div></div>
+  <div class="sc tap" id="sc-flash" onclick="toggleFlashlight()"><div class="sc-lbl">Flashlight</div><div class="sc-val" id="sc-flash-v">OFF</div><div class="sc-hint">tap</div></div>
   <div class="sc wide" id="sc-script"><div class="sc-lbl">Script</div><div class="sc-val" id="sc-script-v">NONE</div></div>
 </div>
 
@@ -348,7 +351,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     </div>
     <!-- Bottom: loaded name + save controls -->
     <div class="s-bot">
-      <span class="s-loaded none" id="s-loaded-lbl">no script loaded</span>
       <input type="text" id="s-name-inp" placeholder="script name" style="flex:1;min-width:0">
       <button class="btn sm pri" onclick="saveScript()">Save</button>
       <button class="btn sm" onclick="newScript()">New</button>
@@ -435,7 +437,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
             </div>
             <div id="ve-zbar">
               <label>Zoom</label>
-              <input type="range" id="ve-zr" min="5" max="2000" step="5" value="400">
+              <input type="range" id="ve-zr" min="1" max="200" step="1" value="10">
               <span id="ve-zv">1.0x</span>
               <button class="btn" onclick="veFit()">Fit All</button>
             </div>
@@ -537,7 +539,7 @@ function applyStatus(d){
   card('sc-script',hs?'on':'');$('sc-script-v').textContent=d.loaded_script||'NONE';
   const cb=$('r-en');if(cb&&cb.checked!==d.recoil_enabled)cb.checked=d.recoil_enabled;
   const ms=$('s-mst');if(ms){ms.textContent=d.makcu_connected?'Connected':'Not connected';ms.style.color=d.makcu_connected?'var(--green)':'var(--red)';}
-  if(hs){$('s-loaded-lbl').textContent=d.loaded_script;$('s-loaded-lbl').className='s-loaded';$('s-name-inp').value=d.loaded_script.split('/').pop();}
+  if(hs){$('s-name-inp').value=d.loaded_script.split('/').pop();}
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}
 
@@ -625,8 +627,8 @@ async function loadScriptContent(fullName) {
     if(r.ok){
       const txt=await r.text();
       $('vec-ta').value=txt;
-      $('s-loaded-lbl').textContent=fullName;
-      $('s-loaded-lbl').className='s-loaded';
+      
+      
       $('s-name-inp').value=parts[parts.length-1];
     }
   }catch(e){}
@@ -649,9 +651,9 @@ async function delScript(name, game) {
   if(game) url=`/api/scripts/${encodeURIComponent(game)}/${encodeURIComponent(name)}`;
   else url=`/api/scripts/${encodeURIComponent(name)}`;
   await fetch(url,{method:'DELETE'});
-  const current=$('s-loaded-lbl').textContent;
+  const current=
   const fullName=game?`${game}/${name}`:name;
-  if(current===fullName||current===name){$('vec-ta').value='';$('s-loaded-lbl').textContent='no script loaded';$('s-loaded-lbl').className='s-loaded none';$('s-name-inp').value='';}
+  if(current===fullName||current===name){$('vec-ta').value='';$('s-name-inp').value='';}
   await refreshScripts(sCurrentGame);
   notify(`Deleted: ${name}`);
 }
@@ -664,12 +666,12 @@ async function saveScript() {
   const url=sCurrentGame?`/api/scripts/load/${encodeURIComponent(sCurrentGame)}/${encodeURIComponent(name)}`:`/api/scripts/load/${encodeURIComponent(name)}`;
   await fetch(url,{method:'POST'});
   await refreshScripts(sCurrentGame);
-  $('s-loaded-lbl').textContent=sCurrentGame?`${sCurrentGame}/${name}`:name;
-  $('s-loaded-lbl').className='s-loaded';
+  
+  
   notify(`Saved: ${name}`);
 }
 
-function newScript(){$('vec-ta').value='';$('s-loaded-lbl').textContent='new script';$('s-loaded-lbl').className='s-loaded none';$('s-name-inp').value='';$('s-name-inp').focus();}
+function newScript(){$('vec-ta').value='';$('s-name-inp').value='';setTimeout(()=>$('s-name-inp').focus(),50);}
 
 async function newGame() {
   const g=prompt('New game folder name:');
@@ -689,6 +691,10 @@ async function toggleRecoil(){
   try{const d=await api('/api/recoil/toggle',{method:'POST'});chk('r-en',d.enabled);notify(d.enabled?'● Recoil ON':'● Recoil OFF');}
   catch(e){notify('Toggle failed');}
 }
+async function toggleFlashlight(){
+  try{const d=await api('/api/flashlight/toggle',{method:'POST'});chk('fl-en',d.enabled);notify(d.enabled?'● Flash ON':'● Flash OFF');}
+  catch(e){notify('Toggle failed');}
+}
 
 // ── Browser hotkey ────────────────────────────────────────────────────────────
 let bHK=localStorage.getItem('cearum_hk')||'',capHK=false;
@@ -704,7 +710,7 @@ document.addEventListener('keydown',e=>{
 // ═══════════════════════════════════════════════════════════════════════════
 //  VECTOR EDITOR
 // ═══════════════════════════════════════════════════════════════════════════
-let veS=[],veI=-1,veScale=400,vePX=0,vePY=0,vePan=false,vePSX=0,vePSY=0,vePOX=0,vePOY=0;
+let veS=[],veI=-1,veScale=10,vePX=0,vePY=0,vePan=false,vePSX=0,vePSY=0,vePOX=0,vePOY=0;
 let veSp=false,veDI=-1,veDOX=0,veDOY=0,veVM='table',veAG=[],veEG=new Set(),veAP=null;
 const DR=5;
 const veW=$('ve-cw'),veC=$('recoil-canvas'),veX=veC.getContext('2d');
@@ -716,11 +722,11 @@ function veDraw(){
   const W=veC.width,H=veC.height;
   veX.clearRect(0,0,W,H);veX.fillStyle='#0b0c0e';veX.fillRect(0,0,W,H);
   // Grid: choose unit size so grid spacing is ~40px
-  // Grid: 10-unit base, scale up/down by 10x to keep box 40-200px
+  // Grid: 10-unit base. Adapt when very zoomed in or out.
   let gu=10;
-  while(gu*veScale<40)  gu*=10;
-  while(gu*veScale>200) gu/=10;
-  const GRID=gu*veScale;
+  while(gu*veScale > 300) gu /= 10;   // zoomed in: show 1-unit grid
+  while(gu*veScale < 30)  gu *= 10;   // zoomed out: show 100-unit grid
+  const GRID = gu * veScale;
   veX.strokeStyle='#1a1c20';veX.lineWidth=1;veX.beginPath();
   const ox=((vePX%GRID)+GRID)%GRID,oy=((vePY%GRID)+GRID)%GRID;
   for(let x=ox;x<W;x+=GRID){veX.moveTo(x,0);veX.lineTo(x,H);}
@@ -752,11 +758,11 @@ let veRDT=0,veRDX=0,veRDY=0;
 veC.addEventListener('mousedown',e=>{if(e.button===2){veRDT=Date.now();veRDX=e.clientX;veRDY=e.clientY;const rc=veC.getBoundingClientRect();vePan=true;vePSX=e.clientX-rc.left;vePSY=e.clientY-rc.top;vePOX=vePX;vePOY=vePY;}},true);
 veC.addEventListener('mouseup',e=>{if(e.button===2){const dt=Date.now()-veRDT,dx=Math.abs(e.clientX-veRDX),dy=Math.abs(e.clientY-veRDY);if(dt<300&&dx<5&&dy<5){const rc=veC.getBoundingClientRect(),h=veHit(e.clientX-rc.left,e.clientY-rc.top);if(h>=0){veS.splice(h,1);veI=Math.min(veI,veS.length-1);veTable();veDraw();}}vePan=false;}if(e.button===0)veDI=-1;if(e.button===1)vePan=false;});
 veC.addEventListener('mousemove',e=>{const rc=veC.getBoundingClientRect(),cx=e.clientX-rc.left,cy=e.clientY-rc.top;if(vePan){vePX=vePOX+(cx-vePSX);vePY=vePOY+(cy-vePSY);veDraw();return;}if(veDI>=0){const nx=cx-veDOX,ny=cy-veDOY,pos=veCum(),px2=veDI>0?pos[veDI-1][0]:vePX,py2=veDI>0?pos[veDI-1][1]:vePY;veS[veDI].x=+((nx-px2)/veScale).toFixed(3);veS[veDI].y=+((ny-py2)/veScale).toFixed(3);veTable();veDraw();}});
-veC.addEventListener('wheel',e=>{e.preventDefault();const rc=veC.getBoundingClientRect(),mx=e.clientX-rc.left,my=e.clientY-rc.top;const f=e.deltaY<0?1.1:0.9,old=veScale;veScale=Math.max(5,Math.min(2000,veScale*f));const ratio=veScale/old;vePX=mx+(vePX-mx)*ratio;vePY=my+(vePY-my)*ratio;$('ve-zr').value=veScale;$('ve-zv').textContent=(veScale/100).toFixed(1)+'x';veDraw();},{passive:false});
+veC.addEventListener('wheel',e=>{e.preventDefault();const rc=veC.getBoundingClientRect(),mx=e.clientX-rc.left,my=e.clientY-rc.top;const f=e.deltaY<0?1.1:0.9,old=veScale;veScale=Math.max(1,Math.min(200,veScale*f));const ratio=veScale/old;vePX=mx+(vePX-mx)*ratio;vePY=my+(vePY-my)*ratio;$('ve-zr').value=veScale;$('ve-zv').textContent=(veScale/10).toFixed(1)+'x';veDraw();},{passive:false});
 veC.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))veSp=true;});
 document.addEventListener('keyup',e=>{if(e.code==='Space'){veSp=false;vePan=false;}});
-$('ve-zr').addEventListener('input',e=>{veScale=parseFloat(e.target.value);$('ve-zv').textContent=(veScale/100).toFixed(1)+'x';veDraw();});
+$('ve-zr').addEventListener('input',e=>{veScale=parseFloat(e.target.value);$('ve-zv').textContent=(veScale/10).toFixed(1)+'x';veDraw();});
 function veFit(){
   if(!veS.length){vePX=veC.width>>1;vePY=Math.floor(veC.height*.15);veDraw();return;}
   // Work in coordinate space (same as original vector editor)
@@ -764,14 +770,14 @@ function veFit(){
   for(const s of veS){cx+=s.x;cy+=s.y;xs.push(cx);ys.push(cy);}
   const mnX=Math.min(...xs),mxX=Math.max(...xs),mnY=Math.min(...ys),mxY=Math.max(...ys);
   const pad=50;
-  veScale=Math.max(5,Math.min(2000,Math.min(
+  veScale=Math.max(1,Math.min(200,Math.min(
     (veC.width -pad*2)/(mxX-mnX||1),
     (veC.height-pad*2)/(mxY-mnY||1)
   )));
   vePX=Math.floor(veC.width/2-(mnX+(mxX-mnX)/2)*veScale);
   vePY=Math.floor(pad-mnY*veScale);
   $('ve-zr').value=veScale;
-  $('ve-zv').textContent=(veScale/100).toFixed(1)+'x';
+  $('ve-zv').textContent=(veScale/10).toFixed(1)+'x';
   veDraw();
 }
 function veTable(){
@@ -870,7 +876,7 @@ async function veLoadAsScript(){
   await fetch(`/api/scripts/load/${encodeURIComponent(game)}/${encodeURIComponent(weapon)}`,{method:'POST'});
   await refreshScripts(game);
   $('vec-ta').value=content;
-  $('s-loaded-lbl').textContent=`${game}/${weapon}`;$('s-loaded-lbl').className='s-loaded';
+  
   $('s-name-inp').value=weapon;
   sCurrentGame=game;
   const sel=$('s-game-sel');for(const o of sel.options)if(o.value===game){o.selected=true;break;}
