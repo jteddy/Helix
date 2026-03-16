@@ -144,8 +144,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .empty-s{font-size:10px;color:var(--text3);text-align:center;padding:10px 5px;}
 /* Bottom bar: loaded name + save controls */
 .s-bot{display:flex;align-items:center;gap:5px;padding:4px 9px;background:var(--bg3);border-top:1px solid var(--border);}
-.s-loaded{font-size:11px;color:var(--accent);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-.s-loaded.none{color:var(--text3);}
 
 /* ── MS pair ─────────────────────────────────────────────────────── */
 .ms-row{display:flex;align-items:center;gap:5px;}
@@ -272,7 +270,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .ve-pd:hover{color:var(--hot);}
 .ve-las{width:100%;margin-top:4px;font-size:10px;background:rgba(77,156,255,.08);border-color:var(--accent);color:var(--accent);height:22px;padding:0 8px;}
 .ve-las:hover{background:rgba(77,156,255,.18);}
-#ve-br2-btn{height:22px;padding:0 8px;font-size:10px;align-self:flex-end;}
 </style>
 </head>
 <body>
@@ -651,9 +648,9 @@ async function delScript(name, game) {
   if(game) url=`/api/scripts/${encodeURIComponent(game)}/${encodeURIComponent(name)}`;
   else url=`/api/scripts/${encodeURIComponent(name)}`;
   await fetch(url,{method:'DELETE'});
-  const current=
   const fullName=game?`${game}/${name}`:name;
-  if(current===fullName||current===name){$('vec-ta').value='';$('s-name-inp').value='';}
+  const currentName=$('s-name-inp').value.trim();
+  if(currentName===name||currentName===fullName){$('vec-ta').value='';$('s-name-inp').value='';}
   await refreshScripts(sCurrentGame);
   notify(`Deleted: ${name}`);
 }
