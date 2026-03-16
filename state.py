@@ -4,6 +4,7 @@ Replaces the tkinter RecoilMenu / FlashlightMenu / SettingsMenu classes.
 Thread-safe: all loops and the HTTP layer share this one object.
 """
 import os
+import pathlib
 import random
 import threading
 from typing import List, Optional, Tuple
@@ -162,12 +163,29 @@ class AppState:
             return sorted(f[:-4] for f in os.listdir(folder) if f.endswith(".txt"))
 
     def _resolve_path(self, name: str, game: Optional[str] = None) -> str:
+        """Return the absolute path for a script file.
+
+        FIX: Validates that the resolved path stays within scripts_dir to
+        prevent path traversal attacks via crafted game/name URL parameters
+        (e.g. game='..', name='../../etc/passwd').
+        """
+        base = pathlib.Path(self.scripts_dir).resolve()
         if game:
-            return os.path.join(self.scripts_dir, game, f"{name}.txt")
-        return os.path.join(self.scripts_dir, f"{name}.txt")
+            target = (base / game / f"{name}.txt").resolve()
+        else:
+            target = (base / f"{name}.txt").resolve()
+
+        # Ensure the resolved path is still inside the scripts directory
+        if not str(target).startswith(str(base) + os.sep) and str(target) != str(base):
+            raise ValueError(f"Path traversal attempt blocked: {target}")
+
+        return str(target)
 
     def load_script(self, name: str, game: Optional[str] = None) -> bool:
-        path = self._resolve_path(name, game)
+        try:
+            path = self._resolve_path(name, game)
+        except ValueError:
+            return False
         if not os.path.exists(path):
             return False
         with open(path, "r") as f:
@@ -186,7 +204,10 @@ class AppState:
         return True
 
     def delete_script(self, name: str, game: Optional[str] = None) -> bool:
-        path = self._resolve_path(name, game)
+        try:
+            path = self._resolve_path(name, game)
+        except ValueError:
+            return False
         if os.path.exists(path):
             os.remove(path)
             if game:
@@ -282,8 +303,7 @@ class AppState:
             if "scripts_dir" in r and os.path.isdir(r["scripts_dir"]):
                 self.scripts_dir = r["scripts_dir"]
 
-        # FIX #2: correctly split "game/name" before calling load_script,
-        # so the game parameter is passed properly on all platforms.
+        # Correctly split "game/name" before calling load_script
         loaded = r.get("loaded_script", "NONE")
         if loaded != "NONE":
             if "/" in loaded:

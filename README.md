@@ -87,45 +87,158 @@ GET  http://<server-ip>:8000/api/streamdeck
 
 ---
 
+## Scripts & Game Organisation
+
+Scripts are stored under `saved_scripts/` and can be organised into game subfolders:
+
+```
+saved_scripts/
+├── ABI/                   ← Arena Breakout Infinite
+│   ├── ak47.txt
+│   └── mp5.txt
+├── Tarkov/
+│   └── m4.txt
+└── legacy_script.txt      ← Flat root scripts still supported
+```
+
+When loading a game-scoped script via the API or Stream Deck, use the `game/weapon` form:
+```
+POST http://<server-ip>:8000/api/scripts/load/ABI/ak47
+```
+
+---
+
 ## Directory Structure
 
 ```
 cearum-web/
 ├── main.py                       ← FastAPI backend + all API routes
-├── state.py                      ← Shared app state
-├── config_manager.py             ← JSON save/load on the server
+├── state.py                      ← Shared app state (thread-safe)
+├── config_manager.py             ← JSON save/load (atomic write)
 ├── setup-autostart.sh            ← One-shot systemd installer for Xubuntu
 ├── install.sh / start.sh
 ├── requirements.txt
-├── mouse/makcu.py                ← MAKCU USB HID controller (unchanged)
+├── mouse/makcu.py                ← MAKCU USB HID controller
 ├── menu/games.py                 ← Game sensitivity table
 ├── features/recoil/recoil.py     ← Recoil loop
 ├── features/flashlight/          ← Flashlight loop
 ├── static/index.html             ← Entire frontend (4 tabs, self-contained)
-├── patterns/                     ← Vector Editor patterns
-├── saved_scripts/                ← Recoil scripts
+├── saved_scripts/                ← Recoil scripts + Vector Editor patterns
+│   └── <game>/                   ← Optional game subfolders
+│       └── <weapon>.txt
 ├── config.json                   ← Auto-saved every 30s (gitignored)
 └── streamdeck/SETUP.md           ← Stream Deck configuration guide
 ```
+
+> **Note:** The Vector Editor and the Recoil Scripts tab share the same `saved_scripts/` directory. There is no separate `patterns/` folder.
 
 ---
 
 ## API Reference
 
+### Core
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/state` | Full state snapshot |
-| POST | `/api/recoil` | Update recoil settings |
+| GET | `/api/state` | Full state snapshot (recoil, flashlight, settings, scripts, games) |
+| GET | `/api/health` | Server + MAKCU health check |
+| WS | `/ws` | Live status stream (200ms push) |
+
+### Recoil
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/recoil` | Update recoil settings (partial update supported) |
 | POST | `/api/recoil/toggle` | Toggle recoil on/off |
-| GET | `/api/scripts` | List scripts |
-| POST | `/api/scripts/load/{name}` | Load a script |
-| POST | `/api/scripts/save` | Save a script |
-| POST | `/api/scripts/cycle` | Cycle to next script |
-| DELETE | `/api/scripts/{name}` | Delete a script |
+
+### Scripts
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/scripts` | List flat scripts + loaded script + all games |
+| GET | `/api/scripts/games` | List game subfolders |
+| GET | `/api/scripts/content/{name}` | Get flat script content |
+| GET | `/api/scripts/content/{game}/{name}` | Get game-scoped script content |
+| POST | `/api/scripts/load/{name}` | Load a flat script |
+| POST | `/api/scripts/load/{game}/{name}` | Load a game-scoped script |
+| POST | `/api/scripts/save` | Save a script (`name`, `content`, optional `game`) |
+| POST | `/api/scripts/cycle` | Cycle to next script (across all games) |
+| DELETE | `/api/scripts/{name}` | Delete a flat script |
+| DELETE | `/api/scripts/{game}/{name}` | Delete a game-scoped script |
+
+### Vector Editor Patterns
+
+Patterns share the same backend as scripts (`saved_scripts/<game>/<weapon>.txt`).
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/patterns` | List all game/weapon groups |
+| GET | `/api/patterns/{game}/{weapon}` | Get pattern content |
+| POST | `/api/patterns/{game}/{weapon}` | Save pattern content |
+| DELETE | `/api/patterns/{game}/{weapon}` | Delete a pattern |
+
+### Flashlight
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | POST | `/api/flashlight` | Update flashlight settings |
 | POST | `/api/flashlight/toggle` | Toggle flashlight on/off |
-| POST | `/api/settings` | Update game/sensitivity settings |
-| GET | `/api/patterns` | List vector editor patterns |
-| GET/POST/DELETE | `/api/patterns/{game}/{weapon}` | CRUD for patterns |
-| GET | `/api/streamdeck` | Lightweight status for Stream Deck polling |
-| WS | `/ws` | Live status stream (200ms push) |
+
+### Settings
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/settings` | Update game scalar and sensitivity |
+
+### Stream Deck
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/streamdeck` | Lightweight JSON status for polling |
+
+**Response:**
+```json
+{
+  "recoil":     true,
+  "flashlight": false,
+  "makcu":      true,
+  "script":     "ABI/ak47"
+}
+```
+
+---
+
+## Script File Format
+
+Scripts are plain text files, one vector per line:
+
+```
+# x_offset, y_offset, delay_ms
+0, 5, 85
+-1, 6, 85
+1, 7, 90
+```
+
+Lines starting with `#` are comments and are ignored.
+
+---
+
+## Troubleshooting
+
+**MAKCU shows N/C (not connected):**
+- Check the USB cable is seated firmly
+- Confirm udev rules are applied: `sudo udevadm trigger`
+- Check logs: `sudo journalctl -u cearum-web -n 50`
+
+**Recoil has no effect:**
+- Confirm Recoil is `ON` in the status panel
+- Check the correct script is loaded
+- Verify game sensitivity is set correctly in the Settings tab
+
+**Server won't start:**
+- Port 8000 already in use? `sudo lsof -i :8000`
+- Python deps missing? Run `./install.sh` again
+- Check logs: `sudo journalctl -u cearum-web -f`
+
+**config.json / scripts_dir wrong path after reinstall:**
+- Delete `config.json` and restart — the server will recreate it with the correct default path

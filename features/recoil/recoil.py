@@ -22,14 +22,24 @@ class recoil:
 
     @staticmethod
     def run_recoil(state: AppState):
-        shot_count       = 0
-        total_y_movement = 0
-        lmb_was_pressed  = False
+        shot_count        = 0
+        total_y_movement  = 0
+        lmb_was_pressed   = False
         last_toggle_state = False
         last_cycle_state  = False
         last_toggle_time  = 0.0
         last_cycle_time   = 0.0
         DEBOUNCE = 0.3
+
+        # FIX: _reset_burst was previously redefined inside the while loop on
+        # every iteration (~every 5 ms in the hot path). Defining it once here
+        # as a plain function that accepts its inputs avoids the repeated closure
+        # allocation and makes the data flow explicit.
+        def _reset_burst(y_movement: float) -> None:
+            if y_movement != 0 and state.get_return_crosshair_enabled():
+                makcu_controller.move_mouse_smoothly(
+                    0, -y_movement, 20, state.get_return_speed()
+                )
 
         while True:
             now = time.monotonic()
@@ -110,7 +120,7 @@ class recoil:
                 actual_x = x * state.get_x_control() * scalar
                 actual_y = y * state.get_y_control() * scalar
 
-                start_time    = time.perf_counter()
+                start_time     = time.perf_counter()
                 move_completed = makcu_controller.move_mouse_smoothly(
                     actual_x, actual_y, interrupt_on_lmb_release=True
                 )
@@ -118,19 +128,12 @@ class recoil:
                 if move_completed:
                     total_y_movement += actual_y
 
-                # ── Helper: reset burst state and optionally return crosshair ─
-                def _reset_burst():
-                    if total_y_movement != 0 and state.get_return_crosshair_enabled():
-                        makcu_controller.move_mouse_smoothly(
-                            0, -total_y_movement, 20, state.get_return_speed()
-                        )
-
                 # ── Case 1: move was interrupted — LMB released during move ───
                 # Reset immediately, skip the inter-shot delay entirely.
                 # Do NOT re-check LMB here — if it bounced back to True already
                 # that will be handled cleanly at the top of the next iteration.
                 if not move_completed:
-                    _reset_burst()
+                    _reset_burst(total_y_movement)
                     shot_count       = 0
                     total_y_movement = 0
                     lmb_was_pressed  = False
@@ -154,7 +157,7 @@ class recoil:
                         time.sleep(0.001)
 
                 if lmb_released:
-                    _reset_burst()
+                    _reset_burst(total_y_movement)
                     shot_count       = 0
                     total_y_movement = 0
                     lmb_was_pressed  = False

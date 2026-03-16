@@ -5,6 +5,7 @@ the recoil scripts tab and the vector editor. Flat files in saved_scripts/
 root are also supported for backward compatibility.
 """
 import asyncio
+import hashlib
 import json
 import os
 import threading
@@ -12,6 +13,7 @@ from contextlib import asynccontextmanager
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -23,9 +25,12 @@ from features.flashlight.flashlight import flashlight as flashlight_feature
 import config_manager
 
 state = AppState()
-ws_clients: List[WebSocket] = []
+ws_clients: set[WebSocket] = set()   # FIX: set for O(1) add/remove
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ── Broadcast state-hash cache (only send when state actually changes) ────────
+_last_broadcast_hash: str = ""
 
 
 # ── Lifespan (replaces deprecated @app.on_event) ──────────────────────────────
@@ -49,10 +54,21 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_autosave_loop())
 
     yield
-    # ── Shutdown (add cleanup here if needed) ─────────────────────────────────
+    # ── Shutdown ──────────────────────────────────────────────────────────────
+    # FIX: gracefully disconnect the MAKCU so it isn't left in a bad state
+    makcu_controller.disconnect()
+    print("[Cearum] Shutdown complete")
 
 
 app = FastAPI(title="Cearum Web", lifespan=lifespan)
+
+# FIX: CORS middleware so dev/testing from a different origin works cleanly
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ── Static / root ─────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
@@ -61,17 +77,22 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 async def root():
     return FileResponse(os.path.join(BASE_DIR, "static", "index.html"))
 
+# ── Health check ──────────────────────────────────────────────────────────────
+@app.get("/api/health")
+async def health():
+    """Simple liveness + MAKCU check — useful for scripting and Stream Deck polling."""
+    return {"status": "ok", "makcu": makcu_controller.is_connected()}
+
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     await ws.accept()
-    ws_clients.append(ws)
+    ws_clients.add(ws)   # FIX: set.add instead of list.append
     try:
         while True:
             await ws.receive_text()
     except WebSocketDisconnect:
-        if ws in ws_clients:
-            ws_clients.remove(ws)
+        ws_clients.discard(ws)   # FIX: discard is safe even if already removed
 
 # ── Full state snapshot ───────────────────────────────────────────────────────
 @app.get("/api/state")
@@ -111,13 +132,13 @@ async def update_recoil(u: RecoilUpdate):
     if u.x_control               is not None: state.x_control              = u.x_control
     if u.y_control               is not None: state.y_control              = u.y_control
     if u.return_speed            is not None: state.return_speed           = u.return_speed
-    config_manager.save(state)
+    await _save_async()
     return {"ok": True}
 
 @app.post("/api/recoil/toggle")
 async def toggle_recoil():
     state.toggle_recoil()
-    config_manager.save(state)
+    await _save_async()
     return {"enabled": state.recoil_enabled}
 
 # ── Scripts (unified with vector editor) ──────────────────────────────────────
@@ -149,7 +170,6 @@ async def get_script_content(name: str):
     if os.path.exists(flat):
         with open(flat) as f:
             return PlainTextResponse(f.read())
-    # Search in game subfolders
     for game in state.list_games():
         path = os.path.join(state.scripts_dir, game, f"{name}.txt")
         if os.path.exists(path):
@@ -162,20 +182,20 @@ async def load_script_with_game(game: str, name: str):
     full_name = f"{game}/{name}"
     if not state.load_script(name, game):
         raise HTTPException(404, "Script not found")
-    config_manager.save(state)
+    await _save_async()
     return {"ok": True, "loaded": full_name}
 
 @app.post("/api/scripts/load/{name}")
 async def load_script(name: str):
     if not state.load_script(name):
         raise HTTPException(404, "Script not found")
-    config_manager.save(state)
+    await _save_async()
     return {"ok": True, "loaded": name}
 
 @app.post("/api/scripts/cycle")
 async def cycle_script():
     state.cycle_script()
-    config_manager.save(state)
+    await _save_async()
     return {"loaded": state.loaded_script}
 
 class ScriptSave(BaseModel):
@@ -190,20 +210,19 @@ async def save_script(s: ScriptSave):
     full_name = f"{s.game}/{s.name}" if s.game else s.name
     if state.loaded_script in (full_name, s.name):
         state.load_script(s.name, s.game)
-    # persist state after updating vectors
-    config_manager.save(state)
+    await _save_async()
     return {"ok": True}
 
 @app.delete("/api/scripts/{game}/{name}")
 async def delete_script_with_game(game: str, name: str):
     state.delete_script(name, game)
-    config_manager.save(state)
+    await _save_async()
     return {"ok": True}
 
 @app.delete("/api/scripts/{name}")
 async def delete_script(name: str):
     state.delete_script(name)
-    config_manager.save(state)
+    await _save_async()
     return {"ok": True}
 
 # ── Flashlight ────────────────────────────────────────────────────────────────
@@ -218,7 +237,7 @@ class FlashlightUpdate(BaseModel):
 @app.post("/api/flashlight/toggle")
 async def toggle_flashlight():
     state.toggle_flashlight()
-    config_manager.save(state)
+    await _save_async()
     return {"enabled": state.flashlight_enabled}
 
 @app.post("/api/flashlight")
@@ -229,7 +248,7 @@ async def update_flashlight(u: FlashlightUpdate):
     if u.cooldown_ms       is not None: state.cooldown_ms        = u.cooldown_ms
     if u.pre_fire_min_ms   is not None: state.pre_fire_min_ms    = u.pre_fire_min_ms
     if u.pre_fire_max_ms   is not None: state.pre_fire_max_ms    = u.pre_fire_max_ms
-    config_manager.save(state)
+    await _save_async()
     return {"ok": True}
 
 # ── Settings ──────────────────────────────────────────────────────────────────
@@ -241,12 +260,10 @@ class SettingsUpdate(BaseModel):
 async def update_settings(u: SettingsUpdate):
     if u.game_scalar      is not None: state.game_scalar      = u.game_scalar
     if u.game_sensitivity is not None: state.game_sensitivity = u.game_sensitivity
-    config_manager.save(state)
+    await _save_async()
     return {"ok": True}
 
-# ── Vector Editor — patterns API (now same dir as scripts) ────────────────────
-# patterns/<game>/<weapon>.txt → saved_scripts/<game>/<weapon>.txt
-
+# ── Vector Editor — patterns API (same dir as scripts) ────────────────────────
 @app.get("/api/patterns")
 async def get_patterns():
     """Return all game/weapon groups from saved_scripts subfolders."""
@@ -270,7 +287,6 @@ async def save_pattern(game: str, weapon: str, request: Request):
     body = await request.body()
     content = body.decode()
     state.save_script(weapon, content, game)
-    # If this pattern is the currently loaded script, refresh vectors via lock-safe load_script
     full_name = f"{game}/{weapon}"
     if state.loaded_script in (full_name, weapon):
         state.load_script(weapon, game)
@@ -279,6 +295,7 @@ async def save_pattern(game: str, weapon: str, request: Request):
 @app.delete("/api/patterns/{game}/{weapon}")
 async def delete_pattern(game: str, weapon: str):
     state.delete_script(weapon, game)
+    await _save_async()   # FIX: was missing — state must be persisted after delete
     return {"deleted": True}
 
 # ── Stream Deck ───────────────────────────────────────────────────────────────
@@ -293,6 +310,10 @@ async def streamdeck_state():
 
 # ── Background tasks ──────────────────────────────────────────────────────────
 async def _broadcast_loop():
+    """Push status to all WebSocket clients every 200 ms.
+    FIX: only transmits when state actually changes (hash comparison),
+    avoiding redundant wake-ups on all connected browsers."""
+    global _last_broadcast_hash
     while True:
         if ws_clients:
             msg = json.dumps({
@@ -301,21 +322,28 @@ async def _broadcast_loop():
                 "flashlight_active": state.flashlight_enabled and state.recoil_enabled,
                 "loaded_script":     state.loaded_script,
             })
-            dead = []
-            for ws in list(ws_clients):
-                try:
-                    await ws.send_text(msg)
-                except Exception:
-                    dead.append(ws)
-            for ws in dead:
-                if ws in ws_clients:
-                    ws_clients.remove(ws)
+            h = hashlib.md5(msg.encode()).hexdigest()
+            if h != _last_broadcast_hash:
+                _last_broadcast_hash = h
+                dead = set()
+                for ws in list(ws_clients):
+                    try:
+                        await ws.send_text(msg)
+                    except Exception:
+                        dead.add(ws)
+                ws_clients.difference_update(dead)
         await asyncio.sleep(0.2)
 
 async def _autosave_loop():
     while True:
         await asyncio.sleep(30)
-        config_manager.save(state)
+        await _save_async()
+
+async def _save_async():
+    """Run config_manager.save in a thread-pool executor so it never
+    FIX: blocks the async event loop on file I/O."""
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, config_manager.save, state)
 
 if __name__ == "__main__":
     import uvicorn, socket
