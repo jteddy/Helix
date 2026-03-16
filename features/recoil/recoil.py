@@ -118,10 +118,30 @@ class recoil:
                 if move_completed:
                     total_y_movement += actual_y
 
-                elapsed = time.perf_counter() - start_time
+                # ── Poll LMB during inter-shot delay ──────────────────────────
+                # If LMB is released at any point during the delay, treat this
+                # as a tap-fire: reset shot_count so the next press starts fresh.
+                elapsed   = time.perf_counter() - start_time
                 remaining = delay - elapsed
+                lmb_released_during_delay = False
                 if remaining > 0:
-                    time.sleep(remaining)
+                    deadline = time.perf_counter() + remaining
+                    while time.perf_counter() < deadline:
+                        if not makcu_controller.get_button_state("LMB"):
+                            lmb_released_during_delay = True
+                            break
+                        time.sleep(0.001)   # 1ms poll — tight enough to catch tap release
+
+                if lmb_released_during_delay:
+                    # LMB released mid-delay — end of burst, return crosshair if needed
+                    if total_y_movement != 0 and state.get_return_crosshair_enabled():
+                        makcu_controller.move_mouse_smoothly(
+                            0, -total_y_movement, 20, state.get_return_speed()
+                        )
+                    shot_count       = 0
+                    total_y_movement = 0
+                    lmb_was_pressed  = False
+                    continue   # back to top — do NOT increment shot_count
 
                 shot_count += 1
             else:
