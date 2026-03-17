@@ -136,20 +136,7 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
     <div id="hdr-logo">C<span>earum</span></div>
     <span id="hdr-sep"></span>
     <span id="hdr-badge">Recoil Workshop</span>
-    <div style="position:relative">
-      <button id="hdr-edit" onclick="toggleEditMenu()">Edit Existing ▾</button>
-      <div id="edit-menu" style="display:none;position:absolute;top:calc(100% + 4px);right:0;
-        min-width:240px;background:var(--bg3);border:1px solid var(--bdr2);border-radius:var(--r);
-        box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:200;overflow:hidden">
-        <div style="padding:6px 10px;font-size:9px;font-family:var(--fu);letter-spacing:.06em;
-          text-transform:uppercase;color:var(--txt3);border-bottom:1px solid var(--bdr)">
-          Load from server
-        </div>
-        <div id="edit-list" style="max-height:260px;overflow-y:auto;padding:4px 0">
-          <div style="padding:8px 10px;font-size:10px;color:var(--txt3)">Loading…</div>
-        </div>
-      </div>
-    </div>
+    <button id="hdr-edit" onclick="openEdit()">Edit Existing Script</button>
   </div>
 
   <!-- Step bar -->
@@ -192,7 +179,6 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
           <div style="background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:7px 9px;margin-bottom:7px">
             <div class="stat"><span>Per shot</span><span id="rpm-ms" style="color:var(--acc)">100 ms</span></div>
             <div class="stat"><span>Full mag dump</span><span id="rpm-dump" style="color:var(--acc)">2.90 s</span></div>
-            <div style="font-size:9px;color:var(--txt3);margin-top:4px;line-height:1.6">Time a full mag in-game and compare to <em>Full mag dump</em> to validate your RPM.</div>
           </div>
         </div>
         <div class="sec">
@@ -368,6 +354,7 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
 </div><!-- /root -->
 
 <!-- Hidden inputs -->
+<input type="file" id="edit-inp" accept=".txt" class="hidden" onchange="loadEditFile(this)">
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
@@ -611,6 +598,15 @@ function updRPM() {
   const dumpS  = rpm > 0 ? ((mag - 1) * (60000 / rpm) / 1000).toFixed(2) : '—';
   document.getElementById('rpm-ms').textContent   = msShot + ' ms';
   document.getElementById('rpm-dump').textContent = dumpS + ' s';
+  // Pre-fill timer with expected dump time so it's ready to use as reference
+  if (!measuring) {
+    const tEl = document.getElementById('m-time');
+    if (rpm > 0 && !tEl.matches(':focus')) {
+      tEl.value = (+dumpS).toFixed(3);
+      // Also update RPM display to reflect the pre-filled value
+      document.getElementById('m-rpm').textContent = rpm + ' RPM';
+    }
+  }
 }
 
 // ── Core toggle ───────────────────────────────────────────────────
@@ -985,228 +981,54 @@ function copyClip() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  FULL RESET
+//  EDIT EXISTING MODE
 // ═══════════════════════════════════════════════════════════════════
-function fullReset() {
-  // Clear state
-  W.step         = 1;
-  W.game         = '';
-  W.weapon       = 'weapon';
-  W.rpm          = 600;
-  W.magSize      = 30;
-  W.spreadY      = 1.0;
-  W.passes       = [];
-  W.activePass   = null;
-  W.scaleX       = 0.10;
-  W.scaleY       = 0.10;
-  W.optLevel     = 0;
-  W.screenshot   = null;
-  W.zoom         = 1;
-  W.panX         = 0;
-  W.panY         = 0;
-  W.editMode     = false;
-  W.editBase     = [];
-  W.rawVectors   = [];
-  W.finalVectors = [];
+function openEdit() { document.getElementById('edit-inp').click(); }
 
-  // Reset form fields
-  document.getElementById('s-game').value  = '';
-  document.getElementById('s-wpn').value   = '';
-  document.getElementById('s-shots').value = 30;
-  document.getElementById('s-rpm').value   = 600;
-  document.getElementById('m-time').value  = '';
-  document.getElementById('m-rpm').textContent = '— RPM';
-  document.getElementById('m-btn').textContent  = '▶ Manual Toggle';
-  document.getElementById('m-btn').className    = 'btn bp';
-  if (measuring) { clearInterval(measureIv); measuring = false; }
-
-  // Reset spread
-  document.getElementById('sp-sl').value   = 1;
-  document.getElementById('sp-sv').textContent  = '1.0×';
-  document.getElementById('sp-lbl').textContent = '1.0×  (off)';
-  document.getElementById('sp-warn').classList.add('hidden');
-
-  // Reset scale
-  document.getElementById('sx-sl').value   = 0.10;
-  document.getElementById('sy-sl').value   = 0.10;
-  document.getElementById('sx-sv').textContent = '0.10';
-  document.getElementById('sy-sv').textContent = '0.10';
-  document.getElementById('scale-info').textContent =
-    'Scale converts screenshot pixel distances into MAKCU movement units. Start at 0.10 and test in-game — adjust until recoil is fully compensated.';
-
-  // Reset optimization
-  document.getElementById('op-sl').value  = 0;
-  document.getElementById('op-lbl').textContent = '0 — off';
-
-  // Reset screenshot drop zone
-  document.getElementById('ss-inp').value = '';
-  document.getElementById('dz-p').textContent = 'Drop or click to upload';
-
-  // Reset pass list
-  updPassList();
-  updOptStats();
-  updResultTable();
-  updRPM();
-
-  // Reset step bar and panels
-  PANELS.forEach((id, i) => {
-    const el = document.getElementById(id);
-    if (i === 0) el.classList.remove('hidden'); else el.classList.add('hidden');
-  });
-  for (let i = 1; i <= 6; i++) {
-    document.getElementById('s' + i).className = 'stp' + (i === 1 ? ' cur' : '');
-  }
-  document.getElementById('ftr-lbl').textContent = 'Step 1 of 6';
-  document.getElementById('btn-back').style.visibility = 'hidden';
-  document.getElementById('btn-next').textContent = 'Next →';
-  document.getElementById('chint').textContent = HINTS[0];
-  document.getElementById('cmode').textContent  = MODES[0];
-
-  W.panX = 0; W.panY = 0;
-  redraw();
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  EDIT EXISTING — server-side script browser
-// ═══════════════════════════════════════════════════════════════════
-let editMenuOpen = false;
-
-function toggleEditMenu() {
-  const menu = document.getElementById('edit-menu');
-  editMenuOpen = !editMenuOpen;
-  if (editMenuOpen) {
-    menu.style.display = 'block';
-    loadEditMenu();
-  } else {
-    menu.style.display = 'none';
-  }
-}
-
-// Close if clicking outside
-document.addEventListener('click', e => {
-  if (editMenuOpen && !e.target.closest('#hdr-edit') && !e.target.closest('#edit-menu')) {
-    document.getElementById('edit-menu').style.display = 'none';
-    editMenuOpen = false;
-  }
-});
-
-async function loadEditMenu() {
-  const list = document.getElementById('edit-list');
-  list.innerHTML = '<div style="padding:8px 10px;font-size:10px;color:var(--txt3)">Loading…</div>';
-  try {
-    // Fetch all scripts including game subfolders
-    const r    = await fetch('/api/scripts');
-    const data = await r.json();
-    const games = data.games || [];
-    const flat  = data.scripts || [];
-
-    let html = '';
-
-    // Flat scripts (no game folder)
-    if (flat.length) {
-      html += `<div style="padding:3px 10px;font-size:9px;font-family:var(--fu);letter-spacing:.05em;
-        text-transform:uppercase;color:var(--txt3)">Scripts</div>`;
-      for (const s of flat) {
-        html += editRow(s, null);
-      }
-    }
-
-    // Game subfolders
-    for (const game of games) {
-      const gr = await fetch('/api/scripts?game=' + encodeURIComponent(game));
-      const gd = await gr.json();
-      const weapons = gd.scripts || [];
-      if (!weapons.length) continue;
-      html += `<div style="padding:3px 10px;font-size:9px;font-family:var(--fu);letter-spacing:.05em;
-        text-transform:uppercase;color:var(--txt3);margin-top:4px">${game}</div>`;
-      for (const w of weapons) {
-        html += editRow(w, game);
-      }
-    }
-
-    if (!html) html = '<div style="padding:8px 10px;font-size:10px;color:var(--txt3)">No saved scripts found</div>';
-    list.innerHTML = html;
-  } catch (e) {
-    list.innerHTML = `<div style="padding:8px 10px;font-size:10px;color:var(--hot)">Error: ${e.message}</div>`;
-  }
-}
-
-function editRow(name, game) {
-  const label = game ? name : name;
-  const attr  = game
-    ? `onclick="loadServerScript('${game}','${name}')" data-game="${game}" data-name="${name}"`
-    : `onclick="loadServerScript(null,'${name}')" data-name="${name}"`;
-  return `<div ${attr} style="padding:6px 12px;font-size:11px;color:var(--txt);cursor:pointer;
-    transition:background .1s;border-bottom:1px solid rgba(42,45,51,.4)"
-    onmouseover="this.style.background='rgba(77,156,255,.08)'"
-    onmouseout="this.style.background=''">${label}</div>`;
-}
-
-async function loadServerScript(game, name) {
-  // Close menu
-  document.getElementById('edit-menu').style.display = 'none';
-  editMenuOpen = false;
-
-  try {
-    const url = game
-      ? `/api/scripts/content/${encodeURIComponent(game)}/${encodeURIComponent(name)}`
-      : `/api/scripts/content/${encodeURIComponent(name)}`;
-    const r    = await fetch(url);
-    const text = await r.text();
-
+function loadEditFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
     const vecs = [];
-    for (const line of text.split('\n')) {
+    for (const line of e.target.result.split('\n')) {
       const t = line.trim();
       if (!t || t.startsWith('#')) continue;
       const p = t.split(',').map(s => parseFloat(s.trim()));
       if (p.length >= 3 && !isNaN(p[0])) vecs.push({ x: p[0], y: p[1], ms: p[2] });
     }
-    if (!vecs.length) { alert('No valid vectors found in script.'); return; }
+    if (!vecs.length) { alert('No valid vectors found in file.'); return; }
 
-    // Apply to state
-    W.editMode     = true;
-    W.editBase     = vecs;
-    W.rawVectors   = [...vecs];
+    W.editMode  = true;
+    W.editBase  = vecs;
+    W.rawVectors = [...vecs];
     W.finalVectors = [...vecs];
-    W.game         = game || '';
-    W.weapon       = name;
-    W.scaleX       = 1.0;
-    W.scaleY       = 1.0;
 
+    // Try to extract RPM from first ms value
     if (vecs[0].ms > 0) {
       W.rpm = Math.round(60000 / vecs[0].ms);
       document.getElementById('s-rpm').value = W.rpm;
       updRPM();
     }
 
-    document.getElementById('s-game').value = game || '';
-    document.getElementById('s-wpn').value  = name;
-    document.getElementById('sx-sl').value  = 1.0;
-    document.getElementById('sy-sl').value  = 1.0;
+    // Reset scale to 1.0 for multiplicative edit mode
+    W.scaleX = 1.0; W.scaleY = 1.0;
+    document.getElementById('sx-sl').value = 1.0;
+    document.getElementById('sy-sl').value = 1.0;
     document.getElementById('sx-sv').textContent = '1.00';
     document.getElementById('sy-sv').textContent = '1.00';
     document.getElementById('scale-info').textContent =
       'Edit mode — Scale X/Y act as multipliers on the loaded vectors (1.0 = unchanged).';
 
-    // Navigate directly (bypass the step 1 reset guard)
-    W.step = 4;
-    PANELS.forEach((id, i) => {
-      document.getElementById(id).classList[i === 3 ? 'remove' : 'add']('hidden');
-    });
-    for (let i = 1; i <= 6; i++) {
-      document.getElementById('s' + i).className = 'stp' + (i === 4 ? ' cur' : i < 4 ? ' ok' : '');
-    }
-    document.getElementById('ftr-lbl').textContent = 'Step 4 of 6';
-    document.getElementById('btn-back').style.visibility = 'visible';
-    document.getElementById('btn-next').textContent = 'Next →';
-    document.getElementById('chint').textContent = HINTS[3];
-    document.getElementById('cmode').textContent  = MODES[3];
+    // Try to extract weapon name from filename
+    const nm = file.name.replace('.txt','');
+    W.weapon = nm;
+    document.getElementById('s-wpn').value = nm;
 
+    alert(`Loaded ${vecs.length} vectors from ${file.name}\nGo to Scale to rescale, or Optimization to simplify.`);
+    goStep(4);
     recompute();
-    redraw();
-  } catch (e) {
-    alert('Failed to load script: ' + e.message);
-  }
+  };
+  reader.readAsText(file);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1226,9 +1048,6 @@ const MODES  = ['Setup','Spread','Modeling','Scale','Optimization','Result'];
 function goStep(n) {
   // Auto-finish active pass when leaving step 3
   if (W.step === 3 && W.activePass && W.activePass.pts.length >= 2) finishPass();
-
-  // Full reset whenever returning to step 1 (new script workflow)
-  if (n === 1) { fullReset(); return; }
 
   W.step = n;
 
