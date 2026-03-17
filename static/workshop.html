@@ -219,17 +219,25 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
           <div class="sec-h">Pattern Spread</div>
           <div class="info">Set how far apart to push bullets on the wall. The workshop generates a spread script, loads it into Cearum-Web automatically, then subtracts the exact same movement when computing your recoil vectors.</div>
           <div class="fld">
-            <label>Spread Y — units per shot</label>
+            <label>Spread Y — vertical units per shot</label>
             <div class="srow">
-              <input type="range" id="sp-y-sl" min="0" max="20" step="1" value="0" oninput="onSpreadY(this.value)">
-              <span class="sv" id="sp-y-sv">0</span>
+              <input type="range" id="sp-y-sl" min="-10" max="10" step="1" value="0" oninput="syncSpread('y',this.value)">
+              <input type="number" id="sp-y-sv" value="0" min="-10" max="10" step="1"
+                style="width:52px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
+                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);
+                padding:2px 4px;height:var(--rh)"
+                oninput="syncSpread('y',this.value)">
             </div>
           </div>
           <div class="fld">
-            <label>Spread X — units per shot</label>
+            <label>Spread X — horizontal units per shot</label>
             <div class="srow">
-              <input type="range" id="sp-x-sl" min="-10" max="10" step="1" value="0" oninput="onSpreadX(this.value)">
-              <span class="sv" id="sp-x-sv">0</span>
+              <input type="range" id="sp-x-sl" min="-10" max="10" step="1" value="0" oninput="syncSpread('x',this.value)">
+              <input type="number" id="sp-x-sv" value="0" min="-10" max="10" step="1"
+                style="width:52px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
+                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);
+                padding:2px 4px;height:var(--rh)"
+                oninput="syncSpread('x',this.value)">
             </div>
           </div>
           <div class="fld">
@@ -242,17 +250,18 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
           <div id="sp-preview" style="background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:6px 8px;font-size:10px;color:var(--acc);font-family:var(--fm);max-height:100px;overflow-y:auto;line-height:1.8;margin-bottom:7px;white-space:pre">—</div>
           <button class="btn bs btn-full" id="sp-load-btn" onclick="loadSpreadScript()">⬆ Load into Cearum-Web</button>
           <button class="btn br btn-full" id="sp-clear-btn" onclick="clearSpreadScript()" style="display:none">✕ Unload Spread Script</button>
-          <div id="sp-loaded-warn" class="warn hidden" style="margin-top:6px">Spread script active in Cearum-Web. Go fire at a wall, take a screenshot, then come back to Step 3.</div>
+          <div id="sp-loaded-warn" class="warn hidden" style="margin-top:6px">● Spread script active in Cearum-Web. Fire a full mag at a wall, take a screenshot, then press Next.</div>
         </div>
         <div class="sec">
           <div class="sec-h">Workflow</div>
-          <div style="font-size:10px;color:var(--txt3);line-height:2">
-            1. Set spread Y (5–10 is usually enough)<br>
-            2. Press <em>Load into Cearum-Web</em><br>
-            3. Enable recoil in Cearum-Web<br>
-            4. Fire full mag at a flat wall<br>
-            5. Screenshot the bullet holes<br>
-            6. Press <em>Unload</em>, then go to Step 3
+          <div style="font-size:10px;color:var(--txt3);line-height:2.1">
+            <span style="color:var(--acc)">1.</span> Set Spread Y — 5 to 10 units is a good start<br>
+            <span style="color:var(--acc)">2.</span> Set Spread X — only if you also want horizontal separation<br>
+            <span style="color:var(--acc)">3.</span> Press <em style="color:var(--txt2)">Load into Cearum-Web</em> — this saves and activates the spread script<br>
+            <span style="color:var(--acc)">4.</span> Enable recoil in Cearum-Web<br>
+            <span style="color:var(--acc)">5.</span> Fire a full magazine at a flat wall<br>
+            <span style="color:var(--acc)">6.</span> Take a screenshot of the bullet holes<br>
+            <span style="color:var(--acc)">7.</span> Press <em style="color:var(--txt2)">Next</em> to go to Step 3 and upload the screenshot
           </div>
         </div>
       </div>
@@ -296,29 +305,28 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
       <!-- ══ STEP 4: SCALE ══ -->
       <div id="p4" class="hidden">
         <div class="sec">
-          <div class="sec-h">Scale Refinement</div>
-          <div class="info" id="scale-info">Scale converts screenshot pixel distances into MAKCU movement units. Start at 0.10 and test in-game — adjust until recoil is fully compensated.</div>
+          <div class="sec-h">Auto-Calculated Scale</div>
+          <div class="info" id="scale-info">Scale is calculated automatically from the spread units you set in Step 2 divided by the average pixel distance between traced holes.</div>
+          <div id="sc-no-spread" class="warn hidden">No spread was used — scale cannot be auto-calculated. Vectors are in raw pixel units. Use Step 5 to adjust x/y values directly.</div>
         </div>
         <div class="sec">
-          <div class="fld">
-            <label>Scale X</label>
-            <div class="srow">
-              <input type="range" id="sx-sl" min="0.01" max="3" step="0.01" value="0.10" oninput="onSX(this.value)">
-              <span class="sv" id="sx-sv">0.10</span>
-            </div>
+          <div class="sec-h">Derived Values</div>
+          <div class="stat"><span>Spread Y used</span><span id="sc-spy" style="color:var(--acc)">—</span></div>
+          <div class="stat"><span>Spread X used</span><span id="sc-spx" style="color:var(--acc)">—</span></div>
+          <div class="stat"><span>Avg px between holes (Y)</span><span id="sc-apy" style="color:var(--txt2)">—</span></div>
+          <div class="stat"><span>Avg px between holes (X)</span><span id="sc-apx" style="color:var(--txt2)">—</span></div>
+          <div class="stat" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bdr)">
+            <span style="color:var(--txt)">Scale Y</span>
+            <span id="sc-sy" style="color:var(--grn);font-size:13px;font-weight:600">—</span>
           </div>
-          <div class="fld">
-            <label>Scale Y</label>
-            <div class="srow">
-              <input type="range" id="sy-sl" min="0.01" max="3" step="0.01" value="0.10" oninput="onSY(this.value)">
-              <span class="sv" id="sy-sv">0.10</span>
-            </div>
+          <div class="stat">
+            <span style="color:var(--txt)">Scale X</span>
+            <span id="sc-sx" style="color:var(--grn);font-size:13px;font-weight:600">—</span>
           </div>
-          <div class="warn">Reticle pulling too far → reduce scale.<br>Not compensating enough → increase scale.<br>Horizontal drift → adjust X only.</div>
         </div>
         <div class="sec">
           <div class="sec-h">Preview</div>
-          <div style="font-size:10px;color:var(--txt3);line-height:1.7">The canvas shows the recoil path the MAKCU will apply. Compare shape to your in-game pattern.</div>
+          <div style="font-size:10px;color:var(--txt3);line-height:1.7">Canvas shows the recoil path that will be applied by the MAKCU. Proceed to Step 5 to review and adjust individual vectors.</div>
         </div>
       </div>
 
@@ -331,12 +339,19 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
             <label>Level — <span id="op-lbl">0 — off</span></label>
             <input type="range" id="op-sl" min="0" max="5" step="1" value="0" style="width:100%;accent-color:var(--acc)" oninput="onOpt(this.value)">
           </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px">
+            <span style="color:var(--txt3)">Vectors: <span id="opt-raw">—</span> → <span id="opt-fin" style="color:var(--grn)">—</span></span>
+            <span style="color:var(--acc)" id="opt-pct">—</span>
+          </div>
         </div>
-        <div class="sec">
-          <div class="sec-h">Impact</div>
-          <div class="stat"><span>Vectors (raw)</span><span id="opt-raw">—</span></div>
-          <div class="stat"><span>Vectors (optimized)</span><span id="opt-fin" style="color:var(--grn)">—</span></div>
-          <div class="stat"><span>Reduction</span><span id="opt-pct" style="color:var(--acc)">—</span></div>
+        <div class="sec" style="flex:1">
+          <div class="sec-h">Vectors — <span id="opt-vct-lbl" style="color:var(--acc);font-weight:400">0 shots</span></div>
+          <div id="opt-tbl-wrap" style="overflow-y:auto;max-height:340px">
+            <table class="vtbl" style="width:100%">
+              <thead><tr><th style="text-align:left">#</th><th>x</th><th>y</th><th>ms</th></tr></thead>
+              <tbody id="opt-tbl-body"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -730,14 +745,17 @@ document.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════════════════════════════
 //  SPREAD
 // ═══════════════════════════════════════════════════════════════════
-function onSpreadY(v) {
-  W.spreadY = +v;
-  document.getElementById('sp-y-sv').textContent = v;
-  updSpreadPreview();
-}
-function onSpreadX(v) {
-  W.spreadX = +v;
-  document.getElementById('sp-x-sv').textContent = v;
+function syncSpread(axis, v) {
+  const val = parseInt(v) || 0;
+  if (axis === 'y') {
+    W.spreadY = val;
+    document.getElementById('sp-y-sl').value = val;
+    document.getElementById('sp-y-sv').value = val;
+  } else {
+    W.spreadX = val;
+    document.getElementById('sp-x-sl').value = val;
+    document.getElementById('sp-x-sv').value = val;
+  }
   updSpreadPreview();
 }
 
@@ -751,7 +769,7 @@ function updSpreadPreview() {
     return;
   }
   const lines = [];
-  for (let i = 0; i < mag; i++) lines.push(`${x}, ${y}, ${ms}`);
+  for (let i = 0; i < mag; i++) lines.push(`${x},${y},${ms}`);
   document.getElementById('sp-preview').textContent = lines.join('\n');
 }
 
@@ -767,7 +785,7 @@ async function loadSpreadScript() {
   }
 
   const lines = ['# x_offset, y_offset, delay_ms', '# Workshop spread script — auto-generated'];
-  for (let i = 0; i < mag; i++) lines.push(`${x}, ${y}, ${ms}`);
+  for (let i = 0; i < mag; i++) lines.push(`${x},${y},${ms}`);
   const content = lines.join('\n');
 
   try {
@@ -896,6 +914,7 @@ function updPassList() {
 //  VECTOR COMPUTATION
 // ═══════════════════════════════════════════════════════════════════
 function recompute() {
+  if (W.step === 4 && !W.editMode) calcAutoScale();
   W.rawVectors   = computeRaw();
   W.finalVectors = optimize(W.rawVectors, W.optLevel);
   updOptStats();
@@ -907,8 +926,8 @@ function computeRaw() {
   // Edit mode: apply scale as multiplier to base vectors
   if (W.editMode) {
     return W.editBase.map(v => ({
-      x:  +(v.x * W.scaleX).toFixed(3),
-      y:  +(v.y * W.scaleY).toFixed(3),
+      x:  +(v.x * W.scaleX).toFixed(2),
+      y:  +(v.y * W.scaleY).toFixed(2),
       ms: v.ms,
     }));
   }
@@ -936,8 +955,8 @@ function computeRaw() {
     const spreadSubX = W.spreadX || 0;
     const spreadSubY = W.spreadY || 0;
     out.push({
-      x:  +((sdx / n - spreadSubX) * W.scaleX).toFixed(3),
-      y:  +((sdy / n - spreadSubY) * W.scaleY).toFixed(3),
+      x:  +((sdx / n - spreadSubX) * W.scaleX).toFixed(2),
+      y:  +((sdy / n - spreadSubY) * W.scaleY).toFixed(2),
       ms: delay,
     });
   }
@@ -967,8 +986,8 @@ function optimize(vecs, level) {
 
 function mergeGroup(g) {
   return {
-    x:  +(g.reduce((s, v) => s + v.x, 0) / g.length).toFixed(3),
-    y:  +(g.reduce((s, v) => s + v.y, 0) / g.length).toFixed(3),
+    x:  +(g.reduce((s, v) => s + v.x, 0) / g.length).toFixed(2),
+    y:  +(g.reduce((s, v) => s + v.y, 0) / g.length).toFixed(2),
     ms: g.reduce((s, v) => s + v.ms, 0),
   };
 }
@@ -980,23 +999,71 @@ function updOptStats() {
   document.getElementById('opt-raw').textContent = raw || '—';
   document.getElementById('opt-fin').textContent = fin || '—';
   document.getElementById('opt-pct').textContent = raw > 0 ? pct + '%' : '—';
+  // Vector table in Step 5
+  document.getElementById('opt-vct-lbl').textContent = fin + ' shots';
+  const tbody = document.getElementById('opt-tbl-body');
+  if (tbody) {
+    tbody.innerHTML = W.finalVectors.map((v, i) =>
+      `<tr><td style="color:var(--txt3)">${i+1}</td><td>${v.x}</td><td>${v.y}</td><td>${v.ms}</td></tr>`
+    ).join('');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  SCALE HANDLERS
+//  AUTO SCALE CALCULATION
 // ═══════════════════════════════════════════════════════════════════
-function onSX(v) {
-  W.scaleX = +v;
-  document.getElementById('sx-sv').textContent = (+v).toFixed(2);
-  document.getElementById('sx-sl').value = v;
-  recompute();
+function calcAutoScale() {
+  const all = W.passes.length ? W.passes : [];
+  const spY = W.spreadY || 0;
+  const spX = W.spreadX || 0;
+  const noSpread = spY === 0 && spX === 0;
+
+  document.getElementById('sc-no-spread').classList.toggle('hidden', !noSpread);
+  document.getElementById('sc-spy').textContent = spY + ' units';
+  document.getElementById('sc-spx').textContent = spX + ' units';
+
+  if (!all.length || all[0].pts.length < 2) {
+    document.getElementById('sc-apy').textContent = '—';
+    document.getElementById('sc-apx').textContent = '—';
+    document.getElementById('sc-sy').textContent  = noSpread ? 'n/a' : '—';
+    document.getElementById('sc-sx').textContent  = noSpread ? 'n/a' : '—';
+    return;
+  }
+
+  // Average absolute delta per shot across all passes
+  let sumDY = 0, sumDX = 0, count = 0;
+  for (const p of all) {
+    for (let i = 0; i < p.pts.length - 1; i++) {
+      sumDY += Math.abs(p.pts[i+1].y - p.pts[i].y);
+      sumDX += Math.abs(p.pts[i+1].x - p.pts[i].x);
+      count++;
+    }
+  }
+  const avgPxY = count > 0 ? sumDY / count : 0;
+  const avgPxX = count > 0 ? sumDX / count : 0;
+
+  document.getElementById('sc-apy').textContent = avgPxY.toFixed(1) + ' px';
+  document.getElementById('sc-apx').textContent = avgPxX.toFixed(1) + ' px';
+
+  // Derive scale: MAKCU units per pixel
+  if (!noSpread) {
+    const scY = avgPxY > 0 ? +(spY / avgPxY).toFixed(4) : 0;
+    // For X: use spX if set, otherwise use same ratio as Y (assumes uniform sensitivity)
+    const scX = avgPxX > 0 && spX !== 0 ? +(spX / avgPxX).toFixed(4)
+              : avgPxY > 0 ? +(spY / avgPxY).toFixed(4) : scY;
+    W.scaleX = scX;
+    W.scaleY = scY;
+    document.getElementById('sc-sy').textContent = scY;
+    document.getElementById('sc-sx').textContent = scX;
+  } else {
+    // No spread — treat pixels as MAKCU units directly (scale 1.0)
+    W.scaleX = 1.0;
+    W.scaleY = 1.0;
+    document.getElementById('sc-sy').textContent = '1.000 (raw)';
+    document.getElementById('sc-sx').textContent = '1.000 (raw)';
+  }
 }
-function onSY(v) {
-  W.scaleY = +v;
-  document.getElementById('sy-sv').textContent = (+v).toFixed(2);
-  document.getElementById('sy-sl').value = v;
-  recompute();
-}
+
 function onOpt(v) {
   W.optLevel = +v;
   document.getElementById('op-lbl').textContent = v + ' — ' + OPT_LABELS[v];
@@ -1037,7 +1104,7 @@ function buildTxt() {
     `# Vectors : ${vecs.length}`,
     `# Source  : Cearum Recoil Workshop`,
     '#',
-    ...vecs.map(v => `${v.x}, ${v.y}, ${v.ms}`),
+    ...vecs.map(v => `${v.x},${v.y},${v.ms}`),
   ].join('\n');
 }
 async function saveServer() {
@@ -1126,8 +1193,8 @@ const HINTS  = [
   'Set weapon name and fire rate before proceeding',
   'Set spread values, load the script into Cearum-Web, fire at a wall, then screenshot',
   'Upload your bullet hole screenshot — click each hole in order to trace the pattern',
-  'Adjust Scale X/Y until the recoil compensation matches in-game behaviour',
-  'Merge similar adjacent vectors to reduce script length',
+  'Scale is auto-calculated from your spread values and traced pixel distances',
+  'Review and adjust vectors — merge similar adjacent shots to reduce script length',
   'Review the generated script and save to Cearum-Web or download',
 ];
 const MODES  = ['Setup','Spread','Modeling','Scale','Optimization','Result'];
@@ -1152,6 +1219,7 @@ function goStep(n) {
   document.getElementById('chint').textContent = HINTS[n - 1];
   document.getElementById('cmode').textContent  = MODES[n - 1];
 
+  if (n === 4 && !W.editMode) calcAutoScale();
   if (n >= 4) recompute();
   redraw();
 }
