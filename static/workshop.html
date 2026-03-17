@@ -241,13 +241,13 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
             </div>
           </div>
           <div class="fld">
-            <label>Delay ms <span style="color:var(--txt3);font-weight:400">(auto-synced from RPM)</span></label>
+            <label>Delay ms</label>
             <input type="number" id="sp-ms" min="1" max="500" value="80" oninput="W.spreadMs=+this.value||80;updSpreadPreview()">
           </div>
         </div>
         <div class="sec">
           <div class="sec-h">Generated Script <span id="sp-status" style="color:var(--txt3);font-weight:400;font-size:9px">— not loaded</span></div>
-          <div id="sp-preview" style="background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:6px 8px;font-size:10px;color:var(--acc);font-family:var(--fm);max-height:100px;overflow-y:auto;line-height:1.8;margin-bottom:7px;white-space:pre">—</div>
+          <div id="sp-preview" style="background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:6px 8px;font-size:10px;color:var(--acc);font-family:var(--fm);max-height:100px;overflow-y:auto;line-height:1.8;margin-bottom:7px;white-space:pre;user-select:none;pointer-events:none">—</div>
           <button class="btn bs btn-full" id="sp-load-btn" onclick="loadSpreadScript()">⬆ Load into Cearum-Web</button>
           <button class="btn br btn-full" id="sp-clear-btn" onclick="clearSpreadScript()" style="display:none">✕ Unload Spread Script</button>
           <div id="sp-loaded-warn" class="warn hidden" style="margin-top:6px">● Spread script active in Cearum-Web. Fire a full mag at a wall, take a screenshot, then press Next.</div>
@@ -373,6 +373,11 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
           <button class="btn bs btn-full" onclick="saveServer()">💾  Save to Cearum-Web</button>
           <button class="btn bg btn-full" onclick="dlTxt()">⬇  Download .txt</button>
           <button class="btn bg btn-full" onclick="copyClip()">📋  Copy to Clipboard</button>
+        </div>
+        <div class="sec">
+          <div class="sec-h">What next?</div>
+          <a href="/" class="btn bp btn-full" style="text-decoration:none;margin-bottom:5px">← Return to Cearum-Web</a>
+          <button class="btn bg btn-full" onclick="goStep(1)">＋ New Weapon</button>
         </div>
       </div>
 
@@ -637,13 +642,7 @@ function updRPM() {
   const dumpS  = rpm > 0 ? ((mag - 1) * (60000 / rpm) / 1000).toFixed(2) : '—';
   document.getElementById('rpm-ms').textContent   = msShot + ' ms';
   document.getElementById('rpm-dump').textContent = dumpS + ' s';
-  // Auto-sync spread delay to match weapon fire rate
-  W.spreadMs = msShot;
-  const spMs = document.getElementById('sp-ms');
-  if (spMs && !spMs.matches(':focus')) {
-    spMs.value = msShot;
-    if (typeof updSpreadPreview === 'function') updSpreadPreview();
-  }
+
 }
 
 // ── Core toggle ───────────────────────────────────────────────────
@@ -1238,7 +1237,8 @@ function goStep(n) {
   }
   document.getElementById('ftr-lbl').textContent = `Step ${n} of 6`;
   document.getElementById('btn-back').style.visibility = n === 1 ? 'hidden' : 'visible';
-  document.getElementById('btn-next').textContent = n === 6 ? '✓ Done' : 'Next →';
+  document.getElementById('btn-next').textContent = 'Next →';
+  document.getElementById('btn-next').style.visibility = n === 6 ? 'hidden' : 'visible';
   document.getElementById('chint').textContent = HINTS[n - 1];
   document.getElementById('cmode').textContent  = MODES[n - 1];
 
