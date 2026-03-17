@@ -15,7 +15,7 @@ import threading
 from typing import Callable, List, Optional, Tuple
 
 
-MIN_HOLD_MS = 200  # Ignore clicks shorter than this (UI clicks, menus, etc.)
+MIN_HOLD_MS = 50  # Ignore clicks shorter than this (UI clicks, menus, etc.)
 
 
 class recorder:
