@@ -5,11 +5,13 @@ from mouse.makcu import makcu_controller
 from state import AppState
 
 
-# FIX: A single-worker executor caps concurrency to one pending click at a time.
-# Previously, every flashlight trigger spawned a new daemon thread. Under normal
-# operation the cooldown prevents rapid re-triggers, but using an executor makes
-# the limit explicit and avoids any possibility of thread accumulation.
+# A single-worker executor caps concurrency to one pending click at a time.
 _click_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="flashlight")
+
+
+def shutdown_executor():
+    """Call during app shutdown to cleanly drain the flashlight click executor."""
+    _click_executor.shutdown(wait=False)
 
 
 class flashlight:
@@ -33,27 +35,23 @@ class flashlight:
         lmb_press_time      = 0.0
         cooldown_until      = 0.0
         threshold_triggered = False
+        _dbg_printed        = False  # rate-limit diagnostic prints
 
         while True:
-            if not state.get_is_flashlight_enabled():
+            fl_on      = state.get_is_flashlight_enabled()
+            recoil_on  = state.get_is_enabled()
+            keybind    = state.get_flashlight_keybind()
+
+            if not fl_on or not recoil_on or keybind == "NONE":
+                if not _dbg_printed:
+                    print(f"[Flashlight] Waiting — fl={fl_on} recoil={recoil_on} kb={keybind}")
+                    _dbg_printed = True
                 lmb_was_pressed     = False
                 threshold_triggered = False
                 time.sleep(0.02)
                 continue
 
-            if not state.get_is_enabled():
-                lmb_was_pressed     = False
-                threshold_triggered = False
-                time.sleep(0.02)
-                continue
-
-            keybind = state.get_flashlight_keybind()
-            if keybind == "NONE":
-                lmb_was_pressed     = False
-                threshold_triggered = False
-                time.sleep(0.02)
-                continue
-
+            _dbg_printed = False
             lmb_pressed = makcu_controller.get_button_state("LMB")
             now         = time.monotonic()
 
@@ -61,6 +59,7 @@ class flashlight:
             if lmb_pressed and not lmb_was_pressed:
                 lmb_press_time      = now
                 threshold_triggered = False
+                print(f"[Flashlight] LMB down — waiting {state.get_hold_threshold()*1000:.0f}ms threshold")
 
             # While held — check threshold
             if lmb_pressed and not threshold_triggered:
@@ -69,8 +68,13 @@ class flashlight:
                     if now >= cooldown_until:
                         cooldown_until = now + state.get_cooldown_seconds()
                         pre_fire = state.get_pre_fire_delay()
-                        # FIX: submit to bounded executor instead of spawning a raw thread
-                        _click_executor.submit(flashlight._delayed_click, keybind, pre_fire)
+                        print(f"[Flashlight] Firing {keybind} (pre-fire {pre_fire*1000:.0f}ms)")
+                        try:
+                            _click_executor.submit(flashlight._delayed_click, keybind, pre_fire)
+                        except RuntimeError:
+                            pass  # Executor shut down during app exit — ignore
+                    else:
+                        print(f"[Flashlight] Blocked by cooldown ({cooldown_until - now:.2f}s remaining)")
 
             # Falling edge
             if not lmb_pressed and lmb_was_pressed:

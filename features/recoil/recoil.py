@@ -29,6 +29,8 @@ class recoil:
         last_cycle_state  = False
         last_toggle_time  = 0.0
         last_cycle_time   = 0.0
+        rand_drift_x      = 0.0
+        rand_drift_y      = 0.0
         DEBOUNCE = 0.3
 
         # FIX: _reset_burst was previously redefined inside the while loop on
@@ -94,6 +96,8 @@ class recoil:
             if not lmb_was_pressed:
                 shot_count       = 0
                 total_y_movement = 0
+                rand_drift_x     = 0.0
+                rand_drift_y     = 0.0
             lmb_was_pressed = True
 
             # ── Fire recoil ───────────────────────────────────────────────────
@@ -111,14 +115,22 @@ class recoil:
 
                 x, y, delay = recoil_pattern[shot_count]
 
-                if state.get_is_randomisation_enabled():
-                    strength = state.get_randomisation_strength()
-                    x = recoil.jitter(x, strength)
-                    y = recoil.jitter(y, strength)
-
                 scalar   = recoil.sens_scalar(state)
                 actual_x = x * state.get_x_control() * scalar
                 actual_y = y * state.get_y_control() * scalar
+
+                if state.get_is_randomisation_enabled():
+                    strength = state.get_randomisation_strength()
+                    # Drift random-walks each burst with decay to keep it bounded.
+                    # Hard-clamp to ±strength so very long sprays can't drift
+                    # excessively (without the clamp, max drift = strength/(1-0.85)
+                    # = 6.7× strength, which is visually too large at high settings).
+                    rand_drift_x = rand_drift_x * 0.85 + random.uniform(-strength, strength)
+                    rand_drift_y = rand_drift_y * 0.85 + random.uniform(-strength, strength)
+                    rand_drift_x = max(-strength, min(strength, rand_drift_x))
+                    rand_drift_y = max(-strength, min(strength, rand_drift_y))
+                    actual_x = recoil.jitter(actual_x, strength) + rand_drift_x
+                    actual_y = recoil.jitter(actual_y, strength) + rand_drift_y
 
                 start_time     = time.perf_counter()
                 move_completed = makcu_controller.move_mouse_smoothly(

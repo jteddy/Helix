@@ -21,8 +21,7 @@ from pydantic import BaseModel
 from state import AppState
 from mouse.makcu import makcu_controller
 from features.recoil.recoil import recoil as recoil_feature
-from features.flashlight.flashlight import flashlight as flashlight_feature
-from features.recorder.recorder import recorder as recorder_feature
+from features.flashlight.flashlight import flashlight as flashlight_feature, shutdown_executor as _shutdown_flashlight_executor
 import config_manager
 
 state = AppState()
@@ -32,10 +31,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── Broadcast state-hash cache (only send when state actually changes) ────────
 _last_broadcast_hash: str = ""
-
-# ── Recorder state ────────────────────────────────────────────────────────────
-_recorder_pending_result: Optional[str] = None
-_recorder_was_recoil_enabled: bool = False
 
 
 # ── Lifespan (replaces deprecated @app.on_event) ──────────────────────────────
@@ -60,14 +55,14 @@ async def lifespan(app: FastAPI):
 
     yield
     # ── Shutdown ──────────────────────────────────────────────────────────────
-    # FIX: gracefully disconnect the MAKCU so it isn't left in a bad state
+    _shutdown_flashlight_executor()
     makcu_controller.disconnect()
     print("[Cearum] Shutdown complete")
 
 
 app = FastAPI(title="Cearum Web", lifespan=lifespan)
 
-# FIX: CORS middleware so dev/testing from a different origin works cleanly
+# CORS: open to all origins — app runs on a trusted local LAN.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -307,51 +302,6 @@ async def delete_pattern(game: str, weapon: str):
     await _save_async()   # FIX: was missing — state must be persisted after delete
     return {"deleted": True}
 
-# ── Recorder ──────────────────────────────────────────────────────────────────
-class RecorderArm(BaseModel):
-    bucket_ms: Optional[int] = 85
-
-@app.post("/api/recorder/arm")
-async def recorder_arm(u: RecorderArm):
-    global _recorder_pending_result, _recorder_was_recoil_enabled
-    _recorder_pending_result = None
-    _recorder_was_recoil_enabled = state.recoil_enabled
-    state.recoil_enabled = False
-
-    def _on_result(buckets):
-        global _recorder_pending_result
-        lines = ["# x_offset, y_offset, delay_ms"]
-        lines += [f"{x}, {y}, {ms}" for x, y, ms in buckets]
-        _recorder_pending_result = "\n".join(lines)
-        state.recoil_enabled = _recorder_was_recoil_enabled
-        recorder_feature.disarm()
-
-    ok = recorder_feature.arm(_on_result, u.bucket_ms or 85)
-    return {"armed": ok}
-
-@app.post("/api/recorder/disarm")
-async def recorder_disarm():
-    global _recorder_was_recoil_enabled, _recorder_pending_result
-    # Grab any in-progress events before disarming
-    with recorder_feature._lock:
-        partial_events = list(recorder_feature._events) if recorder_feature._recording else []
-        bucket_ms = recorder_feature._bucket_ms
-    recorder_feature.disarm()
-    state.recoil_enabled = _recorder_was_recoil_enabled
-    # Deliver partial result if the user was mid-recording when they hit Disarm
-    if partial_events:
-        from features.recorder.recorder import recorder as _rec
-        buckets = _rec._bucket(partial_events, bucket_ms)
-        if buckets:
-            lines = ["# x_offset, y_offset, delay_ms"]
-            lines += [f"{x}, {y}, {ms}" for x, y, ms in buckets]
-            _recorder_pending_result = "\n".join(lines)
-    return {"armed": False}
-
-@app.get("/api/recorder/status")
-async def recorder_status():
-    return {"armed": recorder_feature.is_armed(), "recording": recorder_feature.is_recording()}
-
 # ── Stream Deck ───────────────────────────────────────────────────────────────
 @app.get("/api/streamdeck")
 async def streamdeck_state():
@@ -365,29 +315,15 @@ async def streamdeck_state():
 # ── Background tasks ──────────────────────────────────────────────────────────
 async def _broadcast_loop():
     """Push status to all WebSocket clients every 200 ms."""
-    global _last_broadcast_hash, _recorder_pending_result
+    global _last_broadcast_hash
     while True:
         if ws_clients:
-            # Flush any pending recorder result immediately
-            if _recorder_pending_result is not None:
-                result_msg = json.dumps({"recorder_result": _recorder_pending_result})
-                _recorder_pending_result = None
-                dead = set()
-                for ws in list(ws_clients):
-                    try:
-                        await ws.send_text(result_msg)
-                    except Exception:
-                        dead.add(ws)
-                ws_clients.difference_update(dead)
-
             msg = json.dumps({
-                "makcu_connected":    makcu_controller.is_connected(),
-                "recoil_enabled":     state.recoil_enabled,
-                "flashlight_active":  state.flashlight_enabled and state.recoil_enabled,
-                "loaded_script":      state.loaded_script,
-                "lmb_pressed":        makcu_controller.get_button_state("LMB"),
-                "recorder_armed":     recorder_feature.is_armed(),
-                "recorder_recording": recorder_feature.is_recording(),
+                "makcu_connected":   makcu_controller.is_connected(),
+                "recoil_enabled":    state.recoil_enabled,
+                "flashlight_active": state.flashlight_enabled and state.recoil_enabled,
+                "loaded_script":     state.loaded_script,
+                "lmb_pressed":       makcu_controller.get_button_state("LMB"),
             })
             h = hashlib.md5(msg.encode()).hexdigest()
             if h != _last_broadcast_hash:

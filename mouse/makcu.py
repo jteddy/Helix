@@ -128,18 +128,30 @@ class makcu_controller:
             mck = makcu_controller.controller
         if mck is None:
             return False
+        button_map = {
+            "LMB": MouseButton.LEFT,
+            "RMB": MouseButton.RIGHT,
+            "MMB": MouseButton.MIDDLE,
+            "M4":  MouseButton.MOUSE4,
+            "M5":  MouseButton.MOUSE5,
+        }
+        button = button_map.get(button_name)
+        if button is None:
+            return False
         try:
             with makcu_controller.command_lock:
-                if button_name == "LMB":
-                    mck.click(MouseButton.LEFT)
-                elif button_name == "RMB":
-                    mck.click(MouseButton.RIGHT)
-                elif button_name == "MMB":
-                    mck.click(MouseButton.MIDDLE)
-                elif button_name == "M4":
-                    mck.click(MouseButton.MOUSE4)
-                elif button_name == "M5":
-                    mck.click(MouseButton.MOUSE5)
+                # v3.7 firmware intercepts programmatic button presses when
+                # button monitoring is active, routing them via serial rather
+                # than forwarding as HID events to the OS.  Pause monitoring
+                # for the duration of the click so it reaches the game.
+                mck.transport.enable_button_monitoring(False)
+                mck.press(button)
+                time.sleep(0.03)
+                mck.release(button)
+                mck.transport.enable_button_monitoring(True)
+                # Reset mask so the re-enable event fires correctly.
+                mck.transport._last_button_mask = 0
+                mck.transport._button_states = 0
             return True
         except Exception as e:
             print(f"[MAKCU] Click error: {e}")
@@ -226,37 +238,6 @@ class makcu_controller:
     @staticmethod
     def get_button_state(button_name):
         return makcu_controller.button_states.get(button_name, False)
-
-    @staticmethod
-    def start_recording(on_frame) -> bool:
-        """Switch to mouse streaming mode for recording. on_frame(buttons, dx, dy)."""
-        if not makcu_controller.is_connected():
-            return False
-        with makcu_controller.connection_lock:
-            ctrl = makcu_controller.controller
-        if ctrl is None:
-            return False
-        try:
-            ctrl.set_mouse_callback(on_frame)
-            ctrl.start_mouse_streaming(1)
-            return True
-        except Exception as e:
-            print(f"[MAKCU] start_recording error: {e}")
-            return False
-
-    @staticmethod
-    def stop_recording() -> None:
-        """Restore normal button-streaming mode after recording."""
-        with makcu_controller.connection_lock:
-            ctrl = makcu_controller.controller
-        if ctrl is None:
-            return
-        try:
-            ctrl.stop_mouse_streaming()
-            ctrl.set_mouse_callback(None)
-        except Exception as e:
-            print(f"[MAKCU] stop_recording error: {e}")
-        makcu_controller._clear_button_states()
 
     @staticmethod
     def disconnect():

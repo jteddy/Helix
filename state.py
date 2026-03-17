@@ -37,9 +37,9 @@ class AppState:
         self.flashlight_enabled = False
         self.flashlight_keybind = "NONE"
         self.hold_threshold_ms: float = 50.0
-        self.cooldown_ms: float = 500.0
-        self.pre_fire_min_ms: float = 15.0
-        self.pre_fire_max_ms: float = 15.0
+        self.cooldown_ms: float = 800.0
+        self.pre_fire_min_ms: float = 50.0
+        self.pre_fire_max_ms: float = 180.0
 
         # ── Settings ──────────────────────────────────────────────────────────
         self.game_scalar: str = "Manual"
