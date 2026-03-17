@@ -347,6 +347,7 @@ async def _broadcast_loop():
                 "recoil_enabled":    state.recoil_enabled,
                 "flashlight_active": state.flashlight_enabled and state.recoil_enabled,
                 "loaded_script":     state.loaded_script,
+                "lmb_pressed":       makcu_controller.get_button_state("LMB"),
             })
             h = hashlib.md5(msg.encode()).hexdigest()
             if h != _last_broadcast_hash:

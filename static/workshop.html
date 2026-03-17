@@ -183,7 +183,9 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
         </div>
         <div class="sec">
           <div class="sec-h">Fire Rate — Measure</div>
+          <div class="info" style="margin-bottom:8px">MAKCU connected → hold LMB in-game and the stopwatch starts/stops automatically. Or use the buttons manually.</div>
           <!-- Stopwatch: display only, never drives RPM directly -->
+          <div class="info" style="margin-bottom:8px">Hold LMB in-game → stopwatch starts automatically via MAKCU. Release → it stops. Or use the buttons below.</div>
           <div id="mbox">
             <span id="m-time" style="display:block;font-size:26px;font-weight:700;color:var(--acc);
               font-family:var(--fm);text-align:center;letter-spacing:.04em;
@@ -760,17 +762,40 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// ── WebSocket — receive Stream Deck toggle from server ─────────────
+// ── WebSocket — LMB auto-stopwatch + Stream Deck ─────────────────
+let _lmbWasPressed = false;
 (function initWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws    = new WebSocket(`${proto}://${location.host}/ws`);
   ws.addEventListener('message', e => {
     try {
       const d = JSON.parse(e.data);
-      if (d.workshop_measure === 'toggle') toggleMeasure();  // controls stopwatch only
+
+      // Stream Deck stopwatch toggle
+      if (d.workshop_measure === 'toggle') toggleMeasure();
+
+      // LMB auto-stopwatch — only on Step 1 and only when MAKCU is connected
+      if (d.makcu_connected && W.step === 1 && typeof d.lmb_pressed !== 'undefined') {
+        const lmb = d.lmb_pressed;
+
+        // LMB down → start stopwatch (if not already running)
+        if (lmb && !_lmbWasPressed && !measuring) {
+          toggleMeasure();
+        }
+
+        // LMB up → stop stopwatch (if running)
+        if (!lmb && _lmbWasPressed && measuring) {
+          toggleMeasure();
+        }
+
+        _lmbWasPressed = lmb;
+      }
     } catch {}
   });
-  ws.addEventListener('close', () => setTimeout(initWS, 3000));
+  ws.addEventListener('close', () => {
+    _lmbWasPressed = false;
+    setTimeout(initWS, 3000);
+  });
 })();
 
 // ═══════════════════════════════════════════════════════════════════
