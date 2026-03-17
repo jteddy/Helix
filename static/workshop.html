@@ -239,10 +239,11 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
                 oninput="syncSpread('x',this.value)">
             </div>
           </div>
-          <div class="fld">
-            <label>Delay ms</label>
-            <input type="number" id="sp-ms" min="1" max="500" value="80" oninput="W.spreadMs=+this.value||80;updSpreadPreview()">
+          <div style="font-size:10px;color:var(--txt3);margin-bottom:8px">
+            Delay: <span id="sp-ms-lbl" style="color:var(--acc)">80 ms</span>
+            <span style="color:var(--txt3)"> (from per-shot ms in Step 1)</span>
           </div>
+          <input type="hidden" id="sp-ms" value="80">
         </div>
         <div class="sec">
           <div class="sec-h">Generated Script <span id="sp-status" style="color:var(--txt3);font-weight:400;font-size:9px">— not loaded</span></div>
@@ -257,7 +258,7 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
             <span style="color:var(--acc)">1.</span> Set Spread Y — 5 to 10 units is a good start<br>
             <span style="color:var(--acc)">2.</span> Set Spread X — only if you also want horizontal separation<br>
             <span style="color:var(--acc)">3.</span> Press <em style="color:var(--txt2)">Load into Cearum-Web</em> — this saves and activates the spread script<br>
-            <span style="color:var(--acc)">4.</span> Enable recoil in Cearum-Web<br>
+            <span style="color:var(--acc)">4.</span> Workshop enables recoil + loop automatically<br>
             <span style="color:var(--acc)">5.</span> Fire a full magazine at a flat wall<br>
             <span style="color:var(--acc)">6.</span> Take a screenshot of the bullet holes<br>
             <span style="color:var(--acc)">7.</span> Press <em style="color:var(--txt2)">Next</em> to go to Step 3 and upload the screenshot
@@ -699,13 +700,16 @@ function onTimeEdit(v) {
 }
 
 // ── Alt-tab detection (focus/blur) ────────────────────────────────
-// Only fires on step 1 and only if a measurement hasn't been taken yet
+// Only fires on step 1, only if no measurement taken yet, and not mid-navigation
+let _navigating = false;
 window.addEventListener('blur', () => {
-  if (W.step !== 1) return;                    // only active on setup step
-  if (W.measuredDumpSecs > 0) return;          // measurement already done — don't restart
+  if (_navigating) return;                     // ignore blur caused by clicking buttons
+  if (W.step !== 1) return;
+  if (W.measuredDumpSecs > 0) return;
   if (!measuring) toggleMeasure();
 });
 window.addEventListener('focus', () => {
+  if (_navigating) return;
   if (W.step !== 1) return;
   if (measuring) toggleMeasure();
 });
@@ -773,7 +777,6 @@ function syncSpread(axis, v) {
 }
 
 function updSpreadPreview() {
-  const mag = W.magSize || 30;
   const ms  = W.spreadMs || 80;
   const x   = W.spreadX || 0;
   const y   = W.spreadY || 0;
@@ -781,9 +784,10 @@ function updSpreadPreview() {
     document.getElementById('sp-preview').textContent = '— no spread set';
     return;
   }
-  const lines = [];
-  for (let i = 0; i < mag; i++) lines.push(`${x},${y},${ms}`);
-  document.getElementById('sp-preview').textContent = lines.join('\n');
+  // Single line + loop recoil = cleaner than repeating mag-size lines
+  document.getElementById('sp-preview').textContent = `${x},${y},${ms}`;
+  const lbl = document.getElementById('sp-ms-lbl');
+  if (lbl) lbl.textContent = ms + ' ms';
 }
 
 async function loadSpreadScript() {
@@ -804,9 +808,8 @@ async function loadSpreadScript() {
     W.preSpreadScript = sd.loaded || null;
   } catch (_) { W.preSpreadScript = null; }
 
-  const lines = ['# x_offset, y_offset, delay_ms', '# Workshop spread script — auto-generated'];
-  for (let i = 0; i < mag; i++) lines.push(`${x},${y},${ms}`);
-  const content = lines.join('\n');
+  // Single vector line — loop recoil will be enabled so it repeats automatically
+  const content = `# x_offset, y_offset, delay_ms\n# Workshop spread script — auto-generated\n${x},${y},${ms}`;
 
   try {
     const sr = await fetch('/api/scripts/save', {
@@ -818,6 +821,13 @@ async function loadSpreadScript() {
 
     const lr = await fetch('/api/scripts/load/workshop_spread', { method: 'POST' });
     if (!lr.ok) throw new Error('Load failed: ' + lr.status);
+
+    // Enable loop recoil so the single-line script repeats for the full mag
+    await fetch('/api/recoil', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loop_recoil: true, enabled: true }),
+    });
 
     W.spreadActive = true;
     document.getElementById('sp-status').textContent       = '● active in Cearum-Web';
@@ -834,6 +844,12 @@ async function loadSpreadScript() {
 
 async function clearSpreadScript() {
   try {
+    // Disable loop recoil (it was enabled for the spread script)
+    await fetch('/api/recoil', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loop_recoil: false, enabled: false }),
+    });
     // Restore the script that was active before the spread script was loaded
     if (W.preSpreadScript && W.preSpreadScript !== 'NONE') {
       const parts = W.preSpreadScript.split('/');
@@ -1235,6 +1251,10 @@ const HINTS  = [
 const MODES  = ['Setup','Spread','Modeling','Optimization','Result'];
 
 function goStep(n) {
+  // Suppress alt-tab timer during navigation
+  _navigating = true;
+  setTimeout(() => { _navigating = false; }, 300);
+
   // Auto-finish active pass when leaving step 3
   if (W.step === 3 && W.activePass && W.activePass.pts.length >= 2) finishPass();
   // Auto-restore previous script when leaving step 2
@@ -1265,7 +1285,9 @@ function goStep(n) {
       : (W.rpm > 0 ? Math.round(60000 / W.rpm) : 80);
     W.spreadMs = msShot;
     const spMs = document.getElementById('sp-ms');
-    if (spMs && !spMs.matches(':focus')) spMs.value = msShot;
+    if (spMs) spMs.value = msShot;
+    const lbl = document.getElementById('sp-ms-lbl');
+    if (lbl) lbl.textContent = msShot + ' ms';
     updSpreadPreview();
   }
   // Pre-fill spread delay from measured time when entering step 2
@@ -1276,7 +1298,9 @@ function goStep(n) {
       : (W.rpm > 0 ? Math.round(60000 / W.rpm) : 80);
     W.spreadMs = msShot;
     const spMs = document.getElementById('sp-ms');
-    if (spMs && !spMs.matches(':focus')) spMs.value = msShot;
+    if (spMs) spMs.value = msShot;
+    const lbl = document.getElementById('sp-ms-lbl');
+    if (lbl) lbl.textContent = msShot + ' ms';
     updSpreadPreview();
   }
   if (n === 4 && !W.editMode) calcAutoScale();
