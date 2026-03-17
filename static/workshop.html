@@ -144,8 +144,9 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
     <button class="stp cur" id="s1" onclick="goStep(1)"><span class="sn">1</span>Setup</button>
     <button class="stp"     id="s2" onclick="goStep(2)"><span class="sn">2</span>Pattern Spread</button>
     <button class="stp"     id="s3" onclick="goStep(3)"><span class="sn">3</span>Modeling</button>
-    <button class="stp"     id="s4" onclick="goStep(4)"><span class="sn">4</span>Optimization</button>
-    <button class="stp"     id="s5" onclick="goStep(5)"><span class="sn">5</span>Result</button>
+    <button class="stp"     id="s4" onclick="goStep(4)"><span class="sn">4</span>Scale</button>
+    <button class="stp"     id="s5" onclick="goStep(5)"><span class="sn">5</span>Optimization</button>
+    <button class="stp"     id="s6" onclick="goStep(6)"><span class="sn">6</span>Result</button>
   </div>
 
   <!-- Body -->
@@ -155,6 +156,20 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
     <div id="cw">
       <canvas id="cv"></canvas>
       <div id="czoom">1.0×</div>
+      <button onclick="veFit()" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);
+        font-size:9px;font-family:var(--fu);letter-spacing:.05em;text-transform:uppercase;
+        background:rgba(11,12,14,.8);border:1px solid var(--bdr);color:var(--txt3);
+        border-radius:var(--rs);padding:2px 8px;cursor:pointer;transition:color .15s,border-color .15s"
+        onmouseover="this.style.color='var(--acc)';this.style.borderColor='var(--acc)'"
+        onmouseout="this.style.color='var(--txt3)';this.style.borderColor='var(--bdr)'">Fit to screen</button>
+      <button onclick="veFit()" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);
+        font-size:9px;font-family:var(--fu);letter-spacing:.05em;text-transform:uppercase;
+        background:rgba(11,12,14,.8);border:1px solid var(--bdr);color:var(--txt3);
+        border-radius:var(--rs);padding:2px 8px;cursor:pointer;transition:all .15s"
+        onmouseover="this.style.color='var(--acc)';this.style.borderColor='var(--acc)'"
+        onmouseout="this.style.color='var(--txt3)';this.style.borderColor='var(--bdr)'">
+        Fit to screen
+      </button>
       <div id="cmode">Modeling</div>
       <div id="chint">Upload a screenshot to begin tracing</div>
     </div>
@@ -326,28 +341,46 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
       <!-- ══ STEP 4: SCALE ══ -->
       <div id="p4" class="hidden">
         <div class="sec">
-          <div class="sec-h">Auto-Calculated Scale</div>
-          <div class="info" id="scale-info">Scale is calculated automatically from the spread units you set in Step 2 divided by the average pixel distance between traced holes.</div>
-          <div id="sc-no-spread" class="warn hidden">No spread was used — scale cannot be auto-calculated. Vectors are in raw pixel units. Use Step 5 to adjust x/y values directly.</div>
+          <div class="sec-h">Scale</div>
+          <div class="info" id="scale-info">Scale converts screenshot pixel distances into MAKCU movement units. An auto-estimate is shown below — but it depends on your screenshot zoom and FOV so it may need adjusting. Start at the suggested value, test in-game, then tune up or down.</div>
         </div>
         <div class="sec">
-          <div class="sec-h">Derived Values</div>
+          <div class="sec-h">Suggestion <span id="sc-hint" style="color:var(--txt3);font-weight:400;font-size:9px">from spread ÷ avg px</span></div>
           <div class="stat"><span>Spread Y used</span><span id="sc-spy" style="color:var(--acc)">—</span></div>
-          <div class="stat"><span>Spread X used</span><span id="sc-spx" style="color:var(--acc)">—</span></div>
           <div class="stat"><span>Avg px between holes (Y)</span><span id="sc-apy" style="color:var(--txt2)">—</span></div>
-          <div class="stat"><span>Avg px between holes (X)</span><span id="sc-apx" style="color:var(--txt2)">—</span></div>
-          <div class="stat" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bdr)">
-            <span style="color:var(--txt)">Scale Y</span>
-            <span id="sc-sy" style="color:var(--grn);font-size:13px;font-weight:600">—</span>
+          <div class="stat"><span>Suggested Scale Y</span><span id="sc-sy" style="color:var(--grn)">—</span></div>
+          <button class="btn bg btn-full" style="margin-top:6px;font-size:10px" onclick="applyAutoScale()">Apply Suggestion</button>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Scale X</div>
+          <div class="fld">
+            <div class="srow">
+              <input type="range" id="sx-sl" min="0.001" max="2" step="0.001" value="0.1" oninput="onSX(this.value)">
+              <input type="number" id="sx-sv" value="0.100" step="0.001" min="0.001" max="2"
+                style="width:60px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
+                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);
+                padding:2px 4px;height:var(--rh)" oninput="onSX(this.value)">
+            </div>
           </div>
-          <div class="stat">
-            <span style="color:var(--txt)">Scale X</span>
-            <span id="sc-sx" style="color:var(--grn);font-size:13px;font-weight:600">—</span>
+          <div class="sec-h" style="margin-top:4px">Scale Y</div>
+          <div class="fld">
+            <div class="srow">
+              <input type="range" id="sy-sl" min="0.001" max="2" step="0.001" value="0.1" oninput="onSY(this.value)">
+              <input type="number" id="sy-sv" value="0.100" step="0.001" min="0.001" max="2"
+                style="width:60px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
+                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);
+                padding:2px 4px;height:var(--rh)" oninput="onSY(this.value)">
+            </div>
+          </div>
+          <div class="warn" style="margin-top:6px">
+            Reticle pulling too far down → reduce Scale Y<br>
+            Not compensating enough → increase Scale Y<br>
+            Horizontal drift → adjust Scale X
           </div>
         </div>
         <div class="sec">
           <div class="sec-h">Preview</div>
-          <div style="font-size:10px;color:var(--txt3);line-height:1.7">Canvas shows the recoil path that will be applied by the MAKCU. Proceed to Step 5 to review and adjust individual vectors.</div>
+          <div style="font-size:10px;color:var(--txt3);line-height:1.7">Canvas shows the recoil path the MAKCU will apply. Adjust scale and watch the shape change.</div>
         </div>
       </div>
 
@@ -861,24 +894,31 @@ async function loadSpreadScript() {
     const lr = await fetch('/api/scripts/load/workshop_spread', { method: 'POST' });
     if (!lr.ok) throw new Error('Load failed: ' + lr.status);
 
-    // Enable loop recoil so the single-line script repeats for the full mag
-    await fetch('/api/recoil', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loop_recoil: true, enabled: true }),
-    });
-
     W.spreadActive = true;
     document.getElementById('sp-status').textContent       = '● active in Cearum-Web';
     document.getElementById('sp-status').style.color       = 'var(--grn)';
     document.getElementById('sp-load-btn').style.display   = 'none';
     document.getElementById('sp-clear-btn').style.display  = '';
     document.getElementById('sp-loaded-warn').classList.remove('hidden');
-    // Force a state broadcast so any open Cearum-Web tabs refresh their script list
-    try { fetch('/api/state'); } catch(_) {}
   } catch (e) {
     alert('Failed to load spread script: ' + e.message);
+    return;
   }
+
+  // Enable loop recoil + recoil ON — separate try so we can report this failure clearly
+  try {
+    const rr = await fetch('/api/recoil', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loop_recoil: true, enabled: true }),
+    });
+    if (!rr.ok) throw new Error('status ' + rr.status);
+  } catch (e) {
+    alert('Spread script loaded but could not enable loop recoil: ' + e.message + '\nPlease enable Loop Recoil and Recoil manually in Cearum-Web.');
+  }
+
+  // Force state broadcast so open Cearum-Web tabs refresh
+  try { fetch('/api/state'); } catch(_) {}
 }
 
 async function clearSpreadScript() {
@@ -1136,25 +1176,72 @@ function calcAutoScale() {
   document.getElementById('sc-apy').textContent = avgPxY.toFixed(1) + ' px';
   document.getElementById('sc-apx').textContent = avgPxX.toFixed(1) + ' px';
 
-  // Derive scale: MAKCU units per pixel
-  if (!noSpread) {
-    const scY = avgPxY > 0 ? +(spY / avgPxY).toFixed(4) : 0;
-    // For X: use spX if set, otherwise use same ratio as Y (assumes uniform sensitivity)
-    const scX = avgPxX > 0 && spX !== 0 ? +(spX / avgPxX).toFixed(4)
-              : avgPxY > 0 ? +(spY / avgPxY).toFixed(4) : scY;
+  // Derive suggested scale — purely a starting guess, user must validate in-game
+  const scY = !noSpread && avgPxY > 0 ? +(spY / avgPxY).toFixed(4) : 0.1;
+  const scX = scY;  // assume uniform sensitivity; user can override X independently
+  // Store as suggestion only — don't override W.scaleX/Y if user has already changed them
+  document.getElementById('sc-sy').textContent = scY;
+  if ('_scaleAutoApplied' in W === false) {
+    // First time on this step — apply the suggestion automatically
+    W._scaleAutoApplied = true;
     W.scaleX = scX;
     W.scaleY = scY;
-    document.getElementById('sc-sy').textContent = scY;
-    document.getElementById('sc-sx').textContent = scX;
-  } else {
-    // No spread — treat pixels as MAKCU units directly (scale 1.0)
-    W.scaleX = 1.0;
-    W.scaleY = 1.0;
-    document.getElementById('sc-sy').textContent = '1.000 (raw)';
-    document.getElementById('sc-sx').textContent = '1.000 (raw)';
+    document.getElementById('sx-sl').value = scX;
+    document.getElementById('sx-sv').value = scX.toFixed(3);
+    document.getElementById('sy-sl').value = scY;
+    document.getElementById('sy-sv').value = scY.toFixed(3);
+  }
+  if (noSpread) {
+    document.getElementById('sc-hint').textContent = '— no spread used, defaulting to 0.1';
+    document.getElementById('sc-spy').textContent  = '—';
+    document.getElementById('sc-apy').textContent  = '—';
+    document.getElementById('sc-sy').textContent   = '0.100 (default)';
   }
 }
 
+function onSX(v) {
+  const val = Math.max(0.001, Math.min(2, parseFloat(v) || 0.1));
+  W.scaleX = val;
+  document.getElementById('sx-sl').value = val;
+  document.getElementById('sx-sv').value = val.toFixed(3);
+  recompute();
+}
+function onSY(v) {
+  const val = Math.max(0.001, Math.min(2, parseFloat(v) || 0.1));
+  W.scaleY = val;
+  document.getElementById('sy-sl').value = val;
+  document.getElementById('sy-sv').value = val.toFixed(3);
+  recompute();
+}
+function applyAutoScale() {
+  // Apply the auto-calculated scale values to the sliders
+  document.getElementById('sx-sl').value = W.scaleX;
+  document.getElementById('sx-sv').value = W.scaleX.toFixed(3);
+  document.getElementById('sy-sl').value = W.scaleY;
+  document.getElementById('sy-sv').value = W.scaleY.toFixed(3);
+  recompute();
+}
+function onSX(v) {
+  const val = Math.max(0.001, Math.min(2, parseFloat(v) || 0.1));
+  W.scaleX = val;
+  document.getElementById('sx-sl').value = val;
+  document.getElementById('sx-sv').value = val.toFixed(3);
+  recompute();
+}
+function onSY(v) {
+  const val = Math.max(0.001, Math.min(2, parseFloat(v) || 0.1));
+  W.scaleY = val;
+  document.getElementById('sy-sl').value = val;
+  document.getElementById('sy-sv').value = val.toFixed(3);
+  recompute();
+}
+function applyAutoScale() {
+  document.getElementById('sx-sl').value = W.scaleX;
+  document.getElementById('sx-sv').value = W.scaleX.toFixed(3);
+  document.getElementById('sy-sl').value = W.scaleY;
+  document.getElementById('sy-sv').value = W.scaleY.toFixed(3);
+  recompute();
+}
 function onOpt(v) {
   W.optLevel = +v;
   document.getElementById('op-lbl').textContent = v + ' — ' + OPT_LABELS[v];
@@ -1279,15 +1366,16 @@ function loadEditFile(input) {
 // ═══════════════════════════════════════════════════════════════════
 //  STEP NAVIGATION
 // ═══════════════════════════════════════════════════════════════════
-const PANELS = ['p1','p2','p3','p5','p6'];   // p4 (scale) removed — runs silently in step 3
+const PANELS = ['p1','p2','p3','p4','p5','p6'];
 const HINTS  = [
   'Set weapon name and fire rate before proceeding',
   'Set spread values, load the script into Cearum-Web, fire at a wall, then screenshot',
   'Upload your bullet hole screenshot — click each hole in order to trace the pattern',
-  'Review and adjust vectors — merge similar adjacent shots to reduce script length',
+  'Adjust scale until compensation matches in-game — start from the suggestion then tune',
+  'Review and merge vectors to reduce script length',
   'Review the generated script and save to Cearum-Web or download',
 ];
-const MODES  = ['Setup','Spread','Modeling','Optimization','Result'];
+const MODES  = ['Setup','Spread','Modeling','Scale','Optimization','Result'];
 
 function goStep(n) {
   // Auto-finish active pass when leaving step 3
@@ -1301,14 +1389,14 @@ function goStep(n) {
     const el = document.getElementById(id);
     if (i + 1 === n) el.classList.remove('hidden'); else el.classList.add('hidden');
   });
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 6; i++) {
     const el = document.getElementById('s' + i);
     if (el) el.className = 'stp' + (i === n ? ' cur' : i < n ? ' ok' : '');
   }
-  document.getElementById('ftr-lbl').textContent = `Step ${n} of 5`;
+  document.getElementById('ftr-lbl').textContent = `Step ${n} of 6`;
   document.getElementById('btn-back').style.visibility = n === 1 ? 'hidden' : 'visible';
   document.getElementById('btn-next').textContent = 'Next →';
-  document.getElementById('btn-next').style.visibility = n === 5 ? 'hidden' : 'visible';
+  document.getElementById('btn-next').style.visibility = n === 6 ? 'hidden' : 'visible';
   document.getElementById('chint').textContent = HINTS[n - 1];
   document.getElementById('cmode').textContent  = MODES[n - 1];
 
@@ -1343,7 +1431,7 @@ function goStep(n) {
   redraw();
 }
 
-function nextStep() { if (W.step < 5) goStep(W.step + 1); }
+function nextStep() { if (W.step < 6) goStep(W.step + 1); }
 function prevStep() { if (W.step > 1) goStep(W.step - 1); }
 
 // ═══════════════════════════════════════════════════════════════════
