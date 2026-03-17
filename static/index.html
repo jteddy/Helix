@@ -39,11 +39,6 @@ html,body{height:100%;background:var(--bg0);color:var(--text);font-family:var(--
 #ws-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .4s,box-shadow .4s;}
 #ws-dot.ok{background:var(--green);box-shadow:0 0 5px var(--green);}
 #ws-dot.err{background:var(--red);box-shadow:0 0 5px var(--red);}
-#hdr-makcu{display:flex;flex-direction:column;align-items:flex-end;gap:1px;}
-#hdr-makcu-lbl{font-size:8px;color:var(--text3);font-family:var(--fu);letter-spacing:.08em;text-transform:uppercase;}
-#hdr-makcu-val{font-size:11px;font-weight:700;font-family:var(--fu);color:var(--text3);line-height:1;transition:color .3s;}
-#hdr-makcu-val.ok{color:var(--green);}
-#hdr-makcu-val.err{color:var(--red);}
 
 /* ═══ STATUS PANEL ═══ */
 #sp{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:7px 10px;background:var(--bg0);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -73,7 +68,7 @@ html,body{height:100%;background:var(--bg0);color:var(--text);font-family:var(--
 /* ── Tab bar ──────────────────────────────────────────────────────── */
 #tabbar{display:flex;align-items:stretch;background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
 #tabbar::-webkit-scrollbar{display:none;}
-.tab{padding:0 15px;height:32px;line-height:32px;font-family:var(--fu);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);cursor:pointer;white-space:nowrap;flex-shrink:0;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;user-select:none;}
+.tab{padding:0 15px;height:32px;line-height:32px;font-family:var(--fu);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);cursor:pointer;white-space:nowrap;flex-shrink:0;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;user-select:none;text-decoration:none;}
 .tab:hover{color:var(--text2);}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
 
@@ -193,7 +188,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 <div id="hdr">
   <div id="hdr-logo">Cear<span>um</span></div>
   <div id="hdr-sep"></div>
-  <div id="hdr-makcu"><div id="hdr-makcu-lbl">MAKCU</div><div id="hdr-makcu-val">—</div></div>
   <div id="hdr-ver">V0.2.1</div>
   <div id="ws-dot" title="MAKCU Status"></div>
 </div>
@@ -210,7 +204,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <div class="tab active" data-tab="recoil"     onclick="st('recoil')">Recoil</div>
   <div class="tab"        data-tab="flashlight" onclick="st('flashlight')">Flashlight</div>
   <div class="tab"        data-tab="settings"   onclick="st('settings')">Settings</div>
-  <a   class="tab"        href="/workshop">Workshop</a>
 </div>
 
 <div id="content">
