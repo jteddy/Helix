@@ -405,6 +405,7 @@ const W = {
   spreadY:    0,      // MAKCU units per shot pushed vertically
   spreadMs:   80,     // delay used in spread script (ms)
   spreadActive: false,  // true while spread script is loaded on server
+  preSpreadScript: null, // script that was loaded before spread, restored on clear
   passes:     [],        // [{pts:[{x,y}], color}]
   activePass: null,
   scaleX:     0.10,
@@ -791,12 +792,18 @@ async function loadSpreadScript() {
     return;
   }
 
+  // Remember whatever script was active before so we can restore it
+  try {
+    const sr = await fetch('/api/scripts');
+    const sd = await sr.json();
+    W.preSpreadScript = sd.loaded || null;
+  } catch (_) { W.preSpreadScript = null; }
+
   const lines = ['# x_offset, y_offset, delay_ms', '# Workshop spread script — auto-generated'];
   for (let i = 0; i < mag; i++) lines.push(`${x},${y},${ms}`);
   const content = lines.join('\n');
 
   try {
-    // Save script to server
     const sr = await fetch('/api/scripts/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -804,7 +811,6 @@ async function loadSpreadScript() {
     });
     if (!sr.ok) throw new Error('Save failed: ' + sr.status);
 
-    // Load it as active script
     const lr = await fetch('/api/scripts/load/workshop_spread', { method: 'POST' });
     if (!lr.ok) throw new Error('Load failed: ' + lr.status);
 
@@ -821,12 +827,20 @@ async function loadSpreadScript() {
 
 async function clearSpreadScript() {
   try {
-    // Load empty/no script by toggling off — just reload state
-    // Delete the spread script from server
+    // Restore the script that was active before the spread script was loaded
+    if (W.preSpreadScript && W.preSpreadScript !== 'NONE') {
+      const parts = W.preSpreadScript.split('/');
+      const url   = parts.length === 2
+        ? `/api/scripts/load/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`
+        : `/api/scripts/load/${encodeURIComponent(W.preSpreadScript)}`;
+      await fetch(url, { method: 'POST' });
+    }
+    // Delete the spread script so it can never be auto-loaded on restart
     await fetch('/api/scripts/workshop_spread', { method: 'DELETE' });
   } catch (_) {}
 
-  W.spreadActive = false;
+  W.spreadActive     = false;
+  W.preSpreadScript  = null;
   document.getElementById('sp-status').textContent       = '— not loaded';
   document.getElementById('sp-status').style.color       = 'var(--txt3)';
   document.getElementById('sp-load-btn').style.display   = '';
@@ -1209,6 +1223,8 @@ const MODES  = ['Setup','Spread','Modeling','Scale','Optimization','Result'];
 function goStep(n) {
   // Auto-finish active pass when leaving step 3
   if (W.step === 3 && W.activePass && W.activePass.pts.length >= 2) finishPass();
+  // Auto-restore previous script when leaving step 2
+  if (W.step === 2 && W.spreadActive) clearSpreadScript();
 
   W.step = n;
 

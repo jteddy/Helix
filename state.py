@@ -307,7 +307,9 @@ class AppState:
 
         # Correctly split "game/name" before calling load_script
         loaded = r.get("loaded_script", "NONE")
-        if loaded != "NONE":
+        # Never auto-reload the workshop spread script on startup —
+        # it is a temporary tool script and should not run as recoil compensation
+        if loaded != "NONE" and loaded != "workshop_spread" and not loaded.endswith("/workshop_spread"):
             if "/" in loaded:
                 game, name = loaded.split("/", 1)
                 self.load_script(name, game)
