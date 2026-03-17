@@ -179,6 +179,7 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
           <div style="background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:7px 9px;margin-bottom:7px">
             <div class="stat"><span>Per shot</span><span id="rpm-ms" style="color:var(--acc)">100 ms</span></div>
             <div class="stat"><span>Full mag dump</span><span id="rpm-dump" style="color:var(--acc)">2.90 s</span></div>
+            <div style="font-size:9px;color:var(--txt3);margin-top:4px;line-height:1.6">Time a full mag in-game and compare to <em>Full mag dump</em> to validate your RPM.</div>
           </div>
         </div>
         <div class="sec">
@@ -215,24 +216,43 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
       <!-- ══ STEP 2: SPREAD ══ -->
       <div id="p2" class="hidden">
         <div class="sec">
-          <div class="sec-h">Vertical Spread Modifier</div>
-          <div class="info">If bullet holes are too close to click accurately, increase spread. The screenshot is stretched vertically so holes appear further apart — the correction is applied automatically when computing vectors.</div>
-          <div class="fld" style="margin-top:4px">
-            <label>Spread — <span id="sp-lbl">1.0×  (off)</span></label>
-            <div class="srow" style="margin-top:4px">
-              <input type="range" id="sp-sl" min="1" max="5" step="0.5" value="1" oninput="onSpread(this.value)">
-              <span class="sv" id="sp-sv">1.0×</span>
+          <div class="sec-h">Pattern Spread</div>
+          <div class="info">Set how far apart to push bullets on the wall. The workshop generates a spread script, loads it into Cearum-Web automatically, then subtracts the exact same movement when computing your recoil vectors.</div>
+          <div class="fld">
+            <label>Spread Y — units per shot</label>
+            <div class="srow">
+              <input type="range" id="sp-y-sl" min="0" max="20" step="1" value="0" oninput="onSpreadY(this.value)">
+              <span class="sv" id="sp-y-sv">0</span>
             </div>
           </div>
-          <div class="warn hidden" id="sp-warn">Spread active — image stretched <span id="sp-wv">1</span>× vertically. Y-clicks auto-corrected.</div>
+          <div class="fld">
+            <label>Spread X — units per shot</label>
+            <div class="srow">
+              <input type="range" id="sp-x-sl" min="-10" max="10" step="1" value="0" oninput="onSpreadX(this.value)">
+              <span class="sv" id="sp-x-sv">0</span>
+            </div>
+          </div>
+          <div class="fld">
+            <label>Delay ms</label>
+            <input type="number" id="sp-ms" min="1" max="500" value="80" oninput="W.spreadMs=+this.value||80;updSpreadPreview()">
+          </div>
         </div>
         <div class="sec">
-          <div class="sec-h">When to use spread</div>
-          <div style="font-size:10px;color:var(--txt3);line-height:1.8">
-            1. Fire at a wall, take screenshot<br>
-            2. Open screenshot — if holes are close, increase spread here<br>
-            3. Proceed to Modeling and click each hole<br>
-            4. The spread factor is divided out automatically
+          <div class="sec-h">Generated Script <span id="sp-status" style="color:var(--txt3);font-weight:400;font-size:9px">— not loaded</span></div>
+          <div id="sp-preview" style="background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:6px 8px;font-size:10px;color:var(--acc);font-family:var(--fm);max-height:100px;overflow-y:auto;line-height:1.8;margin-bottom:7px;white-space:pre">—</div>
+          <button class="btn bs btn-full" id="sp-load-btn" onclick="loadSpreadScript()">⬆ Load into Cearum-Web</button>
+          <button class="btn br btn-full" id="sp-clear-btn" onclick="clearSpreadScript()" style="display:none">✕ Unload Spread Script</button>
+          <div id="sp-loaded-warn" class="warn hidden" style="margin-top:6px">Spread script active in Cearum-Web. Go fire at a wall, take a screenshot, then come back to Step 3.</div>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Workflow</div>
+          <div style="font-size:10px;color:var(--txt3);line-height:2">
+            1. Set spread Y (5–10 is usually enough)<br>
+            2. Press <em>Load into Cearum-Web</em><br>
+            3. Enable recoil in Cearum-Web<br>
+            4. Fire full mag at a flat wall<br>
+            5. Screenshot the bullet holes<br>
+            6. Press <em>Unload</em>, then go to Step 3
           </div>
         </div>
       </div>
@@ -366,7 +386,10 @@ const W = {
   weapon:     'weapon',
   rpm:        600,
   magSize:    30,
-  spreadY:    1.0,
+  spreadX:    0,      // MAKCU units per shot pushed horizontally
+  spreadY:    0,      // MAKCU units per shot pushed vertically
+  spreadMs:   80,     // delay used in spread script (ms)
+  spreadActive: false,  // true while spread script is loaded on server
   passes:     [],        // [{pts:[{x,y}], color}]
   activePass: null,
   scaleX:     0.10,
@@ -436,7 +459,7 @@ cv.addEventListener('mousedown', e => {
   // Left-click: place marker in step 3 when pass active
   if (e.button === 0 && W.step === 3 && W.activePass) {
     const wx = (cx - W.panX) / W.zoom;
-    const wy = (cy - W.panY) / (W.zoom * W.spreadY);
+    const wy = (cy - W.panY) / W.zoom;
     W.activePass.pts.push({ x: wx, y: wy });
     document.getElementById('ap-ct').textContent = W.activePass.pts.length;
     redraw();
@@ -504,7 +527,7 @@ function drawModeling(W2, H) {
     const img = W.screenshot;
     ctx.save();
     ctx.translate(W.panX, W.panY);
-    ctx.scale(W.zoom, W.zoom * W.spreadY);
+    ctx.scale(W.zoom, W.zoom);
     ctx.globalAlpha = 0.65;
     ctx.drawImage(img, -img.width / 2, -img.height / 2);
     ctx.globalAlpha = 1;
@@ -521,7 +544,7 @@ function drawPass(pts, color, alpha, labels) {
   if (!pts.length) return;
   const cp = pts.map(p => ({
     x: p.x * W.zoom + W.panX,
-    y: p.y * W.zoom * W.spreadY + W.panY,
+    y: p.y * W.zoom + W.panY,
   }));
   ctx.globalAlpha = alpha;
   if (cp.length > 1) {
@@ -598,15 +621,6 @@ function updRPM() {
   const dumpS  = rpm > 0 ? ((mag - 1) * (60000 / rpm) / 1000).toFixed(2) : '—';
   document.getElementById('rpm-ms').textContent   = msShot + ' ms';
   document.getElementById('rpm-dump').textContent = dumpS + ' s';
-  // Pre-fill timer with expected dump time so it's ready to use as reference
-  if (!measuring) {
-    const tEl = document.getElementById('m-time');
-    if (rpm > 0 && !tEl.matches(':focus')) {
-      tEl.value = (+dumpS).toFixed(3);
-      // Also update RPM display to reflect the pre-filled value
-      document.getElementById('m-rpm').textContent = rpm + ' RPM';
-    }
-  }
 }
 
 // ── Core toggle ───────────────────────────────────────────────────
@@ -716,14 +730,83 @@ document.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════════════════════════════
 //  SPREAD
 // ═══════════════════════════════════════════════════════════════════
-function onSpread(v) {
+function onSpreadY(v) {
   W.spreadY = +v;
-  document.getElementById('sp-sv').textContent  = W.spreadY.toFixed(1) + '×';
-  document.getElementById('sp-lbl').textContent = W.spreadY.toFixed(1) + '× ' + (W.spreadY > 1 ? '(active)' : '(off)');
-  document.getElementById('sp-wv').textContent  = W.spreadY.toFixed(1);
-  const warn = document.getElementById('sp-warn');
-  if (W.spreadY > 1) warn.classList.remove('hidden'); else warn.classList.add('hidden');
-  redraw();
+  document.getElementById('sp-y-sv').textContent = v;
+  updSpreadPreview();
+}
+function onSpreadX(v) {
+  W.spreadX = +v;
+  document.getElementById('sp-x-sv').textContent = v;
+  updSpreadPreview();
+}
+
+function updSpreadPreview() {
+  const mag = W.magSize || 30;
+  const ms  = W.spreadMs || 80;
+  const x   = W.spreadX || 0;
+  const y   = W.spreadY || 0;
+  if (x === 0 && y === 0) {
+    document.getElementById('sp-preview').textContent = '— no spread set';
+    return;
+  }
+  const lines = [];
+  for (let i = 0; i < mag; i++) lines.push(`${x}, ${y}, ${ms}`);
+  document.getElementById('sp-preview').textContent = lines.join('\n');
+}
+
+async function loadSpreadScript() {
+  const x   = W.spreadX || 0;
+  const y   = W.spreadY || 0;
+  const ms  = W.spreadMs || 80;
+  const mag = W.magSize || 30;
+
+  if (x === 0 && y === 0) {
+    alert('Set a spread value first — Y of 5 or more is recommended.');
+    return;
+  }
+
+  const lines = ['# x_offset, y_offset, delay_ms', '# Workshop spread script — auto-generated'];
+  for (let i = 0; i < mag; i++) lines.push(`${x}, ${y}, ${ms}`);
+  const content = lines.join('\n');
+
+  try {
+    // Save script to server
+    const sr = await fetch('/api/scripts/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'workshop_spread', content }),
+    });
+    if (!sr.ok) throw new Error('Save failed: ' + sr.status);
+
+    // Load it as active script
+    const lr = await fetch('/api/scripts/load/workshop_spread', { method: 'POST' });
+    if (!lr.ok) throw new Error('Load failed: ' + lr.status);
+
+    W.spreadActive = true;
+    document.getElementById('sp-status').textContent       = '● active in Cearum-Web';
+    document.getElementById('sp-status').style.color       = 'var(--grn)';
+    document.getElementById('sp-load-btn').style.display   = 'none';
+    document.getElementById('sp-clear-btn').style.display  = '';
+    document.getElementById('sp-loaded-warn').classList.remove('hidden');
+  } catch (e) {
+    alert('Failed to load spread script: ' + e.message);
+  }
+}
+
+async function clearSpreadScript() {
+  try {
+    // Load empty/no script by toggling off — just reload state
+    // Delete the spread script from server
+    await fetch('/api/scripts/workshop_spread', { method: 'DELETE' });
+  } catch (_) {}
+
+  W.spreadActive = false;
+  document.getElementById('sp-status').textContent       = '— not loaded';
+  document.getElementById('sp-status').style.color       = 'var(--txt3)';
+  document.getElementById('sp-load-btn').style.display   = '';
+  document.getElementById('sp-clear-btn').style.display  = 'none';
+  document.getElementById('sp-loaded-warn').classList.add('hidden');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -844,13 +927,17 @@ function computeRaw() {
   for (let i = 0; i < minLen - 1; i++) {
     let sdx = 0, sdy = 0;
     for (const p of all) {
-      sdx += p.pts[i + 1].x - p.pts[i].x;  // already spread-corrected at click time
+      sdx += p.pts[i + 1].x - p.pts[i].x;
       sdy += p.pts[i + 1].y - p.pts[i].y;
     }
     const n = all.length;
+    // Subtract the spread that was artificially added per shot
+    // Each inter-shot delta contains one unit of spread movement
+    const spreadSubX = W.spreadX || 0;
+    const spreadSubY = W.spreadY || 0;
     out.push({
-      x:  +(sdx / n * W.scaleX).toFixed(3),
-      y:  +(sdy / n * W.scaleY).toFixed(3),
+      x:  +((sdx / n - spreadSubX) * W.scaleX).toFixed(3),
+      y:  +((sdy / n - spreadSubY) * W.scaleY).toFixed(3),
       ms: delay,
     });
   }
@@ -1037,7 +1124,7 @@ function loadEditFile(input) {
 const PANELS = ['p1','p2','p3','p4','p5','p6'];
 const HINTS  = [
   'Set weapon name and fire rate before proceeding',
-  'Adjust vertical spread if bullet holes are too close to trace accurately',
+  'Set spread values, load the script into Cearum-Web, fire at a wall, then screenshot',
   'Upload your bullet hole screenshot — click each hole in order to trace the pattern',
   'Adjust Scale X/Y until the recoil compensation matches in-game behaviour',
   'Merge similar adjacent vectors to reduce script length',
