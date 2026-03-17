@@ -548,7 +548,7 @@ function applyStatus(d){
   card('sc-script',hs?'on':'');$('sc-script-v').textContent=d.loaded_script||'NONE';
   const cb=$('r-en');if(cb&&cb.checked!==d.recoil_enabled)cb.checked=d.recoil_enabled;
   const ms=$('s-mst');if(ms){ms.textContent=d.makcu_connected?'Connected':'Not connected';ms.style.color=d.makcu_connected?'var(--green)':'var(--red)';}
-  if(hs&&document.activeElement!==$('s-name-inp')){$('s-name-inp').value=d.loaded_script.split('/').pop();}
+  if(hs&&!sNewScriptMode&&document.activeElement!==$('s-name-inp')){$('s-name-inp').value=d.loaded_script.split('/').pop();}
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}
 
@@ -590,6 +590,7 @@ function slid(sid,lid,v){const s=$(sid),l=$(lid);if(s)s.value=v;if(l)l.value=par
 
 // ── Scripts ───────────────────────────────────────────────────────────────────
 let sCurrentGame = '';
+let sNewScriptMode = false;  // true when New is clicked — suppresses WebSocket name overwrite
 let sDir = 'saved_scripts/';
 
 function updateDirLabel(game) {
@@ -655,6 +656,8 @@ async function loadScriptContent(fullName) {
 }
 
 async function loadScript(name, game) {
+  sNewScriptMode = false;
+  sNewScriptMode = false;
   let url;
   if(game) url=`/api/scripts/load/${encodeURIComponent(game)}/${encodeURIComponent(name)}`;
   else url=`/api/scripts/load/${encodeURIComponent(name)}`;
@@ -679,6 +682,8 @@ async function delScript(name, game) {
 }
 
 async function saveScript() {
+  sNewScriptMode = false;
+  sNewScriptMode = false;
   const name=($('s-name-inp').value||'').trim();
   const content=$('vec-ta').value.trim();
   if(!name){notify('Enter a script name');return;}
@@ -691,7 +696,7 @@ async function saveScript() {
   notify(`Saved: ${name}`);
 }
 
-function newScript(){$('vec-ta').value='';$('s-name-inp').value='';setTimeout(()=>$('s-name-inp').focus(),50);}
+function newScript(){sNewScriptMode=true;$('vec-ta').value='';$('s-name-inp').value='';setTimeout(()=>$('s-name-inp').focus(),50);}
 
 async function newGame() {
   const g=prompt('New game folder name:');
