@@ -102,17 +102,18 @@ class makcu_controller:
             if makcu_controller.controller is not None:
                 return makcu_controller.controller
         result = makcu_controller._do_connect()
-        if result is not None:
-            t = makcu_controller._watchdog_thread
-            if t is None or not t.is_alive():
-                new_t = threading.Thread(
-                    target=makcu_controller._watchdog,
-                    daemon=True,
-                    name="makcu-watchdog",
-                )
-                new_t.start()
-                makcu_controller._watchdog_thread = new_t
-                print("[MAKCU] Watchdog started (8 s interval)")
+        # Always start the watchdog so it can reconnect even if initial
+        # connect failed (e.g. MAKCU plugged in after app starts).
+        t = makcu_controller._watchdog_thread
+        if t is None or not t.is_alive():
+            new_t = threading.Thread(
+                target=makcu_controller._watchdog,
+                daemon=True,
+                name="makcu-watchdog",
+            )
+            new_t.start()
+            makcu_controller._watchdog_thread = new_t
+            print("[MAKCU] Watchdog started (8 s interval)")
         return result
 
     @staticmethod
@@ -123,7 +124,10 @@ class makcu_controller:
     def click_button(button_name):
         if not makcu_controller.is_connected():
             return False
-        mck = makcu_controller.controller
+        with makcu_controller.connection_lock:
+            mck = makcu_controller.controller
+        if mck is None:
+            return False
         try:
             with makcu_controller.command_lock:
                 if button_name == "LMB":
@@ -149,9 +153,13 @@ class makcu_controller:
     def simple_move_mouse(x, y):
         if not makcu_controller.is_connected():
             return False
+        with makcu_controller.connection_lock:
+            mck = makcu_controller.controller
+        if mck is None:
+            return False
         try:
             with makcu_controller.command_lock:
-                makcu_controller.controller.move(x, y)
+                mck.move(x, y)
             return True
         except Exception as e:
             print(f"[MAKCU] Move error: {e}")
@@ -183,8 +191,6 @@ class makcu_controller:
             acc_x = 0.0
             acc_y = 0.0
             for i in range(steps):
-                if interrupt_on_lmb_release and not makcu_controller.button_states.get("LMB", False):
-                    return False
                 t     = (i + 1) / steps
                 eased = ease_out_quad(t)
                 tx    = dx * eased
@@ -198,6 +204,13 @@ class makcu_controller:
                         if makcu_controller.controller is not mck:
                             return False
                         mck.move(mx, my)
+                # Check AFTER sending this step's movement so that at least
+                # one micro-move always fires even on the very first step.
+                # Checking before step 0 could abort with zero movement when
+                # there is a brief race between the outer LMB read and the
+                # MAKCU button-callback updating button_states.
+                if interrupt_on_lmb_release and not makcu_controller.button_states.get("LMB", False):
+                    return False
                 time.sleep(step_delay)
             return True
         except Exception as e:
