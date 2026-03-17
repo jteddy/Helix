@@ -81,6 +81,10 @@ async def root():
 async def workshop():
     return FileResponse(os.path.join(BASE_DIR, "static", "workshop.html"))
 
+@app.get("/workshop")
+async def workshop():
+    return FileResponse(os.path.join(BASE_DIR, "static", "workshop.html"))
+
 # ── Workshop — measure toggle (Stream Deck / keyboard) ────────────────────────
 _workshop_measure_active = False
 

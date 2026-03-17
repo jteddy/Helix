@@ -17,25 +17,13 @@ class makcu_controller:
     connection_lock   = threading.Lock()
     command_lock      = threading.Lock()
     is_connected_flag = False
-
-    # FIX 9: track thread object so we can check is_alive() instead of a bare bool
-    _watchdog_thread: threading.Thread | None = None
-
-    # FIX 5: set while move_mouse_smoothly is active -- watchdog skips its ping
-    #         to avoid injecting a zero-move USB transaction mid-spray.
-    _spray_active = threading.Event()
-
-    # -- Shared helper ---------------------------------------------------------
+    _watchdog_thread  = None
+    _spray_active     = threading.Event()
 
     @staticmethod
     def _clear_button_states():
-        """FIX 1: Hard-reset every button to False.
-        Called on every disconnect path so the recoil loop never inherits
-        a stale LMB=True from before the device dropped."""
         for k in makcu_controller.button_states:
             makcu_controller.button_states[k] = False
-
-    # -- Public: connection state ----------------------------------------------
 
     @staticmethod
     def is_connected():
@@ -45,74 +33,41 @@ class makcu_controller:
                 and makcu_controller.controller is not None
             )
 
-    # -- Watchdog --------------------------------------------------------------
-
     @staticmethod
     def _watchdog():
-        """
-        Background daemon thread.  Every 8 s it pings the device with a
-        zero-movement command.  On failure it marks the device disconnected
-        and keeps retrying connect() every 8 s until the MAKCU comes back.
-
-        FIX 2: Because the library is now created with auto_reconnect=False,
-        this watchdog is the single owner of reconnection logic.  There is no
-        longer a race between the library's internal reconnect and ours.
-
-        FIX 5: The watchdog skips its ping entirely while move_mouse_smoothly
-        is executing (_spray_active is set) to prevent injecting a USB
-        transaction mid-spray that could cause micro-stutter.
-        """
-        INTERVAL = 8  # seconds
+        INTERVAL = 8
         while True:
             time.sleep(INTERVAL)
-
-            # -- Phase 1: device appears connected -- ping it -------------------
             with makcu_controller.connection_lock:
                 connected = (
                     makcu_controller.is_connected_flag
                     and makcu_controller.controller is not None
                 )
                 ctrl = makcu_controller.controller if connected else None
-
             if connected:
-                # FIX 5: skip the ping while a smooth-move spray is in progress
                 if makcu_controller._spray_active.is_set():
                     continue
-
                 try:
                     with makcu_controller.command_lock:
-                        ctrl.move(0, 0)  # zero-move: exercises USB handle, no cursor movement
+                        ctrl.move(0, 0)
                 except Exception as e:
                     print(f"[MAKCU] Watchdog detected disconnect: {e}")
                     with makcu_controller.connection_lock:
                         makcu_controller.is_connected_flag = False
-                        makcu_controller.controller = None  # FIX 3
-                    makcu_controller._clear_button_states()  # FIX 1
-
-            # -- Phase 2: device is gone -- attempt reconnect -------------------
+                        makcu_controller.controller = None
+                    makcu_controller._clear_button_states()
             else:
                 print("[MAKCU] Watchdog attempting reconnect...")
                 result = makcu_controller._do_connect()
                 if result is not None:
                     print("[MAKCU] Watchdog reconnected successfully")
 
-    # -- Core connect logic ----------------------------------------------------
-
     @staticmethod
     def _do_connect():
-        """
-        Core connection logic shared by connect() and the watchdog.
-        Returns the controller on success, None on failure.
-
-        FIX 2: auto_reconnect=False -- the library must NOT try to reconnect
-        on its own.  If both the library's internal reconnect and our watchdog
-        fire simultaneously they can open two overlapping HID connections,
-        corrupt the USB state, and force a hard reset of the MAKCU.
-        """
         try:
-            controller = create_controller(debug=False, auto_reconnect=False)  # FIX 2
+            controller = create_controller(debug=False, auto_reconnect=False)
 
-            def on_button_event(button: MouseButton, pressed: bool):
+            def on_button_event(button, pressed):
                 if button == MouseButton.LEFT:
                     makcu_controller.button_states["LMB"] = pressed
                 elif button == MouseButton.RIGHT:
@@ -137,8 +92,8 @@ class makcu_controller:
             print(f"[MAKCU] Connection error: {e}")
             with makcu_controller.connection_lock:
                 makcu_controller.is_connected_flag = False
-                makcu_controller.controller = None  # FIX 3
-            makcu_controller._clear_button_states()  # FIX 1
+                makcu_controller.controller = None
+            makcu_controller._clear_button_states()
             return None
 
     @staticmethod
@@ -146,10 +101,7 @@ class makcu_controller:
         with makcu_controller.connection_lock:
             if makcu_controller.controller is not None:
                 return makcu_controller.controller
-
         result = makcu_controller._do_connect()
-
-        # FIX 9: Start watchdog only if it isn't already alive.
         if result is not None:
             t = makcu_controller._watchdog_thread
             if t is None or not t.is_alive():
@@ -161,17 +113,14 @@ class makcu_controller:
                 new_t.start()
                 makcu_controller._watchdog_thread = new_t
                 print("[MAKCU] Watchdog started (8 s interval)")
-
         return result
 
     @staticmethod
     def StartButtonListener():
         makcu_controller.connect()
 
-    # -- Command methods -------------------------------------------------------
-
     @staticmethod
-    def click_button(button_name: str):
+    def click_button(button_name):
         if not makcu_controller.is_connected():
             return False
         mck = makcu_controller.controller
@@ -192,8 +141,8 @@ class makcu_controller:
             print(f"[MAKCU] Click error: {e}")
             with makcu_controller.connection_lock:
                 makcu_controller.is_connected_flag = False
-                makcu_controller.controller = None  # FIX 3
-            makcu_controller._clear_button_states()  # FIX 1
+                makcu_controller.controller = None
+            makcu_controller._clear_button_states()
             return False
 
     @staticmethod
@@ -208,8 +157,8 @@ class makcu_controller:
             print(f"[MAKCU] Move error: {e}")
             with makcu_controller.connection_lock:
                 makcu_controller.is_connected_flag = False
-                makcu_controller.controller = None  # FIX 3
-            makcu_controller._clear_button_states()  # FIX 1
+                makcu_controller.controller = None
+            makcu_controller._clear_button_states()
             return False
 
     @staticmethod
@@ -222,15 +171,12 @@ class makcu_controller:
         def ease_out_quad(t):
             return t * (2 - t)
 
-        # FIX 4: Snapshot controller under the lock; verify identity each step.
         with makcu_controller.connection_lock:
             mck = makcu_controller.controller
         if mck is None:
             return False
 
         step_delay = duration / steps
-
-        # FIX 5: signal that a spray is in progress
         makcu_controller._spray_active.set()
 
         try:
@@ -239,7 +185,6 @@ class makcu_controller:
             for i in range(steps):
                 if interrupt_on_lmb_release and not makcu_controller.button_states.get("LMB", False):
                     return False
-
                 t     = (i + 1) / steps
                 eased = ease_out_quad(t)
                 tx    = dx * eased
@@ -250,27 +195,23 @@ class makcu_controller:
                 acc_y += my
                 if mx or my:
                     with makcu_controller.command_lock:
-                        # FIX 4: abort if controller was swapped by a reconnect
                         if makcu_controller.controller is not mck:
                             return False
                         mck.move(mx, my)
                 time.sleep(step_delay)
             return True
-
         except Exception as e:
             print(f"[MAKCU] Smooth move error: {e}")
             with makcu_controller.connection_lock:
                 makcu_controller.is_connected_flag = False
-                makcu_controller.controller = None  # FIX 3
-            makcu_controller._clear_button_states()  # FIX 1
+                makcu_controller.controller = None
+            makcu_controller._clear_button_states()
             return False
-
         finally:
-            # FIX 5: always clear the spray flag
             makcu_controller._spray_active.clear()
 
     @staticmethod
-    def get_button_state(button_name: str):
+    def get_button_state(button_name):
         return makcu_controller.button_states.get(button_name, False)
 
     @staticmethod
@@ -283,5 +224,5 @@ class makcu_controller:
                     pass
                 makcu_controller.controller = None
                 makcu_controller.is_connected_flag = False
-        makcu_controller._clear_button_states()  # FIX 1
+        makcu_controller._clear_button_states()
         print("[MAKCU] Disconnected")

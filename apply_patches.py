@@ -1,450 +1,247 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-apply_patches.py
-================
-Run this from the root of your Cearum-Web repo:
+apply_patches.py -- Cearum-Web full patch suite
+================================================
+Run from the root of your Cearum-Web repo:
 
     python3 apply_patches.py
 
-It will:
-  1. Back up the three files it modifies (.bak copies)
-  2. Replace mouse/makcu.py with the fully corrected version
-  3. Patch the one line in main.py  (Bug 7)
-  4. Patch the two lines in static/index.html  (Bug 6)
-  5. Print a summary of every change made
+IMPORTANT: Place workshop.html in the repo root alongside this script.
+
+What it does:
+  1. Replaces mouse/makcu.py  -- all 9 bug fixes (disconnect/reconnect/stutter)
+  2. Patches main.py          -- Bug 7 + /workshop route + WS broadcast + workshop API
+  3. Patches static/index.html -- removes Vector Editor, adds Workshop tab, fixes WS bug
+  4. Copies workshop.html -> static/workshop.html
 """
 
-import os
-import re
-import shutil
-import sys
+import os, shutil, sys
 
-# -- Locate repo root (script must be run from there) -------------------------
-REPO = os.path.dirname(os.path.abspath(__file__))
-
-MAKCU_PATH  = os.path.join(REPO, "mouse", "makcu.py")
-MAIN_PATH   = os.path.join(REPO, "main.py")
-HTML_PATH   = os.path.join(REPO, "static", "index.html")
+REPO         = os.path.dirname(os.path.abspath(__file__))
+MAKCU        = os.path.join(REPO, "mouse", "makcu.py")
+MAIN         = os.path.join(REPO, "main.py")
+HTML         = os.path.join(REPO, "static", "index.html")
+WORKSHOP_SRC = os.path.join(REPO, "workshop.html")
+WORKSHOP_DST = os.path.join(REPO, "static", "workshop.html")
 
 errors = []
 
 def backup(path):
     bak = path + ".bak"
     shutil.copy2(path, bak)
-    print(f"  OK Backed up -> {os.path.relpath(bak, REPO)}")
+    print(f"    backed up -> {os.path.relpath(bak, REPO)}")
 
-def check(path):
+def check(path, label=""):
     if not os.path.exists(path):
-        errors.append(f"File not found: {os.path.relpath(path, REPO)}")
+        errors.append(f"Not found: {label or os.path.relpath(path, REPO)}")
         return False
     return True
 
-# -----------------------------------------------------------------------------
-# 1. mouse/makcu.py -- full replacement
-# -----------------------------------------------------------------------------
+def read(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
 
-MAKCU_CONTENT = '''\
-import time
-import threading
-from makcu import create_controller, MouseButton
+def write(path, text):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
 
+def patch(src, old, new, label, count=1):
+    if old not in src:
+        print(f"    SKIP  {label} -- not found (already patched?)")
+        return src
+    print(f"    OK    {label}")
+    return src.replace(old, new, count)
 
-class makcu_controller:
-    controller = None
+# ── Embedded file contents ────────────────────────────────────────────────────
 
-    button_states = {
-        "LMB": False,
-        "RMB": False,
-        "MMB": False,
-        "M4":  False,
-        "M5":  False,
-    }
+MAKCU_CONTENT = 'import time\nimport threading\nfrom makcu import create_controller, MouseButton\n\n\nclass makcu_controller:\n    controller = None\n\n    button_states = {\n        "LMB": False,\n        "RMB": False,\n        "MMB": False,\n        "M4":  False,\n        "M5":  False,\n    }\n\n    connection_lock   = threading.Lock()\n    command_lock      = threading.Lock()\n    is_connected_flag = False\n    _watchdog_thread  = None\n    _spray_active     = threading.Event()\n\n    @staticmethod\n    def _clear_button_states():\n        for k in makcu_controller.button_states:\n            makcu_controller.button_states[k] = False\n\n    @staticmethod\n    def is_connected():\n        with makcu_controller.connection_lock:\n            return (\n                makcu_controller.is_connected_flag\n                and makcu_controller.controller is not None\n            )\n\n    @staticmethod\n    def _watchdog():\n        INTERVAL = 8\n        while True:\n            time.sleep(INTERVAL)\n            with makcu_controller.connection_lock:\n                connected = (\n                    makcu_controller.is_connected_flag\n                    and makcu_controller.controller is not None\n                )\n                ctrl = makcu_controller.controller if connected else None\n            if connected:\n                if makcu_controller._spray_active.is_set():\n                    continue\n                try:\n                    with makcu_controller.command_lock:\n                        ctrl.move(0, 0)\n                except Exception as e:\n                    print(f"[MAKCU] Watchdog detected disconnect: {e}")\n                    with makcu_controller.connection_lock:\n                        makcu_controller.is_connected_flag = False\n                        makcu_controller.controller = None\n                    makcu_controller._clear_button_states()\n            else:\n                print("[MAKCU] Watchdog attempting reconnect...")\n                result = makcu_controller._do_connect()\n                if result is not None:\n                    print("[MAKCU] Watchdog reconnected successfully")\n\n    @staticmethod\n    def _do_connect():\n        try:\n            controller = create_controller(debug=False, auto_reconnect=False)\n\n            def on_button_event(button, pressed):\n                if button == MouseButton.LEFT:\n                    makcu_controller.button_states["LMB"] = pressed\n                elif button == MouseButton.RIGHT:\n                    makcu_controller.button_states["RMB"] = pressed\n                elif button == MouseButton.MIDDLE:\n                    makcu_controller.button_states["MMB"] = pressed\n                elif button == MouseButton.MOUSE4:\n                    makcu_controller.button_states["M4"] = pressed\n                elif button == MouseButton.MOUSE5:\n                    makcu_controller.button_states["M5"] = pressed\n\n            controller.set_button_callback(on_button_event)\n            controller.enable_button_monitoring(True)\n\n            with makcu_controller.connection_lock:\n                makcu_controller.controller = controller\n                makcu_controller.is_connected_flag = True\n\n            return controller\n\n        except Exception as e:\n            print(f"[MAKCU] Connection error: {e}")\n            with makcu_controller.connection_lock:\n                makcu_controller.is_connected_flag = False\n                makcu_controller.controller = None\n            makcu_controller._clear_button_states()\n            return None\n\n    @staticmethod\n    def connect():\n        with makcu_controller.connection_lock:\n            if makcu_controller.controller is not None:\n                return makcu_controller.controller\n        result = makcu_controller._do_connect()\n        if result is not None:\n            t = makcu_controller._watchdog_thread\n            if t is None or not t.is_alive():\n                new_t = threading.Thread(\n                    target=makcu_controller._watchdog,\n                    daemon=True,\n                    name="makcu-watchdog",\n                )\n                new_t.start()\n                makcu_controller._watchdog_thread = new_t\n                print("[MAKCU] Watchdog started (8 s interval)")\n        return result\n\n    @staticmethod\n    def StartButtonListener():\n        makcu_controller.connect()\n\n    @staticmethod\n    def click_button(button_name):\n        if not makcu_controller.is_connected():\n            return False\n        mck = makcu_controller.controller\n        try:\n            with makcu_controller.command_lock:\n                if button_name == "LMB":\n                    mck.click(MouseButton.LEFT)\n                elif button_name == "RMB":\n                    mck.click(MouseButton.RIGHT)\n                elif button_name == "MMB":\n                    mck.click(MouseButton.MIDDLE)\n                elif button_name == "M4":\n                    mck.click(MouseButton.MOUSE4)\n                elif button_name == "M5":\n                    mck.click(MouseButton.MOUSE5)\n            return True\n        except Exception as e:\n            print(f"[MAKCU] Click error: {e}")\n            with makcu_controller.connection_lock:\n                makcu_controller.is_connected_flag = False\n                makcu_controller.controller = None\n            makcu_controller._clear_button_states()\n            return False\n\n    @staticmethod\n    def simple_move_mouse(x, y):\n        if not makcu_controller.is_connected():\n            return False\n        try:\n            with makcu_controller.command_lock:\n                makcu_controller.controller.move(x, y)\n            return True\n        except Exception as e:\n            print(f"[MAKCU] Move error: {e}")\n            with makcu_controller.connection_lock:\n                makcu_controller.is_connected_flag = False\n                makcu_controller.controller = None\n            makcu_controller._clear_button_states()\n            return False\n\n    @staticmethod\n    def move_mouse_smoothly(dx, dy, steps=20, duration=0.05, interrupt_on_lmb_release=False):\n        if not makcu_controller.is_connected():\n            return False\n        if dx == 0 and dy == 0:\n            return False\n\n        def ease_out_quad(t):\n            return t * (2 - t)\n\n        with makcu_controller.connection_lock:\n            mck = makcu_controller.controller\n        if mck is None:\n            return False\n\n        step_delay = duration / steps\n        makcu_controller._spray_active.set()\n\n        try:\n            acc_x = 0.0\n            acc_y = 0.0\n            for i in range(steps):\n                if interrupt_on_lmb_release and not makcu_controller.button_states.get("LMB", False):\n                    return False\n                t     = (i + 1) / steps\n                eased = ease_out_quad(t)\n                tx    = dx * eased\n                ty    = dy * eased\n                mx    = round(tx - acc_x)\n                my    = round(ty - acc_y)\n                acc_x += mx\n                acc_y += my\n                if mx or my:\n                    with makcu_controller.command_lock:\n                        if makcu_controller.controller is not mck:\n                            return False\n                        mck.move(mx, my)\n                time.sleep(step_delay)\n            return True\n        except Exception as e:\n            print(f"[MAKCU] Smooth move error: {e}")\n            with makcu_controller.connection_lock:\n                makcu_controller.is_connected_flag = False\n                makcu_controller.controller = None\n            makcu_controller._clear_button_states()\n            return False\n        finally:\n            makcu_controller._spray_active.clear()\n\n    @staticmethod\n    def get_button_state(button_name):\n        return makcu_controller.button_states.get(button_name, False)\n\n    @staticmethod\n    def disconnect():\n        with makcu_controller.connection_lock:\n            if makcu_controller.controller:\n                try:\n                    makcu_controller.controller.disconnect()\n                except Exception:\n                    pass\n                makcu_controller.controller = None\n                makcu_controller.is_connected_flag = False\n        makcu_controller._clear_button_states()\n        print("[MAKCU] Disconnected")\n'
 
-    connection_lock   = threading.Lock()
-    command_lock      = threading.Lock()
-    is_connected_flag = False
+WORKSHOP_CONTENT = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0">\n<meta name="theme-color" content="#0b0c0e">\n<title>Cearum — Recoil Workshop</title>\n<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">\n<style>\n*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}\n:root{\n  --bg0:#0b0c0e;--bg1:#111214;--bg2:#17181b;--bg3:#1d1f23;--bg4:#232629;\n  --bdr:#2a2d33;--bdr2:#3a3f48;\n  --txt:#d8dce8;--txt2:#7a8090;--txt3:#4a5060;\n  --grn:#44ff77;--red:#ff4444;--acc:#4d9cff;--hot:#ff4d6d;--warn:#f5a623;\n  --fm:\'JetBrains Mono\',monospace;--fu:\'Rajdhani\',sans-serif;\n  --r:5px;--rs:3px;--rh:28px\n}\nhtml,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--fm);font-size:12px;overflow:hidden}\n::-webkit-scrollbar{width:4px;height:4px}\n::-webkit-scrollbar-track{background:transparent}\n::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:2px}\n\n/* ── Layout ──────────────────────────────────────────────────────── */\n#root{display:flex;flex-direction:column;height:100vh;height:100dvh}\n#hdr{display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;background:var(--bg1);border-bottom:1px solid var(--bdr);flex-shrink:0}\n#hdr-logo{font-family:var(--fu);font-size:17px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}\n#hdr-logo span{color:var(--acc)}\n#hdr-back{font-size:10px;color:var(--txt3);text-decoration:none;font-family:var(--fu);letter-spacing:.06em;text-transform:uppercase;transition:color .15s}\n#hdr-back:hover{color:var(--acc)}\n#hdr-sep{flex:1}\n#hdr-badge{font-family:var(--fu);font-size:11px;font-weight:600;color:var(--txt3);letter-spacing:.06em;text-transform:uppercase;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--rs);padding:1px 7px}\n#hdr-edit{font-size:10px;color:var(--txt3);font-family:var(--fu);letter-spacing:.04em;text-transform:uppercase;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--rs);padding:2px 9px;cursor:pointer;transition:all .15s}\n#hdr-edit:hover{border-color:var(--acc);color:var(--acc)}\n\n/* ── Step bar ────────────────────────────────────────────────────── */\n#stpbar{display:flex;background:var(--bg1);border-bottom:1px solid var(--bdr);flex-shrink:0;overflow-x:auto}\n.stp{padding:7px 13px;font-size:10px;font-family:var(--fu);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--txt3);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:5px}\n.stp .sn{font-size:9px;background:var(--bg3);border:1px solid var(--bdr);border-radius:2px;padding:0 4px;font-family:var(--fm);font-weight:400;min-width:16px;text-align:center}\n.stp.cur{color:var(--acc);border-bottom-color:var(--acc)}\n.stp.cur .sn{background:rgba(77,156,255,.15);border-color:var(--acc);color:var(--acc)}\n.stp.ok{color:var(--grn)}\n.stp.ok .sn{background:rgba(68,255,119,.1);border-color:var(--grn);color:var(--grn)}\n.stp:hover:not(.cur){color:var(--txt2)}\n\n/* ── Body ────────────────────────────────────────────────────────── */\n#body{display:flex;flex:1;overflow:hidden;min-height:0}\n\n/* ── Canvas area ─────────────────────────────────────────────────── */\n#cw{flex:1;position:relative;background:#07080a;overflow:hidden}\n#cv{display:block;cursor:crosshair}\n#chint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(11,12,14,.85);border:1px solid var(--bdr);color:var(--txt3);font-size:9px;font-family:var(--fu);letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:2px;pointer-events:none;white-space:nowrap}\n#czoom{position:absolute;top:8px;right:8px;font-size:9px;color:var(--txt3);background:rgba(11,12,14,.7);border:1px solid var(--bdr);border-radius:var(--rs);padding:2px 7px;font-family:var(--fm);pointer-events:none}\n#cmode{position:absolute;top:8px;left:8px;font-size:9px;color:var(--txt3);background:rgba(11,12,14,.7);border:1px solid var(--bdr);border-radius:var(--rs);padding:2px 7px;font-family:var(--fu);letter-spacing:.06em;text-transform:uppercase;pointer-events:none}\n\n/* ── Sidebar ─────────────────────────────────────────────────────── */\n#sb{width:220px;background:var(--bg2);border-left:1px solid var(--bdr);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}\n.sec{padding:10px;border-bottom:1px solid var(--bdr)}\n.sec-h{font-family:var(--fu);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--txt3);margin-bottom:8px}\n\n/* ── Form ────────────────────────────────────────────────────────── */\n.fld{margin-bottom:7px}\n.fld label{display:block;font-size:9px;font-family:var(--fu);letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:3px}\n.fld input[type=text],.fld input[type=number],.fld select{\n  width:100%;background:var(--bg0);border:1px solid var(--bdr);color:var(--txt);\n  padding:4px 7px;border-radius:var(--rs);font-size:11px;font-family:var(--fm);\n  height:var(--rh);transition:border-color .15s\n}\n.fld input:focus,.fld select:focus{outline:none;border-color:var(--acc)}\n.srow{display:flex;align-items:center;gap:6px}\n.srow input[type=range]{flex:1;accent-color:var(--acc);height:3px}\n.sv{font-size:11px;color:var(--acc);min-width:32px;text-align:right;font-family:var(--fm);font-variant-numeric:tabular-nums}\n\n/* ── Buttons ─────────────────────────────────────────────────────── */\n.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:0 10px;border-radius:var(--rs);font-size:11px;font-family:var(--fu);font-weight:600;letter-spacing:.04em;cursor:pointer;border:none;transition:all .15s;height:var(--rh)}\n.bp{background:var(--acc);color:#fff}.bp:hover{filter:brightness(1.12)}\n.br{background:var(--hot);color:#fff}.br:hover{filter:brightness(1.12)}\n.bg{background:var(--bg3);color:var(--txt2);border:1px solid var(--bdr)}.bg:hover{border-color:var(--acc);color:var(--acc)}\n.bs{background:rgba(68,255,119,.08);color:var(--grn);border:1px solid rgba(68,255,119,.25)}.bs:hover{background:rgba(68,255,119,.15)}\n.btn-full{width:100%;margin-bottom:5px}\n.bgrp{display:flex;gap:4px;flex-wrap:wrap}\n\n/* ── Info / warn boxes ───────────────────────────────────────────── */\n.info{background:rgba(77,156,255,.07);border:1px solid rgba(77,156,255,.18);border-radius:var(--rs);padding:6px 8px;font-size:10px;color:#93c5fd;line-height:1.6;margin-bottom:7px}\n.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:var(--rs);padding:6px 8px;font-size:10px;color:#fcd34d;line-height:1.6;margin-bottom:7px}\n\n/* ── Pass list ───────────────────────────────────────────────────── */\n.pi{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:10px}\n.pdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}\n.px{cursor:pointer;color:var(--txt3);font-size:9px;margin-left:auto}.px:hover{color:var(--hot)}\n#ap-banner{font-size:10px;color:var(--acc);margin-top:6px;display:none}\n\n/* ── Stats rows ──────────────────────────────────────────────────── */\n.stat{display:flex;justify-content:space-between;align-items:center;font-size:10px;margin-bottom:3px}\n.stat span:first-child{color:var(--txt3)}\n.stat span:last-child{color:var(--txt);font-family:var(--fm)}\n\n/* ── Result table ────────────────────────────────────────────────── */\n#r-wrap{max-height:260px;overflow-y:auto;margin-bottom:8px}\n.vtbl{width:100%;border-collapse:collapse;font-size:10px}\n.vtbl th{font-family:var(--fu);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);font-weight:600;padding:2px 4px;text-align:right;border-bottom:1px solid var(--bdr);position:sticky;top:0;background:var(--bg2)}\n.vtbl th:first-child{text-align:left}\n.vtbl td{padding:2px 4px;text-align:right;font-variant-numeric:tabular-nums;border-bottom:1px solid rgba(42,45,51,.5)}\n.vtbl td:first-child{text-align:left;color:var(--txt3)}\n.vtbl tbody tr:hover td{background:rgba(77,156,255,.04)}\n\n/* ── Measure timer ───────────────────────────────────────────────── */\n#mbox{background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:8px;text-align:center;margin-bottom:7px}\n#m-time{font-size:22px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums;letter-spacing:.04em;display:block;width:100%;text-align:center;background:transparent;border:none;border-bottom:1px solid var(--bdr2);border-radius:0;font-family:var(--fm);padding:4px 0;margin-bottom:2px;outline:none;-moz-appearance:textfield}\n#m-time::-webkit-outer-spin-button,#m-time::-webkit-inner-spin-button{-webkit-appearance:none}\n#m-rpm{font-size:10px;color:var(--txt3);display:block;margin-bottom:6px}\n\n/* ── Drop zone ───────────────────────────────────────────────────── */\n#dz{border:2px dashed var(--bdr);border-radius:var(--r);padding:14px;text-align:center;cursor:pointer;transition:border-color .15s;margin-bottom:6px}\n#dz:hover,#dz.drag{border-color:var(--acc)}\n#dz .di{font-size:18px;margin-bottom:3px}\n#dz p{font-size:9px;color:var(--txt3);font-family:var(--fu);letter-spacing:.05em;text-transform:uppercase}\n\n/* ── Footer ──────────────────────────────────────────────────────── */\n#ftr{background:var(--bg1);border-top:1px solid var(--bdr);padding:7px 12px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}\n#ftr-lbl{font-size:10px;color:var(--txt3);font-family:var(--fu);letter-spacing:.05em;text-transform:uppercase}\n\n/* ── Hidden ──────────────────────────────────────────────────────── */\n.hidden{display:none!important}\n</style>\n</head>\n<body>\n<div id="root">\n\n  <!-- Header -->\n  <div id="hdr">\n    <a id="hdr-back" href="/">← Cearum</a>\n    <span style="color:var(--bdr)">|</span>\n    <div id="hdr-logo">C<span>earum</span></div>\n    <span id="hdr-sep"></span>\n    <span id="hdr-badge">Recoil Workshop</span>\n    <button id="hdr-edit" onclick="openEdit()">Edit Existing Script</button>\n  </div>\n\n  <!-- Step bar -->\n  <div id="stpbar">\n    <button class="stp cur" id="s1" onclick="goStep(1)"><span class="sn">1</span>Setup</button>\n    <button class="stp"     id="s2" onclick="goStep(2)"><span class="sn">2</span>Pattern Spread</button>\n    <button class="stp"     id="s3" onclick="goStep(3)"><span class="sn">3</span>Modeling</button>\n    <button class="stp"     id="s4" onclick="goStep(4)"><span class="sn">4</span>Optimization</button>\n    <button class="stp"     id="s5" onclick="goStep(5)"><span class="sn">5</span>Result</button>\n  </div>\n\n  <!-- Body -->\n  <div id="body">\n\n    <!-- Canvas -->\n    <div id="cw">\n      <canvas id="cv"></canvas>\n      <div id="czoom">1.0×</div>\n      <div id="cmode">Modeling</div>\n      <div id="chint">Upload a screenshot to begin tracing</div>\n    </div>\n\n    <!-- Sidebar -->\n    <div id="sb">\n\n      <!-- ══ STEP 1: SETUP ══ -->\n      <div id="p1">\n        <div class="sec">\n          <div class="sec-h">Weapon Identity</div>\n          <div class="fld"><label>Game</label><input type="text" id="s-game" placeholder="e.g. ABI" oninput="W.game=this.value"></div>\n          <div class="fld"><label>Weapon</label><input type="text" id="s-wpn" placeholder="e.g. AK-74M" oninput="W.weapon=this.value||\'weapon\'"></div>\n          <div class="fld"><label>Magazine Size (rounds)</label><input type="number" id="s-shots" value="30" min="2" max="200" oninput="W.magSize=+this.value||30;updRPM()"></div>\n        </div>\n        <div class="sec">\n          <div class="sec-h">Fire Rate — Manual</div>\n          <div class="fld"><label>RPM</label>\n            <input type="number" id="s-rpm" min="60" max="1500" value="600" oninput="W.rpm=+this.value||600;updRPM()">\n          </div>\n          <div style="background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:7px 9px;margin-bottom:7px">\n            <div class="stat"><span>Per shot</span><span id="rpm-ms" style="color:var(--acc)">100 ms</span></div>\n            <div class="stat"><span>Full mag dump</span><span id="rpm-dump" style="color:var(--acc)">2.90 s</span></div>\n            <div style="font-size:9px;color:var(--txt3);margin-top:4px;line-height:1.6">Time a full mag in-game and compare to <em>Full mag dump</em> to validate your RPM.</div>\n          </div>\n        </div>\n        <div class="sec">\n          <div class="sec-h">Fire Rate — Measure</div>\n          <div class="info">MAKCU connected + page not focused → hold LMB in-game to auto-start/stop. Or use the buttons below manually.</div>\n          <!-- Stopwatch — display only, does NOT write to RPM directly -->\n          <div id="mbox">\n            <span id="m-time" style="display:block;font-size:26px;font-weight:700;color:var(--acc);\n              font-family:var(--fm);text-align:center;letter-spacing:.04em;padding:4px 0;\n              border-bottom:1px solid var(--bdr2);margin-bottom:4px;font-variant-numeric:tabular-nums">0.000 s</span>\n            <div style="font-size:9px;color:var(--txt3);text-align:center;margin-bottom:8px">stopwatch — press start, fire, press stop</div>\n            <div class="bgrp" style="justify-content:center;margin-bottom:6px">\n              <button class="btn bp" id="m-btn" onclick="toggleMeasure()" style="flex:1">&#9658; Start</button>\n              <button class="btn bg" onclick="resetMeasure()">Reset</button>\n            </div>\n            <button class="btn bg btn-full" id="m-use-btn" onclick="useTimerValue()" style="font-size:10px;display:none">\n              ↓ Use this time\n            </button>\n          </div>\n          <!-- Locked mag dump time — the master value that drives everything -->\n          <div style="margin-top:10px">\n            <div class="fld">\n              <label>Mag Dump Time (seconds) <span id="m-locked-lbl" style="color:var(--txt3);font-weight:400">— not set</span></label>\n              <input type="number" id="m-locked" step="0.01" min="0.1" placeholder="e.g. 3.20"\n                style="width:100%" oninput="onLockedTimeEdit(this.value)">\n              <div style="font-size:9px;color:var(--txt3);margin-top:3px">Type from a video, or press <em>↓ Use this time</em> above after stopping the stopwatch</div>\n            </div>\n            <div id="m-rpm" style="font-size:10px;color:var(--acc);text-align:center;margin-top:2px">— RPM</div>\n          </div>\n          <!-- Keyboard shortcut -->\n          <div style="margin-top:8px">\n            <div class="fld">\n              <label>Keyboard Shortcut (stopwatch only)</label>\n              <div style="display:flex;gap:4px">\n                <div id="hk-el" onclick="captureHK()" style="flex:1;display:flex;align-items:center;\n                  justify-content:center;height:var(--rh);background:var(--bg0);border:1px solid var(--bdr);\n                  border-radius:var(--rs);font-size:11px;color:var(--acc);cursor:pointer">—</div>\n                <button class="btn bg" onclick="clearHK()" style="flex-shrink:0;font-size:10px">Clear</button>\n              </div>\n              <div style="font-size:9px;color:var(--txt3);margin-top:3px">Controls stopwatch only — press ↓ Use this time to lock the value</div>\n            </div>\n          </div>\n          <div style="margin-top:4px">\n            <div class="sec-h" style="margin-bottom:5px">Stream Deck</div>\n            <div style="background:var(--bg0);border-radius:var(--rs);border:1px solid var(--bdr);padding:6px 8px;font-size:10px;color:var(--acc);line-height:2.1;font-family:var(--fm)">POST /api/workshop/measure/toggle</div>\n            <div style="font-size:9px;color:var(--txt3);margin-top:4px;line-height:1.6">Controls the stopwatch. Press ↓ Use this time in browser to lock the value.</div>\n          </div>\n        </div>\n      </div>\n\n      <!-- ══ STEP 2: SPREAD ══ -->\n      <div id="p2" class="hidden">\n        <div class="sec">\n          <div class="sec-h">Pattern Spread</div>\n          <div class="info">Set how far apart to push bullets on the wall. The workshop generates a spread script, loads it into Cearum-Web automatically, then subtracts the exact same movement when computing your recoil vectors.</div>\n          <div class="fld">\n            <label>Spread Y — vertical units per shot</label>\n            <div class="srow">\n              <input type="range" id="sp-y-sl" min="-20" max="20" step="1" value="0" oninput="syncSpread(\'y\',this.value)">\n              <input type="number" id="sp-y-sv" value="0" min="-20" max="20" step="1"\n                style="width:52px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);\n                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);\n                padding:2px 4px;height:var(--rh)"\n                oninput="syncSpread(\'y\',this.value)">\n            </div>\n          </div>\n          <div class="fld">\n            <label>Spread X — horizontal units per shot</label>\n            <div class="srow">\n              <input type="range" id="sp-x-sl" min="-20" max="20" step="1" value="0" oninput="syncSpread(\'x\',this.value)">\n              <input type="number" id="sp-x-sv" value="0" min="-20" max="20" step="1"\n                style="width:52px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);\n                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);\n                padding:2px 4px;height:var(--rh)"\n                oninput="syncSpread(\'x\',this.value)">\n            </div>\n          </div>\n          <div style="font-size:10px;color:var(--txt3);margin-bottom:8px">\n            Delay: <span id="sp-ms-lbl" style="color:var(--acc)">80 ms</span>\n            <span style="color:var(--txt3)"> (from per-shot ms in Step 1)</span>\n          </div>\n          <input type="hidden" id="sp-ms" value="80">\n        </div>\n        <div class="sec">\n          <div class="sec-h">Generated Script <span id="sp-status" style="color:var(--txt3);font-weight:400;font-size:9px">— not loaded</span></div>\n          <div id="sp-preview" style="background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:6px 8px;font-size:10px;color:var(--acc);font-family:var(--fm);max-height:100px;overflow-y:auto;line-height:1.8;margin-bottom:7px;white-space:pre;user-select:none;pointer-events:none">—</div>\n          <button class="btn bs btn-full" id="sp-load-btn" onclick="loadSpreadScript()">⬆ Load into Cearum-Web</button>\n          <button class="btn br btn-full" id="sp-clear-btn" onclick="clearSpreadScript()" style="display:none">✕ Unload Spread Script</button>\n          <div id="sp-loaded-warn" class="warn hidden" style="margin-top:6px">● Spread script active in Cearum-Web. Fire a full mag at a wall, take a screenshot, then press Next.</div>\n        </div>\n        <div class="sec">\n          <div class="sec-h">Workflow</div>\n          <div style="font-size:10px;color:var(--txt3);line-height:2.1">\n            <span style="color:var(--acc)">1.</span> Set Spread Y — 5 to 10 units is a good start<br>\n            <span style="color:var(--acc)">2.</span> Set Spread X — only if you also want horizontal separation<br>\n            <span style="color:var(--acc)">3.</span> Press <em style="color:var(--txt2)">Load into Cearum-Web</em> — this saves and activates the spread script<br>\n            <span style="color:var(--acc)">4.</span> Workshop enables recoil + loop automatically<br>\n            <span style="color:var(--acc)">5.</span> Fire a full magazine at a flat wall<br>\n            <span style="color:var(--acc)">6.</span> Take a screenshot of the bullet holes<br>\n            <span style="color:var(--acc)">7.</span> Press <em style="color:var(--txt2)">Next</em> to go to Step 3 and upload the screenshot\n          </div>\n        </div>\n      </div>\n\n      <!-- ══ STEP 3: MODELING ══ -->\n      <div id="p3" class="hidden">\n        <div class="sec">\n          <div class="sec-h">Screenshot</div>\n          <div id="dz" onclick="document.getElementById(\'ss-inp\').click()"\n               ondragover="event.preventDefault();this.classList.add(\'drag\')"\n               ondragleave="this.classList.remove(\'drag\')"\n               ondrop="onDrop(event)">\n            <div class="di">📷</div>\n            <p id="dz-p">Drop or click to upload</p>\n          </div>\n          <input type="file" id="ss-inp" accept="image/*" class="hidden" onchange="loadSS(this)">\n          <button class="btn bg btn-full" onclick="clearSS()" style="font-size:10px">Clear Screenshot</button>\n        </div>\n        <div class="sec">\n          <div class="sec-h">Passes <span id="pass-ct" style="color:var(--acc)">0</span></div>\n          <div class="info">Click each bullet hole in order. One magazine = one pass. Multiple passes average out weapon spread variance.</div>\n          <div id="pass-list" style="margin-bottom:7px"></div>\n          <div class="bgrp" style="margin-bottom:6px">\n            <button class="btn bp" style="flex:1" onclick="startPass()">+ New Pass</button>\n            <button class="btn br" onclick="undoClick()">Undo</button>\n          </div>\n          <button class="btn bg btn-full" onclick="clearPasses()">Clear All Passes</button>\n          <div id="ap-banner">● Recording — <span id="ap-ct">0</span> holes placed</div>\n        </div>\n        <div class="sec">\n          <div class="sec-h">Canvas Controls</div>\n          <div style="font-size:10px;color:var(--txt3);line-height:1.9">\n            Left-click — place bullet hole marker<br>\n            Right-click — undo last marker<br>\n            Scroll — zoom in / out<br>\n            Middle / right drag — pan\n          </div>\n        </div>\n      </div>\n\n      <!-- ══ STEP 4: SCALE ══ -->\n      <div id="p4" class="hidden">\n        <div class="sec">\n          <div class="sec-h">Scale</div>\n          <div class="info">Converts screenshot pixels into MAKCU units. The suggestion below is calculated from your spread — it auto-applies when you arrive here. Test in-game and tune up or down from there.</div>\n        </div>\n        <div class="sec">\n          <div class="sec-h">Auto-suggestion</div>\n          <div class="stat"><span>Spread Y</span><span id="sc-spy" style="color:var(--acc)">—</span></div>\n          <div class="stat"><span>Avg px between holes</span><span id="sc-apy" style="color:var(--txt2)">—</span></div>\n          <div class="stat"><span>Suggested scale</span><span id="sc-sy" style="color:var(--grn);font-weight:600">—</span></div>\n          <button class="btn bg btn-full" style="margin-top:6px;font-size:10px" onclick="applyAutoScale()">↺ Re-apply suggestion</button>\n        </div>\n        <div class="sec">\n          <div class="sec-h">Scale Y <span style="color:var(--txt3);font-weight:400;font-size:9px">vertical compensation</span></div>\n          <div class="fld">\n            <div class="srow">\n              <input type="range" id="sy-sl" min="0.001" max="5" step="0.001" value="0.1"\n                oninput="onSY(this.value)">\n              <input type="number" id="sy-sv" value="0.100" step="0.001" min="0.001" max="5"\n                style="width:64px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);\n                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);\n                border-radius:var(--rs);padding:2px 4px;height:var(--rh)"\n                oninput="onSY(this.value)">\n            </div>\n          </div>\n          <div class="sec-h" style="margin-top:6px">Scale X <span style="color:var(--txt3);font-weight:400;font-size:9px">horizontal — usually same as Y</span></div>\n          <div class="fld">\n            <div class="srow">\n              <input type="range" id="sx-sl" min="0.001" max="5" step="0.001" value="0.1"\n                oninput="onSX(this.value)">\n              <input type="number" id="sx-sv" value="0.100" step="0.001" min="0.001" max="5"\n                style="width:64px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);\n                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);\n                border-radius:var(--rs);padding:2px 4px;height:var(--rh)"\n                oninput="onSX(this.value)">\n            </div>\n          </div>\n          <div class="warn" style="margin-top:8px;font-size:9px">\n            Y vectors should be small positive numbers (e.g. 0–20).<br>\n            If Y is large negative → scale is too small, increase it.<br>\n            If Y is too large positive → scale is too big, reduce it.<br>\n            Reticle drifts sideways → adjust X independently.\n          </div>\n        </div>\n      </div>\n\n      <!-- ══ STEP 5: OPTIMIZATION ══ -->\n      <div id="p5" class="hidden">\n        <div class="sec">\n          <div class="sec-h">Optimization Level</div>\n          <div class="info">Merges adjacent vectors that are similar enough to combine. Reduces script size and can improve smoothness. Higher level = more aggressive merging.</div>\n          <div class="fld" style="margin-top:4px">\n            <label>Level — <span id="op-lbl">0 — off</span></label>\n            <input type="range" id="op-sl" min="0" max="5" step="1" value="0" style="width:100%;accent-color:var(--acc)" oninput="onOpt(this.value)">\n          </div>\n          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px">\n            <span style="color:var(--txt3)">Vectors: <span id="opt-raw">—</span> → <span id="opt-fin" style="color:var(--grn)">—</span></span>\n            <span style="color:var(--acc)" id="opt-pct">—</span>\n          </div>\n        </div>\n        <div class="sec" style="flex:1">\n          <div class="sec-h">Vectors — <span id="opt-vct-lbl" style="color:var(--acc);font-weight:400">0 shots</span></div>\n          <div id="opt-tbl-wrap" style="overflow-y:auto;max-height:340px">\n            <table class="vtbl" style="width:100%">\n              <thead><tr><th style="text-align:left">#</th><th>x</th><th>y</th><th>ms</th></tr></thead>\n              <tbody id="opt-tbl-body"></tbody>\n            </table>\n          </div>\n        </div>\n      </div>\n\n      <!-- ══ STEP 6: RESULT ══ -->\n      <div id="p6" class="hidden">\n        <div class="sec">\n          <div class="sec-h">Script Summary</div>\n          <div class="stat"><span>Game</span><span id="r-game">—</span></div>\n          <div class="stat"><span>Weapon</span><span id="r-wpn">—</span></div>\n          <div class="stat"><span>Vectors</span><span id="r-vct" style="color:var(--acc)">—</span></div>\n          <div class="stat"><span>Fire rate</span><span id="r-rpm">—</span></div>\n        </div>\n        <div class="sec">\n          <div class="sec-h">Vectors</div>\n          <div id="r-wrap"><div style="font-size:10px;color:var(--txt3)">No vectors yet</div></div>\n        </div>\n        <div class="sec">\n          <div class="sec-h">Save</div>\n          <button class="btn bs btn-full" onclick="saveServer()">💾  Save to Cearum-Web</button>\n          <button class="btn bg btn-full" onclick="dlTxt()">⬇  Download .txt</button>\n          <button class="btn bg btn-full" onclick="copyClip()">📋  Copy to Clipboard</button>\n        </div>\n        <div class="sec">\n          <div class="sec-h">What next?</div>\n          <a href="/" class="btn bp btn-full" style="text-decoration:none;margin-bottom:5px">← Return to Cearum-Web</a>\n          <button class="btn bg btn-full" onclick="goStep(1)">＋ New Weapon</button>\n        </div>\n      </div>\n\n    </div><!-- /sb -->\n  </div><!-- /body -->\n\n  <!-- Footer -->\n  <div id="ftr">\n    <button class="btn bg" id="btn-back" onclick="prevStep()" style="visibility:hidden">← Back</button>\n    <span id="ftr-lbl">Step 1 of 6</span>\n    <button class="btn bp" id="btn-next" onclick="nextStep()">Next →</button>\n  </div>\n\n</div><!-- /root -->\n\n<!-- Hidden inputs -->\n<input type="file" id="edit-inp" accept=".txt" class="hidden" onchange="loadEditFile(this)">\n\n<script>\n// ═══════════════════════════════════════════════════════════════════\n//  STATE\n// ═══════════════════════════════════════════════════════════════════\nconst W = {\n  step:       1,\n  game:       \'\',\n  weapon:     \'weapon\',\n  rpm:        600,\n  magSize:    30,\n  measuredDumpSecs: 0,\n  measuredDumpSecs: 0,   // actual measured mag dump time — used for delay calculation\n  spreadX:    0,      // MAKCU units per shot pushed horizontally\n  spreadY:    0,      // MAKCU units per shot pushed vertically\n  spreadMs:   80,     // delay used in spread script (ms)\n  spreadActive: false,  // true while spread script is loaded on server\n  preSpreadScript: null, // script that was loaded before spread, restored on clear\n  passes:     [],        // [{pts:[{x,y}], color}]\n  activePass: null,\n  scaleX:     0.10,\n  scaleY:     0.10,\n  optLevel:   0,\n  screenshot: null,      // HTMLImageElement\n  zoom:       1,\n  panX:       0,\n  panY:       0,\n  editMode:   false,\n  editBase:   [],        // original vectors in edit mode\n  rawVectors: [],\n  finalVectors: [],\n};\n\nconst PASS_COLORS = [\'#4d9cff\',\'#a78bfa\',\'#34d399\',\'#fb923c\',\'#f472b6\',\'#facc15\'];\nconst OPT_LABELS  = [\'off\',\'light\',\'moderate\',\'medium\',\'aggressive\',\'maximum\'];\n\n// ═══════════════════════════════════════════════════════════════════\n//  CANVAS\n// ═══════════════════════════════════════════════════════════════════\nconst cv  = document.getElementById(\'cv\');\nconst ctx = cv.getContext(\'2d\');\nconst cw  = document.getElementById(\'cw\');\n\nlet isPan = false, panBtnRight = false;\nlet panSX = 0, panSY = 0, panOX = 0, panOY = 0;\nlet rdStartX = 0, rdStartY = 0; // right-drag start for undo detection\n\nfunction resize() {\n  cv.width  = cw.clientWidth;\n  cv.height = cw.clientHeight;\n  if (W.panX === 0 && W.panY === 0) {\n    W.panX = cv.width  * 0.5;\n    W.panY = cv.height * 0.15;\n  }\n  redraw();\n}\nnew ResizeObserver(resize).observe(cw);\n\ncv.addEventListener(\'wheel\', e => {\n  e.preventDefault();\n  const r  = cv.getBoundingClientRect();\n  const mx = e.clientX - r.left, my = e.clientY - r.top;\n  const f  = e.deltaY < 0 ? 1.12 : 0.89;\n  const oz = W.zoom;\n  W.zoom   = Math.max(0.05, Math.min(30, W.zoom * f));\n  const rt = W.zoom / oz;\n  W.panX   = mx + (W.panX - mx) * rt;\n  W.panY   = my + (W.panY - my) * rt;\n  document.getElementById(\'czoom\').textContent = W.zoom.toFixed(2) + \'×\';\n  redraw();\n}, { passive: false });\n\ncv.addEventListener(\'mousedown\', e => {\n  const r  = cv.getBoundingClientRect();\n  const cx = e.clientX - r.left, cy = e.clientY - r.top;\n\n  if (e.button === 1 || e.button === 2) {\n    isPan = true; panBtnRight = e.button === 2;\n    panSX = cx; panSY = cy;\n    panOX = W.panX; panOY = W.panY;\n    rdStartX = cx; rdStartY = cy;\n    e.preventDefault(); return;\n  }\n\n  // Left-click: place marker in step 3 when pass active\n  if (e.button === 0 && W.step === 3 && W.activePass) {\n    const wx = (cx - W.panX) / W.zoom;\n    const wy = (cy - W.panY) / W.zoom;\n    W.activePass.pts.push({ x: wx, y: wy });\n    document.getElementById(\'ap-ct\').textContent = W.activePass.pts.length;\n    redraw();\n  }\n});\n\ncv.addEventListener(\'mousemove\', e => {\n  if (!isPan) return;\n  const r  = cv.getBoundingClientRect();\n  const cx = e.clientX - r.left, cy = e.clientY - r.top;\n  W.panX = panOX + (cx - panSX);\n  W.panY = panOY + (cy - panSY);\n  redraw();\n});\n\ncv.addEventListener(\'mouseup\', e => {\n  if (e.button === 2 && panBtnRight) {\n    const r   = cv.getBoundingClientRect();\n    const dx  = Math.abs(e.clientX - r.left - rdStartX);\n    const dy  = Math.abs(e.clientY - r.top  - rdStartY);\n    // Short right-click = undo last point\n    if (dx < 5 && dy < 5 && W.step === 3 && W.activePass && W.activePass.pts.length > 0) {\n      W.activePass.pts.pop();\n      document.getElementById(\'ap-ct\').textContent = W.activePass.pts.length;\n      redraw();\n    }\n  }\n  if (e.button === 0 || e.button === 2) { isPan = false; panBtnRight = false; }\n  if (e.button === 1) isPan = false;\n});\n\ncv.addEventListener(\'contextmenu\', e => e.preventDefault());\n\n// ═══════════════════════════════════════════════════════════════════\n//  DRAWING\n// ═══════════════════════════════════════════════════════════════════\nfunction redraw() {\n  const W2 = cv.width, H = cv.height;\n  ctx.clearRect(0, 0, W2, H);\n  ctx.fillStyle = \'#07080a\';\n  ctx.fillRect(0, 0, W2, H);\n  drawGrid(W2, H);\n  if (W.step === 3) drawModeling(W2, H);\n  else              drawVectorPath(W2, H);\n}\n\nfunction drawGrid(W2, H) {\n  const sp  = Math.max(20, 50 * W.zoom);\n  const ox  = ((W.panX % sp) + sp) % sp;\n  const oy  = ((W.panY % sp) + sp) % sp;\n  ctx.strokeStyle = \'rgba(42,45,51,0.55)\';\n  ctx.lineWidth   = 0.5;\n  for (let x = ox; x < W2; x += sp) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }\n  for (let y = oy; y < H;  y += sp) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W2,y); ctx.stroke(); }\n  // Origin cross\n  ctx.strokeStyle = \'rgba(77,156,255,0.25)\';\n  ctx.lineWidth = 1;\n  ctx.beginPath(); ctx.moveTo(W.panX,0);  ctx.lineTo(W.panX,H);  ctx.stroke();\n  ctx.beginPath(); ctx.moveTo(0,W.panY);  ctx.lineTo(W2,W.panY); ctx.stroke();\n}\n\nfunction drawModeling(W2, H) {\n  // Screenshot\n  if (W.screenshot) {\n    const img = W.screenshot;\n    ctx.save();\n    ctx.translate(W.panX, W.panY);\n    ctx.scale(W.zoom, W.zoom);\n    ctx.globalAlpha = 0.65;\n    ctx.drawImage(img, -img.width / 2, -img.height / 2);\n    ctx.globalAlpha = 1;\n    ctx.restore();\n  }\n  // Completed passes\n  for (const p of W.passes) drawPass(p.pts, p.color, 0.45, false);\n  // Active pass\n  if (W.activePass && W.activePass.pts.length > 0)\n    drawPass(W.activePass.pts, W.activePass.color, 1.0, true);\n}\n\nfunction drawPass(pts, color, alpha, labels) {\n  if (!pts.length) return;\n  const cp = pts.map(p => ({\n    x: p.x * W.zoom + W.panX,\n    y: p.y * W.zoom + W.panY,\n  }));\n  ctx.globalAlpha = alpha;\n  if (cp.length > 1) {\n    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);\n    ctx.beginPath(); ctx.moveTo(cp[0].x, cp[0].y);\n    for (let i = 1; i < cp.length; i++) ctx.lineTo(cp[i].x, cp[i].y);\n    ctx.stroke(); ctx.setLineDash([]);\n  }\n  for (let i = 0; i < cp.length; i++) {\n    const { x, y } = cp[i];\n    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);\n    ctx.fillStyle = color; ctx.fill();\n    ctx.strokeStyle = \'#07080a\'; ctx.lineWidth = 1.5; ctx.stroke();\n    if (labels) {\n      ctx.fillStyle = \'#fff\'; ctx.font = \'bold 8px JetBrains Mono,monospace\';\n      ctx.textAlign = \'center\'; ctx.textBaseline = \'middle\';\n      ctx.fillText(i + 1, x, y);\n    }\n  }\n  ctx.globalAlpha = 1;\n}\n\nfunction drawVectorPath(W2, H) {\n  const vecs = W.step >= 5 ? W.finalVectors : W.rawVectors;\n  if (!vecs || !vecs.length) {\n    ctx.fillStyle = \'rgba(74,80,96,0.6)\';\n    ctx.font = \'11px Rajdhani,sans-serif\';\n    ctx.textAlign = \'center\'; ctx.textBaseline = \'middle\';\n    ctx.fillText(\'Complete Pattern Modeling first\', W2 / 2, H / 2);\n    return;\n  }\n\n  const viz   = 18 * W.zoom; // visual scale: MAKCU units → canvas px\n  const pts   = [{ x: W.panX, y: W.panY }];\n  let cx = W.panX, cy = W.panY;\n  for (const v of vecs) {\n    cx += v.x * viz; cy += v.y * viz;\n    pts.push({ x: cx, y: cy });\n  }\n\n  // Path line\n  const grad = ctx.createLinearGradient(pts[0].x, pts[0].y, cx, cy);\n  grad.addColorStop(0, \'#4d9cff\');\n  grad.addColorStop(1, \'#ff4d6d\');\n  ctx.strokeStyle = grad; ctx.lineWidth = 1.5;\n  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);\n  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);\n  ctx.stroke();\n\n  // Dots\n  for (let i = 0; i < pts.length; i++) {\n    const { x, y } = pts[i];\n    ctx.beginPath(); ctx.arc(x, y, i === 0 ? 5 : 3.5, 0, Math.PI * 2);\n    ctx.fillStyle = i === 0 ? \'#4d9cff\' : \'#ff4d6d\'; ctx.fill();\n    ctx.strokeStyle = \'#07080a\'; ctx.lineWidth = 1.2; ctx.stroke();\n  }\n  // Origin label\n  ctx.fillStyle = \'#4d9cff\'; ctx.font = \'9px Rajdhani,sans-serif\';\n  ctx.textAlign = \'left\'; ctx.textBaseline = \'middle\';\n  ctx.fillText(\'origin\', pts[0].x + 8, pts[0].y);\n}\n\n// ═══════════════════════════════════════════════════════════════════\n//  FIRE RATE / MEASURE\n// ═══════════════════════════════════════════════════════════════════\nlet measuring = false, measureT0 = 0, measureIv = null;\nlet hkCapturing = false, hkBound = \'\';\n\n// ── RPM validation display ────────────────────────────────────────\nfunction updRPM() {\n  const rpm    = W.rpm || 600;\n  const mag    = W.magSize || +document.getElementById(\'s-shots\').value || 30;\n  const msShot = rpm > 0 ? Math.round(60000 / rpm) : 0;\n  const dumpS  = rpm > 0 ? ((mag - 1) * (60000 / rpm) / 1000).toFixed(2) : \'—\';\n  document.getElementById(\'rpm-ms\').textContent   = msShot + \' ms\';\n  document.getElementById(\'rpm-dump\').textContent = dumpS + \' s\';\n\n}\n\n// ── Stopwatch — display only, never writes to RPM directly ────────\nlet _stopwatchSecs = 0;\n\nfunction toggleMeasure() {\n  if (!measuring) {\n    measuring  = true;\n    measureT0  = performance.now();\n    document.getElementById(\'m-btn\').textContent = \'■ Stop\';\n    document.getElementById(\'m-btn\').className   = \'btn br\';\n    document.getElementById(\'m-use-btn\').style.display = \'none\';\n    measureIv = setInterval(() => {\n      const el = (performance.now() - measureT0) / 1000;\n      document.getElementById(\'m-time\').textContent = el.toFixed(3) + \' s\';\n    }, 50);\n  } else {\n    clearInterval(measureIv);\n    measuring = false;\n    _stopwatchSecs = (performance.now() - measureT0) / 1000;\n    document.getElementById(\'m-time\').textContent = _stopwatchSecs.toFixed(3) + \' s\';\n    document.getElementById(\'m-btn\').textContent  = \'▶ Start\';\n    document.getElementById(\'m-btn\').className    = \'btn bp\';\n    document.getElementById(\'m-use-btn\').style.display = \'\';\n  }\n}\n\nfunction resetMeasure() {\n  clearInterval(measureIv);\n  measuring = false;\n  _stopwatchSecs = 0;\n  document.getElementById(\'m-time\').textContent    = \'0.000 s\';\n  document.getElementById(\'m-btn\').textContent     = \'▶ Start\';\n  document.getElementById(\'m-btn\').className       = \'btn bp\';\n  document.getElementById(\'m-use-btn\').style.display = \'none\';\n}\n\n// ── Copy stopwatch into locked field ─────────────────────────────\nfunction useTimerValue() {\n  if (_stopwatchSecs <= 0) return;\n  document.getElementById(\'m-locked\').value = _stopwatchSecs.toFixed(3);\n  onLockedTimeEdit(_stopwatchSecs.toFixed(3));\n  document.getElementById(\'m-use-btn\').style.display = \'none\';\n}\n\n// ── Locked time — the master value that drives delay and RPM ──────\nfunction onLockedTimeEdit(v) {\n  const secs  = parseFloat(v);\n  const shots = W.magSize || +document.getElementById(\'s-shots\').value || 30;\n  if (!secs || secs <= 0 || isNaN(secs)) {\n    document.getElementById(\'m-rpm\').textContent         = \'— RPM\';\n    document.getElementById(\'m-locked-lbl\').textContent  = \'— not set\';\n    document.getElementById(\'m-locked-lbl\').style.color  = \'var(--txt3)\';\n    W.measuredDumpSecs = 0;\n    return;\n  }\n  const rpm = Math.round((shots - 1) / secs * 60);\n  W.rpm              = rpm;\n  W.measuredDumpSecs = secs;\n  document.getElementById(\'s-rpm\').value               = rpm;\n  document.getElementById(\'m-rpm\').textContent         = rpm + \' RPM\';\n  document.getElementById(\'m-locked-lbl\').textContent  = \'✓ locked — \' + secs + \'s\';\n  document.getElementById(\'m-locked-lbl\').style.color  = \'var(--grn)\';\n  updRPM();\n}\n\n// Alt-tab auto-measure removed — LMB detection via MAKCU WebSocket below\n\n// ── Keyboard shortcut ─────────────────────────────────────────────\nfunction captureHK() {\n  hkCapturing = true;\n  const el = document.getElementById(\'hk-el\');\n  el.textContent    = \'press key…\';\n  el.style.borderColor = \'var(--acc)\';\n}\nfunction clearHK() {\n  hkBound = \'\';\n  const el = document.getElementById(\'hk-el\');\n  el.textContent    = \'—\';\n  el.style.borderColor = \'\';\n}\ndocument.addEventListener(\'keydown\', e => {\n  if (hkCapturing) {\n    if (e.key === \'Escape\') { hkCapturing = false; clearHK(); return; }\n    hkBound = e.key;\n    hkCapturing = false;\n    const el = document.getElementById(\'hk-el\');\n    el.textContent    = e.key;\n    el.style.borderColor = \'\';\n    e.preventDefault();\n    return;\n  }\n  // Fire shortcut if bound and not typing in an input\n  const tag = document.activeElement.tagName;\n  if (hkBound && e.key === hkBound && tag !== \'INPUT\' && tag !== \'TEXTAREA\') {\n    toggleMeasure();\n    e.preventDefault();\n  }\n});\n\n// ── WebSocket — receive Stream Deck toggle from server ─────────────\nlet _lmbWasPressed = false;\n(function initWS() {\n  const proto = location.protocol === \'https:\' ? \'wss\' : \'ws\';\n  const ws    = new WebSocket(`${proto}://${location.host}/ws`);\n  ws.addEventListener(\'message\', e => {\n    try {\n      const d = JSON.parse(e.data);\n\n      // Stream Deck stopwatch toggle\n      if (d.workshop_measure === \'toggle\') toggleMeasure();\n\n      // LMB auto-stopwatch via MAKCU:\n      // Only when on Step 1, MAKCU connected, and browser is NOT focused (user is in-game)\n      if (d.makcu_connected && W.step === 1 &&\n          typeof d.lmb_pressed !== \'undefined\' &&\n          !document.hasFocus()) {\n        const lmb = d.lmb_pressed;\n        if (lmb && !_lmbWasPressed && !measuring) toggleMeasure();\n        if (!lmb && _lmbWasPressed && measuring)  toggleMeasure();\n        _lmbWasPressed = lmb;\n      }\n    } catch {}\n  });\n  ws.addEventListener(\'close\', () => {\n    _lmbWasPressed = false;\n    setTimeout(initWS, 3000);\n  });\n})();\n\n// ═══════════════════════════════════════════════════════════════════\n//  SPREAD\n// ═══════════════════════════════════════════════════════════════════\nfunction syncSpread(axis, v) {\n  const val = Math.max(-20, Math.min(20, parseInt(v) || 0));\n  if (axis === \'y\') {\n    W.spreadY = val;\n    document.getElementById(\'sp-y-sl\').value = val;\n    document.getElementById(\'sp-y-sv\').value = val;\n  } else {\n    W.spreadX = val;\n    document.getElementById(\'sp-x-sl\').value = val;\n    document.getElementById(\'sp-x-sv\').value = val;\n  }\n  updSpreadPreview();\n}\n\nfunction updSpreadPreview() {\n  const ms  = W.spreadMs || 80;\n  const x   = W.spreadX || 0;\n  const y   = W.spreadY || 0;\n  if (x === 0 && y === 0) {\n    document.getElementById(\'sp-preview\').textContent = \'— no spread set\';\n    return;\n  }\n  // Single line + loop recoil = cleaner than repeating mag-size lines\n  document.getElementById(\'sp-preview\').textContent = `${x},${y},${ms}`;\n  const lbl = document.getElementById(\'sp-ms-lbl\');\n  if (lbl) lbl.textContent = ms + \' ms\';\n}\n\nasync function loadSpreadScript() {\n  const x   = W.spreadX || 0;\n  const y   = W.spreadY || 0;\n  const ms  = W.spreadMs || 80;\n  const mag = W.magSize || 30;\n\n  if (x === 0 && y === 0) {\n    alert(\'Set a spread value first — Y of 5 or more is recommended.\');\n    return;\n  }\n\n  // Remember whatever script was active before so we can restore it\n  try {\n    const sr = await fetch(\'/api/scripts\');\n    const sd = await sr.json();\n    W.preSpreadScript = sd.loaded || null;\n  } catch (_) { W.preSpreadScript = null; }\n\n  // Single vector line — loop recoil will be enabled so it repeats automatically\n  const content = `# x_offset, y_offset, delay_ms\\n# Workshop spread script — auto-generated\\n${x},${y},${ms}`;\n\n  try {\n    const sr = await fetch(\'/api/scripts/save\', {\n      method: \'POST\',\n      headers: { \'Content-Type\': \'application/json\' },\n      body: JSON.stringify({ name: \'workshop_spread\', content }),\n    });\n    if (!sr.ok) throw new Error(\'Save failed: \' + sr.status);\n\n    const lr = await fetch(\'/api/scripts/load/workshop_spread\', { method: \'POST\' });\n    if (!lr.ok) throw new Error(\'Load failed: \' + lr.status);\n\n    // Enable loop recoil so the single-line script repeats for the full mag\n    await fetch(\'/api/recoil\', {\n      method: \'POST\',\n      headers: { \'Content-Type\': \'application/json\' },\n      body: JSON.stringify({ loop_recoil: true, enabled: true }),\n    });\n\n    W.spreadActive = true;\n    document.getElementById(\'sp-status\').textContent       = \'● active in Cearum-Web\';\n    document.getElementById(\'sp-status\').style.color       = \'var(--grn)\';\n    document.getElementById(\'sp-load-btn\').style.display   = \'none\';\n    document.getElementById(\'sp-clear-btn\').style.display  = \'\';\n    document.getElementById(\'sp-loaded-warn\').classList.remove(\'hidden\');\n    // Force a state broadcast so any open Cearum-Web tabs refresh their script list\n    try { fetch(\'/api/state\'); } catch(_) {}\n  } catch (e) {\n    alert(\'Failed to load spread script: \' + e.message);\n  }\n}\n\nasync function clearSpreadScript() {\n  try {\n    // Disable loop recoil (it was enabled for the spread script)\n    await fetch(\'/api/recoil\', {\n      method: \'POST\',\n      headers: { \'Content-Type\': \'application/json\' },\n      body: JSON.stringify({ loop_recoil: false, enabled: false }),\n    });\n    // Restore the script that was active before the spread script was loaded\n    if (W.preSpreadScript && W.preSpreadScript !== \'NONE\') {\n      const parts = W.preSpreadScript.split(\'/\');\n      const url   = parts.length === 2\n        ? `/api/scripts/load/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`\n        : `/api/scripts/load/${encodeURIComponent(W.preSpreadScript)}`;\n      await fetch(url, { method: \'POST\' });\n    }\n    // Delete the spread script so it can never be auto-loaded on restart\n    await fetch(\'/api/scripts/workshop_spread\', { method: \'DELETE\' });\n  } catch (_) {}\n\n  W.spreadActive     = false;\n  W.preSpreadScript  = null;\n  document.getElementById(\'sp-status\').textContent       = \'— not loaded\';\n  document.getElementById(\'sp-status\').style.color       = \'var(--txt3)\';\n  document.getElementById(\'sp-load-btn\').style.display   = \'\';\n  document.getElementById(\'sp-clear-btn\').style.display  = \'none\';\n  document.getElementById(\'sp-loaded-warn\').classList.add(\'hidden\');\n}\n\n// ═══════════════════════════════════════════════════════════════════\n//  SCREENSHOT\n// ═══════════════════════════════════════════════════════════════════\nfunction loadSS(input) {\n  const file = input.files[0]; if (!file) return;\n  const img  = new Image();\n  img.onload = () => {\n    W.screenshot = img;\n    const mW = cv.width * 0.85, mH = cv.height * 0.8;\n    W.zoom = Math.min(mW / img.width, mH / img.height, 1);\n    W.panX = cv.width  / 2;\n    W.panY = cv.height / 2;\n    document.getElementById(\'dz-p\').textContent = file.name;\n    document.getElementById(\'czoom\').textContent = W.zoom.toFixed(2) + \'×\';\n    document.getElementById(\'chint\').textContent = \'Left-click each bullet hole in order · Scroll to zoom · Right-drag to pan\';\n    redraw();\n  };\n  img.src = URL.createObjectURL(file);\n}\nfunction onDrop(e) {\n  e.preventDefault();\n  document.getElementById(\'dz\').classList.remove(\'drag\');\n  const f = e.dataTransfer.files[0];\n  if (f && f.type.startsWith(\'image/\')) {\n    const dt = new DataTransfer(); dt.items.add(f);\n    document.getElementById(\'ss-inp\').files = dt.files;\n    loadSS(document.getElementById(\'ss-inp\'));\n  }\n}\nfunction clearSS() {\n  W.screenshot = null;\n  document.getElementById(\'ss-inp\').value = \'\';\n  document.getElementById(\'dz-p\').textContent = \'Drop or click to upload\';\n  redraw();\n}\n\n// ═══════════════════════════════════════════════════════════════════\n//  PASSES\n// ═══════════════════════════════════════════════════════════════════\nfunction startPass() {\n  if (W.activePass) finishPass();\n  const color = PASS_COLORS[W.passes.length % PASS_COLORS.length];\n  W.activePass = { pts: [], color };\n  document.getElementById(\'ap-banner\').style.display = \'block\';\n  document.getElementById(\'ap-ct\').textContent = \'0\';\n  document.getElementById(\'chint\').textContent = \'Clicking holes — right-click to undo last\';\n  redraw();\n}\nfunction finishPass() {\n  if (!W.activePass) return;\n  if (W.activePass.pts.length >= 2) {\n    W.passes.push(W.activePass);\n    recompute();\n  }\n  W.activePass = null;\n  document.getElementById(\'ap-banner\').style.display = \'none\';\n  updPassList();\n  redraw();\n}\nfunction undoClick() {\n  if (W.activePass && W.activePass.pts.length > 0) {\n    W.activePass.pts.pop();\n    document.getElementById(\'ap-ct\').textContent = W.activePass.pts.length;\n    redraw();\n  }\n}\nfunction clearPasses() {\n  W.passes = []; W.activePass = null;\n  document.getElementById(\'ap-banner\').style.display = \'none\';\n  updPassList(); recompute(); redraw();\n}\nfunction removePass(i) { W.passes.splice(i, 1); updPassList(); recompute(); redraw(); }\nfunction updPassList() {\n  document.getElementById(\'pass-ct\').textContent = W.passes.length;\n  document.getElementById(\'pass-list\').innerHTML = W.passes.map((p, i) =>\n    `<div class="pi">\n      <div class="pdot" style="background:${p.color}"></div>\n      <span style="flex:1;color:var(--txt2)">Pass ${i + 1} — ${p.pts.length} shots</span>\n      <span class="px" onclick="removePass(${i})">✕</span>\n    </div>`\n  ).join(\'\');\n}\n\n// ═══════════════════════════════════════════════════════════════════\n//  VECTOR COMPUTATION\n// ═══════════════════════════════════════════════════════════════════\nfunction recompute() {\n  if (W.step === 4 && !W.editMode) calcAutoScale();\n  W.rawVectors   = computeRaw();\n  W.finalVectors = optimize(W.rawVectors, W.optLevel);\n  updOptStats();\n  updResultTable();\n  if (W.step >= 4) redraw();\n}\n\nfunction computeRaw() {\n  // Edit mode: apply scale as multiplier to base vectors\n  if (W.editMode) {\n    return W.editBase.map(v => ({\n      x:  +(v.x * W.scaleX).toFixed(2),\n      y:  +(v.y * W.scaleY).toFixed(2),\n      ms: v.ms,\n    }));\n  }\n\n  // Normal mode: compute from passes\n  const all = [...W.passes];\n  if (W.activePass && W.activePass.pts.length >= 2) all.push(W.activePass);\n  if (!all.length) return [];\n\n  const minLen = Math.min(...all.map(p => p.pts.length));\n  if (minLen < 2) return [];\n\n  // Use measured dump time if available for accuracy (real-world > stated RPM)\n  let delay;\n  if (W.measuredDumpSecs && W.measuredDumpSecs > 0) {\n    const shots = W.magSize || 30;\n    delay = Math.round((W.measuredDumpSecs * 1000) / Math.max(1, shots - 1));\n  } else {\n    delay = Math.round(60000 / Math.max(1, W.rpm));\n  }\n  const out   = [];\n\n  for (let i = 0; i < minLen - 1; i++) {\n    let sdx = 0, sdy = 0;\n    for (const p of all) {\n      sdx += p.pts[i + 1].x - p.pts[i].x;\n      sdy += p.pts[i + 1].y - p.pts[i].y;\n    }\n    const n = all.length;\n    // Subtract the spread that was artificially added per shot\n    // Each inter-shot delta contains one unit of spread movement\n    const spreadSubX = W.spreadX || 0;\n    const spreadSubY = W.spreadY || 0;\n    // Scale pixel deltas to MAKCU units FIRST, then subtract the artificial spread\n    out.push({\n      x:  +((sdx / n) * W.scaleX - spreadSubX).toFixed(2),\n      y:  +((sdy / n) * W.scaleY - spreadSubY).toFixed(2),\n      ms: delay,\n    });\n  }\n  return out;\n}\n\nfunction optimize(vecs, level) {\n  if (level === 0 || !vecs.length) return [...vecs];\n  const thresh = level * 0.4;  // MAKCU units per level\n  const result = [];\n  let group    = [{ ...vecs[0] }];\n\n  for (let i = 1; i < vecs.length; i++) {\n    const v    = vecs[i];\n    const avgX = group.reduce((s, g) => s + g.x, 0) / group.length;\n    const avgY = group.reduce((s, g) => s + g.y, 0) / group.length;\n    if (Math.abs(v.x - avgX) <= thresh && Math.abs(v.y - avgY) <= thresh) {\n      group.push({ ...v });\n    } else {\n      result.push(mergeGroup(group));\n      group = [{ ...v }];\n    }\n  }\n  if (group.length) result.push(mergeGroup(group));\n  return result;\n}\n\nfunction mergeGroup(g) {\n  return {\n    x:  +(g.reduce((s, v) => s + v.x, 0) / g.length).toFixed(2),\n    y:  +(g.reduce((s, v) => s + v.y, 0) / g.length).toFixed(2),\n    ms: g.reduce((s, v) => s + v.ms, 0),\n  };\n}\n\nfunction updOptStats() {\n  const raw = W.rawVectors.length;\n  const fin = W.finalVectors.length;\n  const pct = raw > 0 ? Math.round((1 - fin / raw) * 100) : 0;\n  document.getElementById(\'opt-raw\').textContent = raw || \'—\';\n  document.getElementById(\'opt-fin\').textContent = fin || \'—\';\n  document.getElementById(\'opt-pct\').textContent = raw > 0 ? pct + \'%\' : \'—\';\n  // Vector table in Step 5\n  document.getElementById(\'opt-vct-lbl\').textContent = fin + \' shots\';\n  const tbody = document.getElementById(\'opt-tbl-body\');\n  if (tbody) {\n    tbody.innerHTML = W.finalVectors.map((v, i) =>\n      `<tr><td style="color:var(--txt3)">${i+1}</td><td>${v.x}</td><td>${v.y}</td><td>${v.ms}</td></tr>`\n    ).join(\'\');\n  }\n}\n\n// ═══════════════════════════════════════════════════════════════════\n//  AUTO SCALE CALCULATION\n// ═══════════════════════════════════════════════════════════════════\nfunction calcAutoScale() {\n  const all      = W.passes.length ? W.passes : [];\n  const spY      = W.spreadY || 0;\n  const noSpread = spY === 0;\n\n  document.getElementById(\'sc-spy\').textContent = spY ? spY + \' units\' : \'— no spread\';\n\n  if (!all.length || all[0].pts.length < 2) {\n    document.getElementById(\'sc-apy\').textContent = \'—\';\n    document.getElementById(\'sc-sy\').textContent  = \'—\';\n    return;\n  }\n\n  // Average pixel distance between consecutive holes (Y axis only — spread is Y)\n  let sumDY = 0, count = 0;\n  for (const p of all) {\n    for (let i = 0; i < p.pts.length - 1; i++) {\n      sumDY += Math.abs(p.pts[i+1].y - p.pts[i].y);\n      count++;\n    }\n  }\n  const avgPxY = count > 0 ? sumDY / count : 0;\n  document.getElementById(\'sc-apy\').textContent = avgPxY.toFixed(1) + \' px\';\n\n  // Suggested scale = spread_units / avg_pixels\n  // This is the conversion factor so that spread subtraction cancels exactly\n  const scY = !noSpread && avgPxY > 0 ? +(spY / avgPxY).toFixed(4) : 0.1;\n  const scX = scY;  // assume equal sensitivity on both axes\n\n  // Always update the suggestion display\n  document.getElementById(\'sc-sy\').textContent = scY;\n\n  // Auto-apply: set W.scaleX/Y and update sliders\n  W.scaleX = scX;\n  W.scaleY = scY;\n  document.getElementById(\'sy-sl\').value = scY;\n  document.getElementById(\'sy-sv\').value = scY.toFixed(4);\n  document.getElementById(\'sx-sl\').value = scX;\n  document.getElementById(\'sx-sv\').value = scX.toFixed(4);\n}\n\nfunction onSX(v) {\n  const val = Math.max(0.001, Math.min(5, parseFloat(v) || 0.1));\n  W.scaleX = val;\n  document.getElementById(\'sx-sl\').value = val;\n  document.getElementById(\'sx-sv\').value = val.toFixed(3);\n  recompute();\n}\nfunction onSY(v) {\n  const val = Math.max(0.001, Math.min(5, parseFloat(v) || 0.1));\n  W.scaleY = val;\n  document.getElementById(\'sy-sl\').value = val;\n  document.getElementById(\'sy-sv\').value = val.toFixed(3);\n  recompute();\n}\nfunction applyAutoScale() {\n  document.getElementById(\'sx-sl\').value = W.scaleX.toFixed(3);\n  document.getElementById(\'sx-sv\').value = W.scaleX.toFixed(3);\n  document.getElementById(\'sy-sl\').value = W.scaleY.toFixed(3);\n  document.getElementById(\'sy-sv\').value = W.scaleY.toFixed(3);\n  recompute();\n}\nfunction onOpt(v) {\n  W.optLevel = +v;\n  document.getElementById(\'op-lbl\').textContent = v + \' — \' + OPT_LABELS[v];\n  recompute();\n}\n\n// ═══════════════════════════════════════════════════════════════════\n//  RESULT TABLE\n// ═══════════════════════════════════════════════════════════════════\nfunction updResultTable() {\n  const vecs = W.finalVectors;\n  document.getElementById(\'r-vct\').textContent  = vecs.length || \'—\';\n  document.getElementById(\'r-game\').textContent = W.game   || \'—\';\n  document.getElementById(\'r-wpn\').textContent  = W.weapon || \'—\';\n  document.getElementById(\'r-rpm\').textContent  = W.rpm + \' RPM\';\n\n  const wrap = document.getElementById(\'r-wrap\');\n  if (!vecs.length) {\n    wrap.innerHTML = \'<div style="font-size:10px;color:var(--txt3)">No vectors yet</div>\'; return;\n  }\n  wrap.innerHTML =\n    `<table class="vtbl"><thead><tr><th>#</th><th>x</th><th>y</th><th>ms</th></tr></thead><tbody>` +\n    vecs.map((v, i) =>\n      `<tr><td>${i + 1}</td><td>${v.x}</td><td>${v.y}</td><td>${v.ms}</td></tr>`\n    ).join(\'\') + \'</tbody></table>\';\n}\n\n// ═══════════════════════════════════════════════════════════════════\n//  EXPORT\n// ═══════════════════════════════════════════════════════════════════\nfunction buildTxt() {\n  const vecs = W.finalVectors;\n  return [\n    \'# x_offset, y_offset, delay_ms\',\n    `# Game    : ${W.game   || \'Unknown\'}`,\n    `# Weapon  : ${W.weapon || \'weapon\'}`,\n    `# RPM     : ${W.rpm}`,\n    `# Vectors : ${vecs.length}`,\n    `# Source  : Cearum Recoil Workshop`,\n    \'#\',\n    ...vecs.map(v => `${v.x},${v.y},${v.ms}`),\n  ].join(\'\\n\');\n}\nasync function saveServer() {\n  if (!W.finalVectors.length) { alert(\'No vectors to save.\'); return; }\n  const body = { name: W.weapon || \'weapon\', content: buildTxt() };\n  if (W.game) body.game = W.game;\n  try {\n    const r = await fetch(\'/api/scripts/save\', {\n      method: \'POST\',\n      headers: { \'Content-Type\': \'application/json\' },\n      body: JSON.stringify(body),\n    });\n    if (r.ok) alert(`✓ Saved → ${W.game ? W.game + \'/\' : \'\'}${W.weapon}.txt`);\n    else       alert(\'Save failed: \' + r.status);\n  } catch (e) { alert(\'Cannot reach Cearum-Web server: \' + e.message); }\n}\nfunction dlTxt() {\n  if (!W.finalVectors.length) { alert(\'No vectors to download.\'); return; }\n  const a = document.createElement(\'a\');\n  a.href     = URL.createObjectURL(new Blob([buildTxt()], { type: \'text/plain\' }));\n  a.download = `${W.weapon || \'weapon\'}.txt`;\n  a.click();\n}\nfunction copyClip() {\n  if (!W.finalVectors.length) { alert(\'No vectors to copy.\'); return; }\n  navigator.clipboard.writeText(buildTxt())\n    .then(() => alert(\'Copied to clipboard ✓\'));\n}\n\n// ═══════════════════════════════════════════════════════════════════\n//  EDIT EXISTING MODE\n// ═══════════════════════════════════════════════════════════════════\nfunction openEdit() { document.getElementById(\'edit-inp\').click(); }\n\nfunction loadEditFile(input) {\n  const file = input.files[0]; if (!file) return;\n  const reader = new FileReader();\n  reader.onload = e => {\n    const vecs = [];\n    for (const line of e.target.result.split(\'\\n\')) {\n      const t = line.trim();\n      if (!t || t.startsWith(\'#\')) continue;\n      const p = t.split(\',\').map(s => parseFloat(s.trim()));\n      if (p.length >= 3 && !isNaN(p[0])) vecs.push({ x: p[0], y: p[1], ms: p[2] });\n    }\n    if (!vecs.length) { alert(\'No valid vectors found in file.\'); return; }\n\n    W.editMode  = true;\n    W.editBase  = vecs;\n    W.rawVectors = [...vecs];\n    W.finalVectors = [...vecs];\n\n    // Try to extract RPM from first ms value\n    if (vecs[0].ms > 0) {\n      W.rpm = Math.round(60000 / vecs[0].ms);\n      document.getElementById(\'s-rpm\').value = W.rpm;\n      updRPM();\n    }\n\n    // Reset scale to 1.0 for multiplicative edit mode\n    W.scaleX = 1.0; W.scaleY = 1.0;\n    const _sy = document.getElementById(\'sy-sl\');\n    const _sv = document.getElementById(\'sy-sv\');\n    const _sx = document.getElementById(\'sx-sl\');\n    const _sxv = document.getElementById(\'sx-sv\');\n    if (_sy) { _sy.value = 1.0; _sv.value = \'1.000\'; }\n    if (_sx) { _sx.value = 1.0; _sxv.value = \'1.000\'; }\n    const si = document.getElementById(\'scale-info\');\n    if (si) si.textContent = \'Edit mode — Scale X/Y act as multipliers on the loaded vectors (1.0 = unchanged).\';\n\n    // Try to extract weapon name from filename\n    const nm = file.name.replace(\'.txt\',\'\');\n    W.weapon = nm;\n    document.getElementById(\'s-wpn\').value = nm;\n\n    alert(`Loaded ${vecs.length} vectors from ${file.name}\\nAdjust via Optimization or go straight to Result.`);\n    goStep(4);\n    recompute();\n  };\n  reader.readAsText(file);\n}\n\n// ═══════════════════════════════════════════════════════════════════\n//  STEP NAVIGATION\n// ═══════════════════════════════════════════════════════════════════\nconst PANELS = [\'p1\',\'p2\',\'p3\',\'p5\',\'p6\'];   // p4 (scale) removed — runs silently in step 3\nconst HINTS  = [\n  \'Set weapon name and fire rate before proceeding\',\n  \'Set spread values, load the script into Cearum-Web, fire at a wall, then screenshot\',\n  \'Upload your bullet hole screenshot — click each hole in order to trace the pattern\',\n  \'Review and adjust vectors — merge similar adjacent shots to reduce script length\',\n  \'Review the generated script and save to Cearum-Web or download\',\n];\nconst MODES  = [\'Setup\',\'Spread\',\'Modeling\',\'Optimization\',\'Result\'];\n\nfunction goStep(n) {\n  // Suppress alt-tab timer during navigation\n  _navigating = true;\n  setTimeout(() => { _navigating = false; }, 300);\n\n  // Auto-finish active pass when leaving step 3\n  if (W.step === 3 && W.activePass && W.activePass.pts.length >= 2) finishPass();\n  // Auto-restore previous script when leaving step 2\n  if (W.step === 2 && W.spreadActive) clearSpreadScript();\n\n  W.step = n;\n\n  PANELS.forEach((id, i) => {\n    const el = document.getElementById(id);\n    if (i + 1 === n) el.classList.remove(\'hidden\'); else el.classList.add(\'hidden\');\n  });\n  for (let i = 1; i <= 5; i++) {\n    const el = document.getElementById(\'s\' + i);\n    if (el) el.className = \'stp\' + (i === n ? \' cur\' : i < n ? \' ok\' : \'\');\n  }\n  document.getElementById(\'ftr-lbl\').textContent = `Step ${n} of 5`;\n  document.getElementById(\'btn-back\').style.visibility = n === 1 ? \'hidden\' : \'visible\';\n  document.getElementById(\'btn-next\').textContent = \'Next →\';\n  document.getElementById(\'btn-next\').style.visibility = n === 5 ? \'hidden\' : \'visible\';\n  document.getElementById(\'chint\').textContent = HINTS[n - 1];\n  document.getElementById(\'cmode\').textContent  = MODES[n - 1];\n\n  // Pre-fill spread delay from measured/calculated ms when entering step 2\n  if (n === 2) {\n    const shots = W.magSize || 30;\n    const msShot = W.measuredDumpSecs > 0\n      ? Math.round((W.measuredDumpSecs * 1000) / Math.max(1, shots - 1))\n      : (W.rpm > 0 ? Math.round(60000 / W.rpm) : 80);\n    W.spreadMs = msShot;\n    const spMs = document.getElementById(\'sp-ms\');\n    if (spMs) spMs.value = msShot;\n    const lbl = document.getElementById(\'sp-ms-lbl\');\n    if (lbl) lbl.textContent = msShot + \' ms\';\n    updSpreadPreview();\n  }\n  // Pre-fill spread delay from measured time when entering step 2\n  if (n === 2) {\n    const shots = W.magSize || 30;\n    const msShot = W.measuredDumpSecs > 0\n      ? Math.round((W.measuredDumpSecs * 1000) / Math.max(1, shots - 1))\n      : (W.rpm > 0 ? Math.round(60000 / W.rpm) : 80);\n    W.spreadMs = msShot;\n    const spMs = document.getElementById(\'sp-ms\');\n    if (spMs) spMs.value = msShot;\n    const lbl = document.getElementById(\'sp-ms-lbl\');\n    if (lbl) lbl.textContent = msShot + \' ms\';\n    updSpreadPreview();\n  }\n  if (n === 4 && !W.editMode) calcAutoScale();\n  if (n >= 4) recompute();  // n>=4 is now optimization(4) and result(5)\n  redraw();\n}\n\nfunction nextStep() { if (W.step < 5) goStep(W.step + 1); }\nfunction prevStep() { if (W.step > 1) goStep(W.step - 1); }\n\n// ═══════════════════════════════════════════════════════════════════\n//  INIT\n// ═══════════════════════════════════════════════════════════════════\nupdRPM();\ngoStep(1);\nresize();\n</script>\n</body>\n</html>\n'
 
-    # FIX 9: track thread object so we can check is_alive() instead of a bare bool
-    _watchdog_thread: threading.Thread | None = None
+# ── main.py patches ───────────────────────────────────────────────────────────
 
-    # FIX 5: set while move_mouse_smoothly is active -- watchdog skips its ping
-    #         to avoid injecting a zero-move USB transaction mid-spray.
-    _spray_active = threading.Event()
-
-    # -- Shared helper ---------------------------------------------------------
-
-    @staticmethod
-    def _clear_button_states():
-        """FIX 1: Hard-reset every button to False.
-        Called on every disconnect path so the recoil loop never inherits
-        a stale LMB=True from before the device dropped."""
-        for k in makcu_controller.button_states:
-            makcu_controller.button_states[k] = False
-
-    # -- Public: connection state ----------------------------------------------
-
-    @staticmethod
-    def is_connected():
-        with makcu_controller.connection_lock:
-            return (
-                makcu_controller.is_connected_flag
-                and makcu_controller.controller is not None
-            )
-
-    # -- Watchdog --------------------------------------------------------------
-
-    @staticmethod
-    def _watchdog():
-        """
-        Background daemon thread.  Every 8 s it pings the device with a
-        zero-movement command.  On failure it marks the device disconnected
-        and keeps retrying connect() every 8 s until the MAKCU comes back.
-
-        FIX 2: Because the library is now created with auto_reconnect=False,
-        this watchdog is the single owner of reconnection logic.  There is no
-        longer a race between the library\'s internal reconnect and ours.
-
-        FIX 5: The watchdog skips its ping entirely while move_mouse_smoothly
-        is executing (_spray_active is set) to prevent injecting a USB
-        transaction mid-spray that could cause micro-stutter.
-        """
-        INTERVAL = 8  # seconds
-        while True:
-            time.sleep(INTERVAL)
-
-            # -- Phase 1: device appears connected -- ping it -------------------
-            with makcu_controller.connection_lock:
-                connected = (
-                    makcu_controller.is_connected_flag
-                    and makcu_controller.controller is not None
-                )
-                ctrl = makcu_controller.controller if connected else None
-
-            if connected:
-                # FIX 5: skip the ping while a smooth-move spray is in progress
-                if makcu_controller._spray_active.is_set():
-                    continue
-
-                try:
-                    with makcu_controller.command_lock:
-                        ctrl.move(0, 0)  # zero-move: exercises USB handle, no cursor movement
-                except Exception as e:
-                    print(f"[MAKCU] Watchdog detected disconnect: {e}")
-                    with makcu_controller.connection_lock:
-                        makcu_controller.is_connected_flag = False
-                        makcu_controller.controller = None  # FIX 3
-                    makcu_controller._clear_button_states()  # FIX 1
-
-            # -- Phase 2: device is gone -- attempt reconnect -------------------
-            else:
-                print("[MAKCU] Watchdog attempting reconnect...")
-                result = makcu_controller._do_connect()
-                if result is not None:
-                    print("[MAKCU] Watchdog reconnected successfully")
-
-    # -- Core connect logic ----------------------------------------------------
-
-    @staticmethod
-    def _do_connect():
-        """
-        Core connection logic shared by connect() and the watchdog.
-        Returns the controller on success, None on failure.
-
-        FIX 2: auto_reconnect=False -- the library must NOT try to reconnect
-        on its own.  If both the library\'s internal reconnect and our watchdog
-        fire simultaneously they can open two overlapping HID connections,
-        corrupt the USB state, and force a hard reset of the MAKCU.
-        """
-        try:
-            controller = create_controller(debug=False, auto_reconnect=False)  # FIX 2
-
-            def on_button_event(button: MouseButton, pressed: bool):
-                if button == MouseButton.LEFT:
-                    makcu_controller.button_states["LMB"] = pressed
-                elif button == MouseButton.RIGHT:
-                    makcu_controller.button_states["RMB"] = pressed
-                elif button == MouseButton.MIDDLE:
-                    makcu_controller.button_states["MMB"] = pressed
-                elif button == MouseButton.MOUSE4:
-                    makcu_controller.button_states["M4"] = pressed
-                elif button == MouseButton.MOUSE5:
-                    makcu_controller.button_states["M5"] = pressed
-
-            controller.set_button_callback(on_button_event)
-            controller.enable_button_monitoring(True)
-
-            with makcu_controller.connection_lock:
-                makcu_controller.controller = controller
-                makcu_controller.is_connected_flag = True
-
-            return controller
-
-        except Exception as e:
-            print(f"[MAKCU] Connection error: {e}")
-            with makcu_controller.connection_lock:
-                makcu_controller.is_connected_flag = False
-                makcu_controller.controller = None  # FIX 3
-            makcu_controller._clear_button_states()  # FIX 1
-            return None
-
-    @staticmethod
-    def connect():
-        with makcu_controller.connection_lock:
-            if makcu_controller.controller is not None:
-                return makcu_controller.controller
-
-        result = makcu_controller._do_connect()
-
-        # FIX 9: Start watchdog only if it isn\'t already alive.
-        if result is not None:
-            t = makcu_controller._watchdog_thread
-            if t is None or not t.is_alive():
-                new_t = threading.Thread(
-                    target=makcu_controller._watchdog,
-                    daemon=True,
-                    name="makcu-watchdog",
-                )
-                new_t.start()
-                makcu_controller._watchdog_thread = new_t
-                print("[MAKCU] Watchdog started (8 s interval)")
-
-        return result
-
-    @staticmethod
-    def StartButtonListener():
-        makcu_controller.connect()
-
-    # -- Command methods -------------------------------------------------------
-
-    @staticmethod
-    def click_button(button_name: str):
-        if not makcu_controller.is_connected():
-            return False
-        mck = makcu_controller.controller
-        try:
-            with makcu_controller.command_lock:
-                if button_name == "LMB":
-                    mck.click(MouseButton.LEFT)
-                elif button_name == "RMB":
-                    mck.click(MouseButton.RIGHT)
-                elif button_name == "MMB":
-                    mck.click(MouseButton.MIDDLE)
-                elif button_name == "M4":
-                    mck.click(MouseButton.MOUSE4)
-                elif button_name == "M5":
-                    mck.click(MouseButton.MOUSE5)
-            return True
-        except Exception as e:
-            print(f"[MAKCU] Click error: {e}")
-            with makcu_controller.connection_lock:
-                makcu_controller.is_connected_flag = False
-                makcu_controller.controller = None  # FIX 3
-            makcu_controller._clear_button_states()  # FIX 1
-            return False
-
-    @staticmethod
-    def simple_move_mouse(x, y):
-        if not makcu_controller.is_connected():
-            return False
-        try:
-            with makcu_controller.command_lock:
-                makcu_controller.controller.move(x, y)
-            return True
-        except Exception as e:
-            print(f"[MAKCU] Move error: {e}")
-            with makcu_controller.connection_lock:
-                makcu_controller.is_connected_flag = False
-                makcu_controller.controller = None  # FIX 3
-            makcu_controller._clear_button_states()  # FIX 1
-            return False
-
-    @staticmethod
-    def move_mouse_smoothly(dx, dy, steps=20, duration=0.05, interrupt_on_lmb_release=False):
-        if not makcu_controller.is_connected():
-            return False
-        if dx == 0 and dy == 0:
-            return False
-
-        def ease_out_quad(t):
-            return t * (2 - t)
-
-        # FIX 4: Snapshot controller under the lock; verify identity each step.
-        with makcu_controller.connection_lock:
-            mck = makcu_controller.controller
-        if mck is None:
-            return False
-
-        step_delay = duration / steps
-
-        # FIX 5: signal that a spray is in progress
-        makcu_controller._spray_active.set()
-
-        try:
-            acc_x = 0.0
-            acc_y = 0.0
-            for i in range(steps):
-                if interrupt_on_lmb_release and not makcu_controller.button_states.get("LMB", False):
-                    return False
-
-                t     = (i + 1) / steps
-                eased = ease_out_quad(t)
-                tx    = dx * eased
-                ty    = dy * eased
-                mx    = round(tx - acc_x)
-                my    = round(ty - acc_y)
-                acc_x += mx
-                acc_y += my
-                if mx or my:
-                    with makcu_controller.command_lock:
-                        # FIX 4: abort if controller was swapped by a reconnect
-                        if makcu_controller.controller is not mck:
-                            return False
-                        mck.move(mx, my)
-                time.sleep(step_delay)
-            return True
-
-        except Exception as e:
-            print(f"[MAKCU] Smooth move error: {e}")
-            with makcu_controller.connection_lock:
-                makcu_controller.is_connected_flag = False
-                makcu_controller.controller = None  # FIX 3
-            makcu_controller._clear_button_states()  # FIX 1
-            return False
-
-        finally:
-            # FIX 5: always clear the spray flag
-            makcu_controller._spray_active.clear()
-
-    @staticmethod
-    def get_button_state(button_name: str):
-        return makcu_controller.button_states.get(button_name, False)
-
-    @staticmethod
-    def disconnect():
-        with makcu_controller.connection_lock:
-            if makcu_controller.controller:
-                try:
-                    makcu_controller.controller.disconnect()
-                except Exception:
-                    pass
-                makcu_controller.controller = None
-                makcu_controller.is_connected_flag = False
-        makcu_controller._clear_button_states()  # FIX 1
-        print("[MAKCU] Disconnected")
-'''
-
-# -----------------------------------------------------------------------------
-# 2. main.py -- insert await _save_async() into save_pattern
-# -----------------------------------------------------------------------------
-
-MAIN_OLD = '    return {"saved": True}'
-
-# We only want to patch the save_pattern function, not any other return.
-# Anchor on the line that precedes it to make the match unique.
-MAIN_SEARCH = '''\
-    if state.loaded_script in (full_name, weapon):
+MAIN_BUG7_OLD = """    if state.loaded_script in (full_name, weapon):
         state.load_script(weapon, game)
-    return {"saved": True}'''
+    return {\"saved\": True}"""
 
-MAIN_REPLACE = '''\
-    if state.loaded_script in (full_name, weapon):
+MAIN_BUG7_NEW = """    if state.loaded_script in (full_name, weapon):
         state.load_script(weapon, game)
     await _save_async()   # FIX 7: persist config so loaded_script survives restart
-    return {"saved": True}'''
+    return {\"saved\": True}"""
 
-# -----------------------------------------------------------------------------
-# 3. static/index.html -- fix WebSocket ping interval leak
-# -----------------------------------------------------------------------------
+MAIN_WORKSHOP_ROUTE_OLD = """@app.get("/")
+async def root():
+    return FileResponse(os.path.join(BASE_DIR, "static", "index.html"))"""
 
-# Old: single let ws; declaration
-HTML_OLD_DECL   = "let ws;"
-HTML_NEW_DECL   = "let ws;let _wsPingInterval;"  # FIX 6
+MAIN_WORKSHOP_ROUTE_NEW = """@app.get("/")
+async def root():
+    return FileResponse(os.path.join(BASE_DIR, "static", "index.html"))
 
-# Old: bare setInterval inside ws.onopen
-HTML_OLD_INTERVAL = "setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);"
-HTML_NEW_INTERVAL = "clearInterval(_wsPingInterval);_wsPingInterval=setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);"  # FIX 6
+@app.get("/workshop")
+async def workshop():
+    return FileResponse(os.path.join(BASE_DIR, "static", "workshop.html"))"""
 
-# -----------------------------------------------------------------------------
-# Apply patches
-# -----------------------------------------------------------------------------
+MAIN_BROADCAST_OLD = """            msg = json.dumps({
+                \"makcu_connected\":   makcu_controller.is_connected(),
+                \"recoil_enabled\":    state.recoil_enabled,
+                \"flashlight_active\": state.flashlight_enabled and state.recoil_enabled,
+                \"loaded_script\":     state.loaded_script,
+            })"""
+
+MAIN_BROADCAST_NEW = """            msg = json.dumps({
+                \"makcu_connected\":   makcu_controller.is_connected(),
+                \"recoil_enabled\":    state.recoil_enabled,
+                \"flashlight_active\": state.flashlight_enabled and state.recoil_enabled,
+                \"loaded_script\":     state.loaded_script,
+                \"lmb_pressed\":       makcu_controller.get_button_state(\"LMB\"),
+            })"""
+
+MAIN_WORKSHOP_API_OLD = """# ── Stream Deck ─────────────────────────────────────────────────────────────────────────────
+@app.get("/api/streamdeck")"""
+
+MAIN_WORKSHOP_API_NEW = """# ── Workshop ────────────────────────────────────────────────────────────────────────────
+@app.post("/api/workshop/measure/toggle")
+async def workshop_measure_toggle():
+    msg = json.dumps({\"workshop_measure\": \"toggle\"})
+    dead = set()
+    for ws in list(ws_clients):
+        try:
+            await ws.send_text(msg)
+        except Exception:
+            dead.add(ws)
+    ws_clients.difference_update(dead)
+    return {\"ok\": True}
+
+# ── Stream Deck ────────────────────────────────────────────────────────────────────────────
+@app.get("/api/streamdeck")"""
+
+# ── index.html patches ────────────────────────────────────────────────────────
+
+HTML_TAB_OLD      = """  <div class=\"tab\"        data-tab=\"vector\"     onclick=\"st('vector')\">Vector Editor</div>"""
+HTML_TAB_NEW      = """  <a   class=\"tab\"        href=\"/workshop\">Workshop</a>"""
+HTML_ST_OLD       = "if(name==='vector') veResize();"
+HTML_ST_NEW       = ""
+WS_DECL_OLD       = "let ws;"
+WS_DECL_NEW       = "let ws;let _wsPingInterval;"
+WS_INTERVAL_OLD   = "setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);"
+WS_INTERVAL_NEW   = "clearInterval(_wsPingInterval);_wsPingInterval=setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);"
+
+# ── apply ─────────────────────────────────────────────────────────────────────
 
 def apply():
     ok = True
-
-    # -- Validate paths --------------------------------------------------------
-    for p in (MAKCU_PATH, MAIN_PATH, HTML_PATH):
-        if not check(p):
+    for path, label in [
+        (MAKCU,        "mouse/makcu.py"),
+        (MAIN,         "main.py"),
+        (HTML,         "static/index.html"),
+        (WORKSHOP_SRC, "workshop.html (must be in repo root)"),
+    ]:
+        if not check(path, label):
             ok = False
     if not ok:
-        print("\n[ERROR] Some files were not found. Make sure you run this script")
-        print("        from the root of your Cearum-Web repo:\n")
-        print("        cd /path/to/Cearum-Web")
-        print("        python3 apply_patches.py\n")
+        print("\n[ERROR] Missing files:")
         for e in errors:
             print(f"  !! {e}")
         sys.exit(1)
 
-    # -- Patch 1: makcu.py (full replace) -------------------------------------
-    print("\n[ 1/3 ] Patching mouse/makcu.py ...")
-    backup(MAKCU_PATH)
-    with open(MAKCU_PATH, "w", encoding="utf-8") as f:
-        f.write(MAKCU_CONTENT)
-    print("  OK Replaced with corrected version (Fixes 1-5, 9)")
+    # 1. makcu.py
+    print("\n[1/4] mouse/makcu.py -- Fixes 1-5, 9")
+    backup(MAKCU)
+    write(MAKCU, MAKCU_CONTENT)
+    print("    OK    written")
 
-    # -- Patch 2: main.py ------------------------------------------------------
-    print("\n[ 2/3 ] Patching main.py ...")
-    backup(MAIN_PATH)
-    with open(MAIN_PATH, "r", encoding="utf-8") as f:
-        src = f.read()
+    # 2. main.py
+    print("\n[2/4] main.py")
+    backup(MAIN)
+    src = read(MAIN)
+    src = patch(src, MAIN_BUG7_OLD,             MAIN_BUG7_NEW,             "Bug 7: save_pattern persist")
+    src = patch(src, MAIN_WORKSHOP_ROUTE_OLD,    MAIN_WORKSHOP_ROUTE_NEW,   "Add /workshop route")
+    src = patch(src, MAIN_BROADCAST_OLD,         MAIN_BROADCAST_NEW,        "Add lmb_pressed to WS broadcast")
+    src = patch(src, MAIN_WORKSHOP_API_OLD,      MAIN_WORKSHOP_API_NEW,     "Add /api/workshop/measure/toggle")
+    write(MAIN, src)
 
-    if MAIN_SEARCH not in src:
-        print("  !! Could not find the target block in main.py -- already patched?")
-        print("     Skipping main.py patch.")
-    elif "await _save_async()   # FIX 7" in src:
-        print("  -- Fix 7 already present -- skipping.")
+    # 3. index.html
+    print("\n[3/4] static/index.html")
+    backup(HTML)
+    src = read(HTML)
+    src = patch(src, HTML_TAB_OLD,      HTML_TAB_NEW,      "Tab: Vector Editor -> Workshop link")
+    src = patch(src, HTML_ST_OLD,       HTML_ST_NEW,       "st(): remove veResize() call")
+
+    # Remove VECTOR EDITOR CSS block
+    ve_css_marker = "VECTOR EDITOR"
+    style_close   = "\n</style>"
+    if ve_css_marker in src:
+        idx_css   = src.rindex("/*", 0, src.index(ve_css_marker))
+        idx_close = src.index(style_close, idx_css)
+        src = src[:idx_css] + src[idx_close:]
+        print("    OK    CSS: removed Vector Editor block")
     else:
-        src = src.replace(MAIN_SEARCH, MAIN_REPLACE, 1)
-        with open(MAIN_PATH, "w", encoding="utf-8") as f:
-            f.write(src)
-        print("  OK Added await _save_async() to save_pattern() (Fix 7)")
+        print("    SKIP  CSS: Vector Editor block not found")
 
-    # -- Patch 3: index.html ---------------------------------------------------
-    print("\n[ 3/3 ] Patching static/index.html ...")
-    backup(HTML_PATH)
-    with open(HTML_PATH, "r", encoding="utf-8") as f:
-        src = f.read()
+    # Remove VECTOR EDITOR HTML panel (from its comment to the /content div)
+    ve_panel_start = "<!-- \u2550\u2550\u2550 VECTOR EDITOR \u2550\u2550\u2550 -->"
+    content_close  = "</div><!-- /content -->"
+    if ve_panel_start in src:
+        h_start = src.index(ve_panel_start)
+        h_end   = src.index(content_close, h_start)
+        src = src[:h_start] + src[h_end:]
+        print("    OK    HTML: removed Vector Editor panel")
+    else:
+        print("    SKIP  HTML: Vector Editor panel comment not found")
 
-    changed = False
+    # Remove all Vector Editor JS (between the section banner and setInterval(veLoadPats))
+    ve_js_end_marker = "setInterval(veLoadPats,5000);"
+    ve_js_start_markers = [
+        "// VECTOR EDITOR",
+        "let veS",
+        "const veS",
+        "var veS",
+    ]
+    js_removed = False
+    for jsm in ve_js_start_markers:
+        if jsm in src and ve_js_end_marker in src:
+            # Find the comment block or var that precedes the VE JS
+            # Look backwards from jsm for the section comment
+            jsm_idx = src.index(jsm)
+            # Find the last newline before a comment block "// ══"
+            look_back = src.rfind("// ", 0, jsm_idx)
+            js_start  = src.rfind("\n", 0, look_back) + 1
+            js_end_idx = src.index(ve_js_end_marker) + len(ve_js_end_marker)
+            src = src[:js_start] + "\n" + src[js_end_idx:]
+            print("    OK    JS: removed Vector Editor JavaScript")
+            js_removed = True
+            break
+    if not js_removed:
+        print("    SKIP  JS: Vector Editor JS markers not found")
 
+    # Bug 6 WS fix
     if "_wsPingInterval" in src:
-        print("  -- Fix 6 already present -- skipping.")
+        print("    SKIP  Bug 6 WS interval fix (already applied)")
     else:
-        if HTML_OLD_DECL not in src:
-            print("  !! Could not find 'let ws;' declaration in index.html -- skipping declaration patch.")
-        else:
-            src = src.replace(HTML_OLD_DECL, HTML_NEW_DECL, 1)
-            changed = True
-            print("  OK Added _wsPingInterval declaration (Fix 6)")
+        src = patch(src, WS_DECL_OLD,     WS_DECL_NEW,     "Bug 6: _wsPingInterval declaration")
+        src = patch(src, WS_INTERVAL_OLD, WS_INTERVAL_NEW, "Bug 6: clearInterval before setInterval")
 
-        if HTML_OLD_INTERVAL not in src:
-            print("  !! Could not find setInterval ping line in index.html -- skipping interval patch.")
-        else:
-            src = src.replace(HTML_OLD_INTERVAL, HTML_NEW_INTERVAL, 1)
-            changed = True
-            print("  OK Added clearInterval() guard before setInterval (Fix 6)")
+    write(HTML, src)
 
-        if changed:
-            with open(HTML_PATH, "w", encoding="utf-8") as f:
-                f.write(src)
+    # 4. workshop.html
+    print("\n[4/4] static/workshop.html")
+    write(WORKSHOP_DST, WORKSHOP_CONTENT)
+    print("    OK    written to static/workshop.html")
 
-    # -- Done ------------------------------------------------------------------
-    print("\n" + "="*54)
+    print("\n" + "="*58)
     print("  All patches applied.")
-    print("  Restart the service to pick up the changes:\n")
+    print()
+    print("  Next steps:")
+    print("    git add mouse/makcu.py main.py static/index.html \\")
+    print("            static/workshop.html apply_patches.py")
+    print("    git commit -m \"feat: workshop integration, remove vector editor, fix MAKCU bugs\"")
+    print("    git push origin feature/recoil-workshop")
+    print()
+    print("  Merge to main, then on each Linux server:")
+    print("    git pull origin main")
     print("    sudo systemctl restart cearum-web")
-    print("\n  Check logs with:")
-    print("    sudo journalctl -u cearum-web -f")
-    print("="*54 + "\n")
+    print("="*58 + "\n")
 
 if __name__ == "__main__":
     apply()

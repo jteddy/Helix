@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#0b0c0e">
+<title>Cearum — Recoil Workshop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg0:#0b0c0e;--bg1:#111214;--bg2:#17181b;--bg3:#1d1f23;--bg4:#232629;
+  --bdr:#2a2d33;--bdr2:#3a3f48;
+  --txt:#d8dce8;--txt2:#7a8090;--txt3:#4a5060;
+  --grn:#44ff77;--red:#ff4444;--acc:#4d9cff;--hot:#ff4d6d;--warn:#f5a623;
+  --fm:'JetBrains Mono',monospace;--fu:'Rajdhani',sans-serif;
+  --r:5px;--rs:3px;--rh:28px
+}
+html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--fm);font-size:12px;overflow:hidden}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:2px}
+
+/* ── Layout ──────────────────────────────────────────────────────── */
+#root{display:flex;flex-direction:column;height:100vh;height:100dvh}
+#hdr{display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;background:var(--bg1);border-bottom:1px solid var(--bdr);flex-shrink:0}
+#hdr-logo{font-family:var(--fu);font-size:17px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+#hdr-logo span{color:var(--acc)}
+#hdr-back{font-size:10px;color:var(--txt3);text-decoration:none;font-family:var(--fu);letter-spacing:.06em;text-transform:uppercase;transition:color .15s}
+#hdr-back:hover{color:var(--acc)}
+#hdr-sep{flex:1}
+#hdr-badge{font-family:var(--fu);font-size:11px;font-weight:600;color:var(--txt3);letter-spacing:.06em;text-transform:uppercase;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--rs);padding:1px 7px}
+#hdr-edit{font-size:10px;color:var(--txt3);font-family:var(--fu);letter-spacing:.04em;text-transform:uppercase;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--rs);padding:2px 9px;cursor:pointer;transition:all .15s}
+#hdr-edit:hover{border-color:var(--acc);color:var(--acc)}
+
+/* ── Step bar ────────────────────────────────────────────────────── */
+#stpbar{display:flex;background:var(--bg1);border-bottom:1px solid var(--bdr);flex-shrink:0;overflow-x:auto}
+.stp{padding:7px 13px;font-size:10px;font-family:var(--fu);font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--txt3);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:5px}
+.stp .sn{font-size:9px;background:var(--bg3);border:1px solid var(--bdr);border-radius:2px;padding:0 4px;font-family:var(--fm);font-weight:400;min-width:16px;text-align:center}
+.stp.cur{color:var(--acc);border-bottom-color:var(--acc)}
+.stp.cur .sn{background:rgba(77,156,255,.15);border-color:var(--acc);color:var(--acc)}
+.stp.ok{color:var(--grn)}
+.stp.ok .sn{background:rgba(68,255,119,.1);border-color:var(--grn);color:var(--grn)}
+.stp:hover:not(.cur){color:var(--txt2)}
+
+/* ── Body ────────────────────────────────────────────────────────── */
+#body{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* ── Canvas area ─────────────────────────────────────────────────── */
+#cw{flex:1;position:relative;background:#07080a;overflow:hidden}
+#cv{display:block;cursor:crosshair}
+#chint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(11,12,14,.85);border:1px solid var(--bdr);color:var(--txt3);font-size:9px;font-family:var(--fu);letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:2px;pointer-events:none;white-space:nowrap}
+#czoom{position:absolute;top:8px;right:8px;font-size:9px;color:var(--txt3);background:rgba(11,12,14,.7);border:1px solid var(--bdr);border-radius:var(--rs);padding:2px 7px;font-family:var(--fm);pointer-events:none}
+#cmode{position:absolute;top:8px;left:8px;font-size:9px;color:var(--txt3);background:rgba(11,12,14,.7);border:1px solid var(--bdr);border-radius:var(--rs);padding:2px 7px;font-family:var(--fu);letter-spacing:.06em;text-transform:uppercase;pointer-events:none}
+
+/* ── Sidebar ─────────────────────────────────────────────────────── */
+#sb{width:220px;background:var(--bg2);border-left:1px solid var(--bdr);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.sec{padding:10px;border-bottom:1px solid var(--bdr)}
+.sec-h{font-family:var(--fu);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--txt3);margin-bottom:8px}
+
+/* ── Form ────────────────────────────────────────────────────────── */
+.fld{margin-bottom:7px}
+.fld label{display:block;font-size:9px;font-family:var(--fu);letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-bottom:3px}
+.fld input[type=text],.fld input[type=number],.fld select{
+  width:100%;background:var(--bg0);border:1px solid var(--bdr);color:var(--txt);
+  padding:4px 7px;border-radius:var(--rs);font-size:11px;font-family:var(--fm);
+  height:var(--rh);transition:border-color .15s
+}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--acc)}
+.srow{display:flex;align-items:center;gap:6px}
+.srow input[type=range]{flex:1;accent-color:var(--acc);height:3px}
+.sv{font-size:11px;color:var(--acc);min-width:32px;text-align:right;font-family:var(--fm);font-variant-numeric:tabular-nums}
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:0 10px;border-radius:var(--rs);font-size:11px;font-family:var(--fu);font-weight:600;letter-spacing:.04em;cursor:pointer;border:none;transition:all .15s;height:var(--rh)}
+.bp{background:var(--acc);color:#fff}.bp:hover{filter:brightness(1.12)}
+.br{background:var(--hot);color:#fff}.br:hover{filter:brightness(1.12)}
+.bg{background:var(--bg3);color:var(--txt2);border:1px solid var(--bdr)}.bg:hover{border-color:var(--acc);color:var(--acc)}
+.bs{background:rgba(68,255,119,.08);color:var(--grn);border:1px solid rgba(68,255,119,.25)}.bs:hover{background:rgba(68,255,119,.15)}
+.btn-full{width:100%;margin-bottom:5px}
+.bgrp{display:flex;gap:4px;flex-wrap:wrap}
+
+/* ── Info / warn boxes ───────────────────────────────────────────── */
+.info{background:rgba(77,156,255,.07);border:1px solid rgba(77,156,255,.18);border-radius:var(--rs);padding:6px 8px;font-size:10px;color:#93c5fd;line-height:1.6;margin-bottom:7px}
+.warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);border-radius:var(--rs);padding:6px 8px;font-size:10px;color:#fcd34d;line-height:1.6;margin-bottom:7px}
+
+/* ── Pass list ───────────────────────────────────────────────────── */
+.pi{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:10px}
+.pdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.px{cursor:pointer;color:var(--txt3);font-size:9px;margin-left:auto}.px:hover{color:var(--hot)}
+#ap-banner{font-size:10px;color:var(--acc);margin-top:6px;display:none}
+
+/* ── Stats rows ──────────────────────────────────────────────────── */
+.stat{display:flex;justify-content:space-between;align-items:center;font-size:10px;margin-bottom:3px}
+.stat span:first-child{color:var(--txt3)}
+.stat span:last-child{color:var(--txt);font-family:var(--fm)}
+
+/* ── Result table ────────────────────────────────────────────────── */
+#r-wrap{max-height:260px;overflow-y:auto;margin-bottom:8px}
+.vtbl{width:100%;border-collapse:collapse;font-size:10px}
+.vtbl th{font-family:var(--fu);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);font-weight:600;padding:2px 4px;text-align:right;border-bottom:1px solid var(--bdr);position:sticky;top:0;background:var(--bg2)}
+.vtbl th:first-child{text-align:left}
+.vtbl td{padding:2px 4px;text-align:right;font-variant-numeric:tabular-nums;border-bottom:1px solid rgba(42,45,51,.5)}
+.vtbl td:first-child{text-align:left;color:var(--txt3)}
+.vtbl tbody tr:hover td{background:rgba(77,156,255,.04)}
+
+/* ── Measure timer ───────────────────────────────────────────────── */
+#mbox{background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:8px;text-align:center;margin-bottom:7px}
+#m-time{font-size:22px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums;letter-spacing:.04em;display:block;width:100%;text-align:center;background:transparent;border:none;border-bottom:1px solid var(--bdr2);border-radius:0;font-family:var(--fm);padding:4px 0;margin-bottom:2px;outline:none;-moz-appearance:textfield}
+#m-time::-webkit-outer-spin-button,#m-time::-webkit-inner-spin-button{-webkit-appearance:none}
+#m-rpm{font-size:10px;color:var(--txt3);display:block;margin-bottom:6px}
+
+/* ── Drop zone ───────────────────────────────────────────────────── */
+#dz{border:2px dashed var(--bdr);border-radius:var(--r);padding:14px;text-align:center;cursor:pointer;transition:border-color .15s;margin-bottom:6px}
+#dz:hover,#dz.drag{border-color:var(--acc)}
+#dz .di{font-size:18px;margin-bottom:3px}
+#dz p{font-size:9px;color:var(--txt3);font-family:var(--fu);letter-spacing:.05em;text-transform:uppercase}
+
+/* ── Footer ──────────────────────────────────────────────────────── */
+#ftr{background:var(--bg1);border-top:1px solid var(--bdr);padding:7px 12px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+#ftr-lbl{font-size:10px;color:var(--txt3);font-family:var(--fu);letter-spacing:.05em;text-transform:uppercase}
+
+/* ── Hidden ──────────────────────────────────────────────────────── */
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="root">
+
+  <!-- Header -->
+  <div id="hdr">
+    <a id="hdr-back" href="/">← Cearum</a>
+    <span style="color:var(--bdr)">|</span>
+    <div id="hdr-logo">C<span>earum</span></div>
+    <span id="hdr-sep"></span>
+    <span id="hdr-badge">Recoil Workshop</span>
+    <button id="hdr-edit" onclick="openEdit()">Edit Existing Script</button>
+  </div>
+
+  <!-- Step bar -->
+  <div id="stpbar">
+    <button class="stp cur" id="s1" onclick="goStep(1)"><span class="sn">1</span>Setup</button>
+    <button class="stp"     id="s2" onclick="goStep(2)"><span class="sn">2</span>Pattern Spread</button>
+    <button class="stp"     id="s3" onclick="goStep(3)"><span class="sn">3</span>Modeling</button>
+    <button class="stp"     id="s4" onclick="goStep(4)"><span class="sn">4</span>Optimization</button>
+    <button class="stp"     id="s5" onclick="goStep(5)"><span class="sn">5</span>Result</button>
+  </div>
+
+  <!-- Body -->
+  <div id="body">
+
+    <!-- Canvas -->
+    <div id="cw">
+      <canvas id="cv"></canvas>
+      <div id="czoom">1.0×</div>
+      <div id="cmode">Modeling</div>
+      <div id="chint">Upload a screenshot to begin tracing</div>
+    </div>
+
+    <!-- Sidebar -->
+    <div id="sb">
+
+      <!-- ══ STEP 1: SETUP ══ -->
+      <div id="p1">
+        <div class="sec">
+          <div class="sec-h">Weapon Identity</div>
+          <div class="fld"><label>Game</label><input type="text" id="s-game" placeholder="e.g. ABI" oninput="W.game=this.value"></div>
+          <div class="fld"><label>Weapon</label><input type="text" id="s-wpn" placeholder="e.g. AK-74M" oninput="W.weapon=this.value||'weapon'"></div>
+          <div class="fld"><label>Magazine Size (rounds)</label><input type="number" id="s-shots" value="30" min="2" max="200" oninput="W.magSize=+this.value||30;updRPM()"></div>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Fire Rate — Manual</div>
+          <div class="fld"><label>RPM</label>
+            <input type="number" id="s-rpm" min="60" max="1500" value="600" oninput="W.rpm=+this.value||600;updRPM()">
+          </div>
+          <div style="background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:7px 9px;margin-bottom:7px">
+            <div class="stat"><span>Per shot</span><span id="rpm-ms" style="color:var(--acc)">100 ms</span></div>
+            <div class="stat"><span>Full mag dump</span><span id="rpm-dump" style="color:var(--acc)">2.90 s</span></div>
+            <div style="font-size:9px;color:var(--txt3);margin-top:4px;line-height:1.6">Time a full mag in-game and compare to <em>Full mag dump</em> to validate your RPM.</div>
+          </div>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Fire Rate — Measure</div>
+          <div class="info">MAKCU connected + page not focused → hold LMB in-game to auto-start/stop. Or use the buttons below manually.</div>
+          <!-- Stopwatch — display only, does NOT write to RPM directly -->
+          <div id="mbox">
+            <span id="m-time" style="display:block;font-size:26px;font-weight:700;color:var(--acc);
+              font-family:var(--fm);text-align:center;letter-spacing:.04em;padding:4px 0;
+              border-bottom:1px solid var(--bdr2);margin-bottom:4px;font-variant-numeric:tabular-nums">0.000 s</span>
+            <div style="font-size:9px;color:var(--txt3);text-align:center;margin-bottom:8px">stopwatch — press start, fire, press stop</div>
+            <div class="bgrp" style="justify-content:center;margin-bottom:6px">
+              <button class="btn bp" id="m-btn" onclick="toggleMeasure()" style="flex:1">&#9658; Start</button>
+              <button class="btn bg" onclick="resetMeasure()">Reset</button>
+            </div>
+            <button class="btn bg btn-full" id="m-use-btn" onclick="useTimerValue()" style="font-size:10px;display:none">
+              ↓ Use this time
+            </button>
+          </div>
+          <!-- Locked mag dump time — the master value that drives everything -->
+          <div style="margin-top:10px">
+            <div class="fld">
+              <label>Mag Dump Time (seconds) <span id="m-locked-lbl" style="color:var(--txt3);font-weight:400">— not set</span></label>
+              <input type="number" id="m-locked" step="0.01" min="0.1" placeholder="e.g. 3.20"
+                style="width:100%" oninput="onLockedTimeEdit(this.value)">
+              <div style="font-size:9px;color:var(--txt3);margin-top:3px">Type from a video, or press <em>↓ Use this time</em> above after stopping the stopwatch</div>
+            </div>
+            <div id="m-rpm" style="font-size:10px;color:var(--acc);text-align:center;margin-top:2px">— RPM</div>
+          </div>
+          <!-- Keyboard shortcut -->
+          <div style="margin-top:8px">
+            <div class="fld">
+              <label>Keyboard Shortcut (stopwatch only)</label>
+              <div style="display:flex;gap:4px">
+                <div id="hk-el" onclick="captureHK()" style="flex:1;display:flex;align-items:center;
+                  justify-content:center;height:var(--rh);background:var(--bg0);border:1px solid var(--bdr);
+                  border-radius:var(--rs);font-size:11px;color:var(--acc);cursor:pointer">—</div>
+                <button class="btn bg" onclick="clearHK()" style="flex-shrink:0;font-size:10px">Clear</button>
+              </div>
+              <div style="font-size:9px;color:var(--txt3);margin-top:3px">Controls stopwatch only — press ↓ Use this time to lock the value</div>
+            </div>
+          </div>
+          <div style="margin-top:4px">
+            <div class="sec-h" style="margin-bottom:5px">Stream Deck</div>
+            <div style="background:var(--bg0);border-radius:var(--rs);border:1px solid var(--bdr);padding:6px 8px;font-size:10px;color:var(--acc);line-height:2.1;font-family:var(--fm)">POST /api/workshop/measure/toggle</div>
+            <div style="font-size:9px;color:var(--txt3);margin-top:4px;line-height:1.6">Controls the stopwatch. Press ↓ Use this time in browser to lock the value.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ STEP 2: SPREAD ══ -->
+      <div id="p2" class="hidden">
+        <div class="sec">
+          <div class="sec-h">Pattern Spread</div>
+          <div class="info">Set how far apart to push bullets on the wall. The workshop generates a spread script, loads it into Cearum-Web automatically, then subtracts the exact same movement when computing your recoil vectors.</div>
+          <div class="fld">
+            <label>Spread Y — vertical units per shot</label>
+            <div class="srow">
+              <input type="range" id="sp-y-sl" min="-20" max="20" step="1" value="0" oninput="syncSpread('y',this.value)">
+              <input type="number" id="sp-y-sv" value="0" min="-20" max="20" step="1"
+                style="width:52px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
+                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);
+                padding:2px 4px;height:var(--rh)"
+                oninput="syncSpread('y',this.value)">
+            </div>
+          </div>
+          <div class="fld">
+            <label>Spread X — horizontal units per shot</label>
+            <div class="srow">
+              <input type="range" id="sp-x-sl" min="-20" max="20" step="1" value="0" oninput="syncSpread('x',this.value)">
+              <input type="number" id="sp-x-sv" value="0" min="-20" max="20" step="1"
+                style="width:52px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
+                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);
+                padding:2px 4px;height:var(--rh)"
+                oninput="syncSpread('x',this.value)">
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--txt3);margin-bottom:8px">
+            Delay: <span id="sp-ms-lbl" style="color:var(--acc)">80 ms</span>
+            <span style="color:var(--txt3)"> (from per-shot ms in Step 1)</span>
+          </div>
+          <input type="hidden" id="sp-ms" value="80">
+        </div>
+        <div class="sec">
+          <div class="sec-h">Generated Script <span id="sp-status" style="color:var(--txt3);font-weight:400;font-size:9px">— not loaded</span></div>
+          <div id="sp-preview" style="background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);padding:6px 8px;font-size:10px;color:var(--acc);font-family:var(--fm);max-height:100px;overflow-y:auto;line-height:1.8;margin-bottom:7px;white-space:pre;user-select:none;pointer-events:none">—</div>
+          <button class="btn bs btn-full" id="sp-load-btn" onclick="loadSpreadScript()">⬆ Load into Cearum-Web</button>
+          <button class="btn br btn-full" id="sp-clear-btn" onclick="clearSpreadScript()" style="display:none">✕ Unload Spread Script</button>
+          <div id="sp-loaded-warn" class="warn hidden" style="margin-top:6px">● Spread script active in Cearum-Web. Fire a full mag at a wall, take a screenshot, then press Next.</div>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Workflow</div>
+          <div style="font-size:10px;color:var(--txt3);line-height:2.1">
+            <span style="color:var(--acc)">1.</span> Set Spread Y — 5 to 10 units is a good start<br>
+            <span style="color:var(--acc)">2.</span> Set Spread X — only if you also want horizontal separation<br>
+            <span style="color:var(--acc)">3.</span> Press <em style="color:var(--txt2)">Load into Cearum-Web</em> — this saves and activates the spread script<br>
+            <span style="color:var(--acc)">4.</span> Workshop enables recoil + loop automatically<br>
+            <span style="color:var(--acc)">5.</span> Fire a full magazine at a flat wall<br>
+            <span style="color:var(--acc)">6.</span> Take a screenshot of the bullet holes<br>
+            <span style="color:var(--acc)">7.</span> Press <em style="color:var(--txt2)">Next</em> to go to Step 3 and upload the screenshot
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ STEP 3: MODELING ══ -->
+      <div id="p3" class="hidden">
+        <div class="sec">
+          <div class="sec-h">Screenshot</div>
+          <div id="dz" onclick="document.getElementById('ss-inp').click()"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="onDrop(event)">
+            <div class="di">📷</div>
+            <p id="dz-p">Drop or click to upload</p>
+          </div>
+          <input type="file" id="ss-inp" accept="image/*" class="hidden" onchange="loadSS(this)">
+          <button class="btn bg btn-full" onclick="clearSS()" style="font-size:10px">Clear Screenshot</button>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Passes <span id="pass-ct" style="color:var(--acc)">0</span></div>
+          <div class="info">Click each bullet hole in order. One magazine = one pass. Multiple passes average out weapon spread variance.</div>
+          <div id="pass-list" style="margin-bottom:7px"></div>
+          <div class="bgrp" style="margin-bottom:6px">
+            <button class="btn bp" style="flex:1" onclick="startPass()">+ New Pass</button>
+            <button class="btn br" onclick="undoClick()">Undo</button>
+          </div>
+          <button class="btn bg btn-full" onclick="clearPasses()">Clear All Passes</button>
+          <div id="ap-banner">● Recording — <span id="ap-ct">0</span> holes placed</div>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Canvas Controls</div>
+          <div style="font-size:10px;color:var(--txt3);line-height:1.9">
+            Left-click — place bullet hole marker<br>
+            Right-click — undo last marker<br>
+            Scroll — zoom in / out<br>
+            Middle / right drag — pan
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ STEP 4: SCALE ══ -->
+      <div id="p4" class="hidden">
+        <div class="sec">
+          <div class="sec-h">Scale</div>
+          <div class="info">Converts screenshot pixels into MAKCU units. The suggestion below is calculated from your spread — it auto-applies when you arrive here. Test in-game and tune up or down from there.</div>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Auto-suggestion</div>
+          <div class="stat"><span>Spread Y</span><span id="sc-spy" style="color:var(--acc)">—</span></div>
+          <div class="stat"><span>Avg px between holes</span><span id="sc-apy" style="color:var(--txt2)">—</span></div>
+          <div class="stat"><span>Suggested scale</span><span id="sc-sy" style="color:var(--grn);font-weight:600">—</span></div>
+          <button class="btn bg btn-full" style="margin-top:6px;font-size:10px" onclick="applyAutoScale()">↺ Re-apply suggestion</button>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Scale Y <span style="color:var(--txt3);font-weight:400;font-size:9px">vertical compensation</span></div>
+          <div class="fld">
+            <div class="srow">
+              <input type="range" id="sy-sl" min="0.001" max="5" step="0.001" value="0.1"
+                oninput="onSY(this.value)">
+              <input type="number" id="sy-sv" value="0.100" step="0.001" min="0.001" max="5"
+                style="width:64px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
+                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);
+                border-radius:var(--rs);padding:2px 4px;height:var(--rh)"
+                oninput="onSY(this.value)">
+            </div>
+          </div>
+          <div class="sec-h" style="margin-top:6px">Scale X <span style="color:var(--txt3);font-weight:400;font-size:9px">horizontal — usually same as Y</span></div>
+          <div class="fld">
+            <div class="srow">
+              <input type="range" id="sx-sl" min="0.001" max="5" step="0.001" value="0.1"
+                oninput="onSX(this.value)">
+              <input type="number" id="sx-sv" value="0.100" step="0.001" min="0.001" max="5"
+                style="width:64px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
+                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);
+                border-radius:var(--rs);padding:2px 4px;height:var(--rh)"
+                oninput="onSX(this.value)">
+            </div>
+          </div>
+          <div class="warn" style="margin-top:8px;font-size:9px">
+            Y vectors should be small positive numbers (e.g. 0–20).<br>
+            If Y is large negative → scale is too small, increase it.<br>
+            If Y is too large positive → scale is too big, reduce it.<br>
+            Reticle drifts sideways → adjust X independently.
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ STEP 5: OPTIMIZATION ══ -->
+      <div id="p5" class="hidden">
+        <div class="sec">
+          <div class="sec-h">Optimization Level</div>
+          <div class="info">Merges adjacent vectors that are similar enough to combine. Reduces script size and can improve smoothness. Higher level = more aggressive merging.</div>
+          <div class="fld" style="margin-top:4px">
+            <label>Level — <span id="op-lbl">0 — off</span></label>
+            <input type="range" id="op-sl" min="0" max="5" step="1" value="0" style="width:100%;accent-color:var(--acc)" oninput="onOpt(this.value)">
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px">
+            <span style="color:var(--txt3)">Vectors: <span id="opt-raw">—</span> → <span id="opt-fin" style="color:var(--grn)">—</span></span>
+            <span style="color:var(--acc)" id="opt-pct">—</span>
+          </div>
+        </div>
+        <div class="sec" style="flex:1">
+          <div class="sec-h">Vectors — <span id="opt-vct-lbl" style="color:var(--acc);font-weight:400">0 shots</span></div>
+          <div id="opt-tbl-wrap" style="overflow-y:auto;max-height:340px">
+            <table class="vtbl" style="width:100%">
+              <thead><tr><th style="text-align:left">#</th><th>x</th><th>y</th><th>ms</th></tr></thead>
+              <tbody id="opt-tbl-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ STEP 6: RESULT ══ -->
+      <div id="p6" class="hidden">
+        <div class="sec">
+          <div class="sec-h">Script Summary</div>
+          <div class="stat"><span>Game</span><span id="r-game">—</span></div>
+          <div class="stat"><span>Weapon</span><span id="r-wpn">—</span></div>
+          <div class="stat"><span>Vectors</span><span id="r-vct" style="color:var(--acc)">—</span></div>
+          <div class="stat"><span>Fire rate</span><span id="r-rpm">—</span></div>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Vectors</div>
+          <div id="r-wrap"><div style="font-size:10px;color:var(--txt3)">No vectors yet</div></div>
+        </div>
+        <div class="sec">
+          <div class="sec-h">Save</div>
+          <button class="btn bs btn-full" onclick="saveServer()">💾  Save to Cearum-Web</button>
+          <button class="btn bg btn-full" onclick="dlTxt()">⬇  Download .txt</button>
+          <button class="btn bg btn-full" onclick="copyClip()">📋  Copy to Clipboard</button>
+        </div>
+        <div class="sec">
+          <div class="sec-h">What next?</div>
+          <a href="/" class="btn bp btn-full" style="text-decoration:none;margin-bottom:5px">← Return to Cearum-Web</a>
+          <button class="btn bg btn-full" onclick="goStep(1)">＋ New Weapon</button>
+        </div>
+      </div>
+
+    </div><!-- /sb -->
+  </div><!-- /body -->
+
+  <!-- Footer -->
+  <div id="ftr">
+    <button class="btn bg" id="btn-back" onclick="prevStep()" style="visibility:hidden">← Back</button>
+    <span id="ftr-lbl">Step 1 of 6</span>
+    <button class="btn bp" id="btn-next" onclick="nextStep()">Next →</button>
+  </div>
+
+</div><!-- /root -->
+
+<!-- Hidden inputs -->
+<input type="file" id="edit-inp" accept=".txt" class="hidden" onchange="loadEditFile(this)">
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════
+const W = {
+  step:       1,
+  game:       '',
+  weapon:     'weapon',
+  rpm:        600,
+  magSize:    30,
+  measuredDumpSecs: 0,
+  measuredDumpSecs: 0,   // actual measured mag dump time — used for delay calculation
+  spreadX:    0,      // MAKCU units per shot pushed horizontally
+  spreadY:    0,      // MAKCU units per shot pushed vertically
+  spreadMs:   80,     // delay used in spread script (ms)
+  spreadActive: false,  // true while spread script is loaded on server
+  preSpreadScript: null, // script that was loaded before spread, restored on clear
+  passes:     [],        // [{pts:[{x,y}], color}]
+  activePass: null,
+  scaleX:     0.10,
+  scaleY:     0.10,
+  optLevel:   0,
+  screenshot: null,      // HTMLImageElement
+  zoom:       1,
+  panX:       0,
+  panY:       0,
+  editMode:   false,
+  editBase:   [],        // original vectors in edit mode
+  rawVectors: [],
+  finalVectors: [],
+};
+
+const PASS_COLORS = ['#4d9cff','#a78bfa','#34d399','#fb923c','#f472b6','#facc15'];
+const OPT_LABELS  = ['off','light','moderate','medium','aggressive','maximum'];
+
+// ═══════════════════════════════════════════════════════════════════
+//  CANVAS
+// ═══════════════════════════════════════════════════════════════════
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const cw  = document.getElementById('cw');
+
+let isPan = false, panBtnRight = false;
+let panSX = 0, panSY = 0, panOX = 0, panOY = 0;
+let rdStartX = 0, rdStartY = 0; // right-drag start for undo detection
+
+function resize() {
+  cv.width  = cw.clientWidth;
+  cv.height = cw.clientHeight;
+  if (W.panX === 0 && W.panY === 0) {
+    W.panX = cv.width  * 0.5;
+    W.panY = cv.height * 0.15;
+  }
+  redraw();
+}
+new ResizeObserver(resize).observe(cw);
+
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const r  = cv.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const f  = e.deltaY < 0 ? 1.12 : 0.89;
+  const oz = W.zoom;
+  W.zoom   = Math.max(0.05, Math.min(30, W.zoom * f));
+  const rt = W.zoom / oz;
+  W.panX   = mx + (W.panX - mx) * rt;
+  W.panY   = my + (W.panY - my) * rt;
+  document.getElementById('czoom').textContent = W.zoom.toFixed(2) + '×';
+  redraw();
+}, { passive: false });
+
+cv.addEventListener('mousedown', e => {
+  const r  = cv.getBoundingClientRect();
+  const cx = e.clientX - r.left, cy = e.clientY - r.top;
+
+  if (e.button === 1 || e.button === 2) {
+    isPan = true; panBtnRight = e.button === 2;
+    panSX = cx; panSY = cy;
+    panOX = W.panX; panOY = W.panY;
+    rdStartX = cx; rdStartY = cy;
+    e.preventDefault(); return;
+  }
+
+  // Left-click: place marker in step 3 when pass active
+  if (e.button === 0 && W.step === 3 && W.activePass) {
+    const wx = (cx - W.panX) / W.zoom;
+    const wy = (cy - W.panY) / W.zoom;
+    W.activePass.pts.push({ x: wx, y: wy });
+    document.getElementById('ap-ct').textContent = W.activePass.pts.length;
+    redraw();
+  }
+});
+
+cv.addEventListener('mousemove', e => {
+  if (!isPan) return;
+  const r  = cv.getBoundingClientRect();
+  const cx = e.clientX - r.left, cy = e.clientY - r.top;
+  W.panX = panOX + (cx - panSX);
+  W.panY = panOY + (cy - panSY);
+  redraw();
+});
+
+cv.addEventListener('mouseup', e => {
+  if (e.button === 2 && panBtnRight) {
+    const r   = cv.getBoundingClientRect();
+    const dx  = Math.abs(e.clientX - r.left - rdStartX);
+    const dy  = Math.abs(e.clientY - r.top  - rdStartY);
+    // Short right-click = undo last point
+    if (dx < 5 && dy < 5 && W.step === 3 && W.activePass && W.activePass.pts.length > 0) {
+      W.activePass.pts.pop();
+      document.getElementById('ap-ct').textContent = W.activePass.pts.length;
+      redraw();
+    }
+  }
+  if (e.button === 0 || e.button === 2) { isPan = false; panBtnRight = false; }
+  if (e.button === 1) isPan = false;
+});
+
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+// ═══════════════════════════════════════════════════════════════════
+//  DRAWING
+// ═══════════════════════════════════════════════════════════════════
+function redraw() {
+  const W2 = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W2, H);
+  ctx.fillStyle = '#07080a';
+  ctx.fillRect(0, 0, W2, H);
+  drawGrid(W2, H);
+  if (W.step === 3) drawModeling(W2, H);
+  else              drawVectorPath(W2, H);
+}
+
+function drawGrid(W2, H) {
+  const sp  = Math.max(20, 50 * W.zoom);
+  const ox  = ((W.panX % sp) + sp) % sp;
+  const oy  = ((W.panY % sp) + sp) % sp;
+  ctx.strokeStyle = 'rgba(42,45,51,0.55)';
+  ctx.lineWidth   = 0.5;
+  for (let x = ox; x < W2; x += sp) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = oy; y < H;  y += sp) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W2,y); ctx.stroke(); }
+  // Origin cross
+  ctx.strokeStyle = 'rgba(77,156,255,0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W.panX,0);  ctx.lineTo(W.panX,H);  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,W.panY);  ctx.lineTo(W2,W.panY); ctx.stroke();
+}
+
+function drawModeling(W2, H) {
+  // Screenshot
+  if (W.screenshot) {
+    const img = W.screenshot;
+    ctx.save();
+    ctx.translate(W.panX, W.panY);
+    ctx.scale(W.zoom, W.zoom);
+    ctx.globalAlpha = 0.65;
+    ctx.drawImage(img, -img.width / 2, -img.height / 2);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+  // Completed passes
+  for (const p of W.passes) drawPass(p.pts, p.color, 0.45, false);
+  // Active pass
+  if (W.activePass && W.activePass.pts.length > 0)
+    drawPass(W.activePass.pts, W.activePass.color, 1.0, true);
+}
+
+function drawPass(pts, color, alpha, labels) {
+  if (!pts.length) return;
+  const cp = pts.map(p => ({
+    x: p.x * W.zoom + W.panX,
+    y: p.y * W.zoom + W.panY,
+  }));
+  ctx.globalAlpha = alpha;
+  if (cp.length > 1) {
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(cp[0].x, cp[0].y);
+    for (let i = 1; i < cp.length; i++) ctx.lineTo(cp[i].x, cp[i].y);
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  for (let i = 0; i < cp.length; i++) {
+    const { x, y } = cp[i];
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.strokeStyle = '#07080a'; ctx.lineWidth = 1.5; ctx.stroke();
+    if (labels) {
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 8px JetBrains Mono,monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(i + 1, x, y);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawVectorPath(W2, H) {
+  const vecs = W.step >= 5 ? W.finalVectors : W.rawVectors;
+  if (!vecs || !vecs.length) {
+    ctx.fillStyle = 'rgba(74,80,96,0.6)';
+    ctx.font = '11px Rajdhani,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Complete Pattern Modeling first', W2 / 2, H / 2);
+    return;
+  }
+
+  const viz   = 18 * W.zoom; // visual scale: MAKCU units → canvas px
+  const pts   = [{ x: W.panX, y: W.panY }];
+  let cx = W.panX, cy = W.panY;
+  for (const v of vecs) {
+    cx += v.x * viz; cy += v.y * viz;
+    pts.push({ x: cx, y: cy });
+  }
+
+  // Path line
+  const grad = ctx.createLinearGradient(pts[0].x, pts[0].y, cx, cy);
+  grad.addColorStop(0, '#4d9cff');
+  grad.addColorStop(1, '#ff4d6d');
+  ctx.strokeStyle = grad; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.stroke();
+
+  // Dots
+  for (let i = 0; i < pts.length; i++) {
+    const { x, y } = pts[i];
+    ctx.beginPath(); ctx.arc(x, y, i === 0 ? 5 : 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = i === 0 ? '#4d9cff' : '#ff4d6d'; ctx.fill();
+    ctx.strokeStyle = '#07080a'; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+  // Origin label
+  ctx.fillStyle = '#4d9cff'; ctx.font = '9px Rajdhani,sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('origin', pts[0].x + 8, pts[0].y);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FIRE RATE / MEASURE
+// ═══════════════════════════════════════════════════════════════════
+let measuring = false, measureT0 = 0, measureIv = null;
+let hkCapturing = false, hkBound = '';
+
+// ── RPM validation display ────────────────────────────────────────
+function updRPM() {
+  const rpm    = W.rpm || 600;
+  const mag    = W.magSize || +document.getElementById('s-shots').value || 30;
+  const msShot = rpm > 0 ? Math.round(60000 / rpm) : 0;
+  const dumpS  = rpm > 0 ? ((mag - 1) * (60000 / rpm) / 1000).toFixed(2) : '—';
+  document.getElementById('rpm-ms').textContent   = msShot + ' ms';
+  document.getElementById('rpm-dump').textContent = dumpS + ' s';
+
+}
+
+// ── Stopwatch — display only, never writes to RPM directly ────────
+let _stopwatchSecs = 0;
+
+function toggleMeasure() {
+  if (!measuring) {
+    measuring  = true;
+    measureT0  = performance.now();
+    document.getElementById('m-btn').textContent = '■ Stop';
+    document.getElementById('m-btn').className   = 'btn br';
+    document.getElementById('m-use-btn').style.display = 'none';
+    measureIv = setInterval(() => {
+      const el = (performance.now() - measureT0) / 1000;
+      document.getElementById('m-time').textContent = el.toFixed(3) + ' s';
+    }, 50);
+  } else {
+    clearInterval(measureIv);
+    measuring = false;
+    _stopwatchSecs = (performance.now() - measureT0) / 1000;
+    document.getElementById('m-time').textContent = _stopwatchSecs.toFixed(3) + ' s';
+    document.getElementById('m-btn').textContent  = '▶ Start';
+    document.getElementById('m-btn').className    = 'btn bp';
+    document.getElementById('m-use-btn').style.display = '';
+  }
+}
+
+function resetMeasure() {
+  clearInterval(measureIv);
+  measuring = false;
+  _stopwatchSecs = 0;
+  document.getElementById('m-time').textContent    = '0.000 s';
+  document.getElementById('m-btn').textContent     = '▶ Start';
+  document.getElementById('m-btn').className       = 'btn bp';
+  document.getElementById('m-use-btn').style.display = 'none';
+}
+
+// ── Copy stopwatch into locked field ─────────────────────────────
+function useTimerValue() {
+  if (_stopwatchSecs <= 0) return;
+  document.getElementById('m-locked').value = _stopwatchSecs.toFixed(3);
+  onLockedTimeEdit(_stopwatchSecs.toFixed(3));
+  document.getElementById('m-use-btn').style.display = 'none';
+}
+
+// ── Locked time — the master value that drives delay and RPM ──────
+function onLockedTimeEdit(v) {
+  const secs  = parseFloat(v);
+  const shots = W.magSize || +document.getElementById('s-shots').value || 30;
+  if (!secs || secs <= 0 || isNaN(secs)) {
+    document.getElementById('m-rpm').textContent         = '— RPM';
+    document.getElementById('m-locked-lbl').textContent  = '— not set';
+    document.getElementById('m-locked-lbl').style.color  = 'var(--txt3)';
+    W.measuredDumpSecs = 0;
+    return;
+  }
+  const rpm = Math.round((shots - 1) / secs * 60);
+  W.rpm              = rpm;
+  W.measuredDumpSecs = secs;
+  document.getElementById('s-rpm').value               = rpm;
+  document.getElementById('m-rpm').textContent         = rpm + ' RPM';
+  document.getElementById('m-locked-lbl').textContent  = '✓ locked — ' + secs + 's';
+  document.getElementById('m-locked-lbl').style.color  = 'var(--grn)';
+  updRPM();
+}
+
+// Alt-tab auto-measure removed — LMB detection via MAKCU WebSocket below
+
+// ── Keyboard shortcut ─────────────────────────────────────────────
+function captureHK() {
+  hkCapturing = true;
+  const el = document.getElementById('hk-el');
+  el.textContent    = 'press key…';
+  el.style.borderColor = 'var(--acc)';
+}
+function clearHK() {
+  hkBound = '';
+  const el = document.getElementById('hk-el');
+  el.textContent    = '—';
+  el.style.borderColor = '';
+}
+document.addEventListener('keydown', e => {
+  if (hkCapturing) {
+    if (e.key === 'Escape') { hkCapturing = false; clearHK(); return; }
+    hkBound = e.key;
+    hkCapturing = false;
+    const el = document.getElementById('hk-el');
+    el.textContent    = e.key;
+    el.style.borderColor = '';
+    e.preventDefault();
+    return;
+  }
+  // Fire shortcut if bound and not typing in an input
+  const tag = document.activeElement.tagName;
+  if (hkBound && e.key === hkBound && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+    toggleMeasure();
+    e.preventDefault();
+  }
+});
+
+// ── WebSocket — receive Stream Deck toggle from server ─────────────
+let _lmbWasPressed = false;
+(function initWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws    = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.addEventListener('message', e => {
+    try {
+      const d = JSON.parse(e.data);
+
+      // Stream Deck stopwatch toggle
+      if (d.workshop_measure === 'toggle') toggleMeasure();
+
+      // LMB auto-stopwatch via MAKCU:
+      // Only when on Step 1, MAKCU connected, and browser is NOT focused (user is in-game)
+      if (d.makcu_connected && W.step === 1 &&
+          typeof d.lmb_pressed !== 'undefined' &&
+          !document.hasFocus()) {
+        const lmb = d.lmb_pressed;
+        if (lmb && !_lmbWasPressed && !measuring) toggleMeasure();
+        if (!lmb && _lmbWasPressed && measuring)  toggleMeasure();
+        _lmbWasPressed = lmb;
+      }
+    } catch {}
+  });
+  ws.addEventListener('close', () => {
+    _lmbWasPressed = false;
+    setTimeout(initWS, 3000);
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+//  SPREAD
+// ═══════════════════════════════════════════════════════════════════
+function syncSpread(axis, v) {
+  const val = Math.max(-20, Math.min(20, parseInt(v) || 0));
+  if (axis === 'y') {
+    W.spreadY = val;
+    document.getElementById('sp-y-sl').value = val;
+    document.getElementById('sp-y-sv').value = val;
+  } else {
+    W.spreadX = val;
+    document.getElementById('sp-x-sl').value = val;
+    document.getElementById('sp-x-sv').value = val;
+  }
+  updSpreadPreview();
+}
+
+function updSpreadPreview() {
+  const ms  = W.spreadMs || 80;
+  const x   = W.spreadX || 0;
+  const y   = W.spreadY || 0;
+  if (x === 0 && y === 0) {
+    document.getElementById('sp-preview').textContent = '— no spread set';
+    return;
+  }
+  // Single line + loop recoil = cleaner than repeating mag-size lines
+  document.getElementById('sp-preview').textContent = `${x},${y},${ms}`;
+  const lbl = document.getElementById('sp-ms-lbl');
+  if (lbl) lbl.textContent = ms + ' ms';
+}
+
+async function loadSpreadScript() {
+  const x   = W.spreadX || 0;
+  const y   = W.spreadY || 0;
+  const ms  = W.spreadMs || 80;
+  const mag = W.magSize || 30;
+
+  if (x === 0 && y === 0) {
+    alert('Set a spread value first — Y of 5 or more is recommended.');
+    return;
+  }
+
+  // Remember whatever script was active before so we can restore it
+  try {
+    const sr = await fetch('/api/scripts');
+    const sd = await sr.json();
+    W.preSpreadScript = sd.loaded || null;
+  } catch (_) { W.preSpreadScript = null; }
+
+  // Single vector line — loop recoil will be enabled so it repeats automatically
+  const content = `# x_offset, y_offset, delay_ms\n# Workshop spread script — auto-generated\n${x},${y},${ms}`;
+
+  try {
+    const sr = await fetch('/api/scripts/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'workshop_spread', content }),
+    });
+    if (!sr.ok) throw new Error('Save failed: ' + sr.status);
+
+    const lr = await fetch('/api/scripts/load/workshop_spread', { method: 'POST' });
+    if (!lr.ok) throw new Error('Load failed: ' + lr.status);
+
+    // Enable loop recoil so the single-line script repeats for the full mag
+    await fetch('/api/recoil', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loop_recoil: true, enabled: true }),
+    });
+
+    W.spreadActive = true;
+    document.getElementById('sp-status').textContent       = '● active in Cearum-Web';
+    document.getElementById('sp-status').style.color       = 'var(--grn)';
+    document.getElementById('sp-load-btn').style.display   = 'none';
+    document.getElementById('sp-clear-btn').style.display  = '';
+    document.getElementById('sp-loaded-warn').classList.remove('hidden');
+    // Force a state broadcast so any open Cearum-Web tabs refresh their script list
+    try { fetch('/api/state'); } catch(_) {}
+  } catch (e) {
+    alert('Failed to load spread script: ' + e.message);
+  }
+}
+
+async function clearSpreadScript() {
+  try {
+    // Disable loop recoil (it was enabled for the spread script)
+    await fetch('/api/recoil', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loop_recoil: false, enabled: false }),
+    });
+    // Restore the script that was active before the spread script was loaded
+    if (W.preSpreadScript && W.preSpreadScript !== 'NONE') {
+      const parts = W.preSpreadScript.split('/');
+      const url   = parts.length === 2
+        ? `/api/scripts/load/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`
+        : `/api/scripts/load/${encodeURIComponent(W.preSpreadScript)}`;
+      await fetch(url, { method: 'POST' });
+    }
+    // Delete the spread script so it can never be auto-loaded on restart
+    await fetch('/api/scripts/workshop_spread', { method: 'DELETE' });
+  } catch (_) {}
+
+  W.spreadActive     = false;
+  W.preSpreadScript  = null;
+  document.getElementById('sp-status').textContent       = '— not loaded';
+  document.getElementById('sp-status').style.color       = 'var(--txt3)';
+  document.getElementById('sp-load-btn').style.display   = '';
+  document.getElementById('sp-clear-btn').style.display  = 'none';
+  document.getElementById('sp-loaded-warn').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SCREENSHOT
+// ═══════════════════════════════════════════════════════════════════
+function loadSS(input) {
+  const file = input.files[0]; if (!file) return;
+  const img  = new Image();
+  img.onload = () => {
+    W.screenshot = img;
+    const mW = cv.width * 0.85, mH = cv.height * 0.8;
+    W.zoom = Math.min(mW / img.width, mH / img.height, 1);
+    W.panX = cv.width  / 2;
+    W.panY = cv.height / 2;
+    document.getElementById('dz-p').textContent = file.name;
+    document.getElementById('czoom').textContent = W.zoom.toFixed(2) + '×';
+    document.getElementById('chint').textContent = 'Left-click each bullet hole in order · Scroll to zoom · Right-drag to pan';
+    redraw();
+  };
+  img.src = URL.createObjectURL(file);
+}
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dz').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) {
+    const dt = new DataTransfer(); dt.items.add(f);
+    document.getElementById('ss-inp').files = dt.files;
+    loadSS(document.getElementById('ss-inp'));
+  }
+}
+function clearSS() {
+  W.screenshot = null;
+  document.getElementById('ss-inp').value = '';
+  document.getElementById('dz-p').textContent = 'Drop or click to upload';
+  redraw();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  PASSES
+// ═══════════════════════════════════════════════════════════════════
+function startPass() {
+  if (W.activePass) finishPass();
+  const color = PASS_COLORS[W.passes.length % PASS_COLORS.length];
+  W.activePass = { pts: [], color };
+  document.getElementById('ap-banner').style.display = 'block';
+  document.getElementById('ap-ct').textContent = '0';
+  document.getElementById('chint').textContent = 'Clicking holes — right-click to undo last';
+  redraw();
+}
+function finishPass() {
+  if (!W.activePass) return;
+  if (W.activePass.pts.length >= 2) {
+    W.passes.push(W.activePass);
+    recompute();
+  }
+  W.activePass = null;
+  document.getElementById('ap-banner').style.display = 'none';
+  updPassList();
+  redraw();
+}
+function undoClick() {
+  if (W.activePass && W.activePass.pts.length > 0) {
+    W.activePass.pts.pop();
+    document.getElementById('ap-ct').textContent = W.activePass.pts.length;
+    redraw();
+  }
+}
+function clearPasses() {
+  W.passes = []; W.activePass = null;
+  document.getElementById('ap-banner').style.display = 'none';
+  updPassList(); recompute(); redraw();
+}
+function removePass(i) { W.passes.splice(i, 1); updPassList(); recompute(); redraw(); }
+function updPassList() {
+  document.getElementById('pass-ct').textContent = W.passes.length;
+  document.getElementById('pass-list').innerHTML = W.passes.map((p, i) =>
+    `<div class="pi">
+      <div class="pdot" style="background:${p.color}"></div>
+      <span style="flex:1;color:var(--txt2)">Pass ${i + 1} — ${p.pts.length} shots</span>
+      <span class="px" onclick="removePass(${i})">✕</span>
+    </div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  VECTOR COMPUTATION
+// ═══════════════════════════════════════════════════════════════════
+function recompute() {
+  if (W.step === 4 && !W.editMode) calcAutoScale();
+  W.rawVectors   = computeRaw();
+  W.finalVectors = optimize(W.rawVectors, W.optLevel);
+  updOptStats();
+  updResultTable();
+  if (W.step >= 4) redraw();
+}
+
+function computeRaw() {
+  // Edit mode: apply scale as multiplier to base vectors
+  if (W.editMode) {
+    return W.editBase.map(v => ({
+      x:  +(v.x * W.scaleX).toFixed(2),
+      y:  +(v.y * W.scaleY).toFixed(2),
+      ms: v.ms,
+    }));
+  }
+
+  // Normal mode: compute from passes
+  const all = [...W.passes];
+  if (W.activePass && W.activePass.pts.length >= 2) all.push(W.activePass);
+  if (!all.length) return [];
+
+  const minLen = Math.min(...all.map(p => p.pts.length));
+  if (minLen < 2) return [];
+
+  // Use measured dump time if available for accuracy (real-world > stated RPM)
+  let delay;
+  if (W.measuredDumpSecs && W.measuredDumpSecs > 0) {
+    const shots = W.magSize || 30;
+    delay = Math.round((W.measuredDumpSecs * 1000) / Math.max(1, shots - 1));
+  } else {
+    delay = Math.round(60000 / Math.max(1, W.rpm));
+  }
+  const out   = [];
+
+  for (let i = 0; i < minLen - 1; i++) {
+    let sdx = 0, sdy = 0;
+    for (const p of all) {
+      sdx += p.pts[i + 1].x - p.pts[i].x;
+      sdy += p.pts[i + 1].y - p.pts[i].y;
+    }
+    const n = all.length;
+    // Subtract the spread that was artificially added per shot
+    // Each inter-shot delta contains one unit of spread movement
+    const spreadSubX = W.spreadX || 0;
+    const spreadSubY = W.spreadY || 0;
+    // Scale pixel deltas to MAKCU units FIRST, then subtract the artificial spread
+    out.push({
+      x:  +((sdx / n) * W.scaleX - spreadSubX).toFixed(2),
+      y:  +((sdy / n) * W.scaleY - spreadSubY).toFixed(2),
+      ms: delay,
+    });
+  }
+  return out;
+}
+
+function optimize(vecs, level) {
+  if (level === 0 || !vecs.length) return [...vecs];
+  const thresh = level * 0.4;  // MAKCU units per level
+  const result = [];
+  let group    = [{ ...vecs[0] }];
+
+  for (let i = 1; i < vecs.length; i++) {
+    const v    = vecs[i];
+    const avgX = group.reduce((s, g) => s + g.x, 0) / group.length;
+    const avgY = group.reduce((s, g) => s + g.y, 0) / group.length;
+    if (Math.abs(v.x - avgX) <= thresh && Math.abs(v.y - avgY) <= thresh) {
+      group.push({ ...v });
+    } else {
+      result.push(mergeGroup(group));
+      group = [{ ...v }];
+    }
+  }
+  if (group.length) result.push(mergeGroup(group));
+  return result;
+}
+
+function mergeGroup(g) {
+  return {
+    x:  +(g.reduce((s, v) => s + v.x, 0) / g.length).toFixed(2),
+    y:  +(g.reduce((s, v) => s + v.y, 0) / g.length).toFixed(2),
+    ms: g.reduce((s, v) => s + v.ms, 0),
+  };
+}
+
+function updOptStats() {
+  const raw = W.rawVectors.length;
+  const fin = W.finalVectors.length;
+  const pct = raw > 0 ? Math.round((1 - fin / raw) * 100) : 0;
+  document.getElementById('opt-raw').textContent = raw || '—';
+  document.getElementById('opt-fin').textContent = fin || '—';
+  document.getElementById('opt-pct').textContent = raw > 0 ? pct + '%' : '—';
+  // Vector table in Step 5
+  document.getElementById('opt-vct-lbl').textContent = fin + ' shots';
+  const tbody = document.getElementById('opt-tbl-body');
+  if (tbody) {
+    tbody.innerHTML = W.finalVectors.map((v, i) =>
+      `<tr><td style="color:var(--txt3)">${i+1}</td><td>${v.x}</td><td>${v.y}</td><td>${v.ms}</td></tr>`
+    ).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  AUTO SCALE CALCULATION
+// ═══════════════════════════════════════════════════════════════════
+function calcAutoScale() {
+  const all      = W.passes.length ? W.passes : [];
+  const spY      = W.spreadY || 0;
+  const noSpread = spY === 0;
+
+  document.getElementById('sc-spy').textContent = spY ? spY + ' units' : '— no spread';
+
+  if (!all.length || all[0].pts.length < 2) {
+    document.getElementById('sc-apy').textContent = '—';
+    document.getElementById('sc-sy').textContent  = '—';
+    return;
+  }
+
+  // Average pixel distance between consecutive holes (Y axis only — spread is Y)
+  let sumDY = 0, count = 0;
+  for (const p of all) {
+    for (let i = 0; i < p.pts.length - 1; i++) {
+      sumDY += Math.abs(p.pts[i+1].y - p.pts[i].y);
+      count++;
+    }
+  }
+  const avgPxY = count > 0 ? sumDY / count : 0;
+  document.getElementById('sc-apy').textContent = avgPxY.toFixed(1) + ' px';
+
+  // Suggested scale = spread_units / avg_pixels
+  // This is the conversion factor so that spread subtraction cancels exactly
+  const scY = !noSpread && avgPxY > 0 ? +(spY / avgPxY).toFixed(4) : 0.1;
+  const scX = scY;  // assume equal sensitivity on both axes
+
+  // Always update the suggestion display
+  document.getElementById('sc-sy').textContent = scY;
+
+  // Auto-apply: set W.scaleX/Y and update sliders
+  W.scaleX = scX;
+  W.scaleY = scY;
+  document.getElementById('sy-sl').value = scY;
+  document.getElementById('sy-sv').value = scY.toFixed(4);
+  document.getElementById('sx-sl').value = scX;
+  document.getElementById('sx-sv').value = scX.toFixed(4);
+}
+
+function onSX(v) {
+  const val = Math.max(0.001, Math.min(5, parseFloat(v) || 0.1));
+  W.scaleX = val;
+  document.getElementById('sx-sl').value = val;
+  document.getElementById('sx-sv').value = val.toFixed(3);
+  recompute();
+}
+function onSY(v) {
+  const val = Math.max(0.001, Math.min(5, parseFloat(v) || 0.1));
+  W.scaleY = val;
+  document.getElementById('sy-sl').value = val;
+  document.getElementById('sy-sv').value = val.toFixed(3);
+  recompute();
+}
+function applyAutoScale() {
+  document.getElementById('sx-sl').value = W.scaleX.toFixed(3);
+  document.getElementById('sx-sv').value = W.scaleX.toFixed(3);
+  document.getElementById('sy-sl').value = W.scaleY.toFixed(3);
+  document.getElementById('sy-sv').value = W.scaleY.toFixed(3);
+  recompute();
+}
+function onOpt(v) {
+  W.optLevel = +v;
+  document.getElementById('op-lbl').textContent = v + ' — ' + OPT_LABELS[v];
+  recompute();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RESULT TABLE
+// ═══════════════════════════════════════════════════════════════════
+function updResultTable() {
+  const vecs = W.finalVectors;
+  document.getElementById('r-vct').textContent  = vecs.length || '—';
+  document.getElementById('r-game').textContent = W.game   || '—';
+  document.getElementById('r-wpn').textContent  = W.weapon || '—';
+  document.getElementById('r-rpm').textContent  = W.rpm + ' RPM';
+
+  const wrap = document.getElementById('r-wrap');
+  if (!vecs.length) {
+    wrap.innerHTML = '<div style="font-size:10px;color:var(--txt3)">No vectors yet</div>'; return;
+  }
+  wrap.innerHTML =
+    `<table class="vtbl"><thead><tr><th>#</th><th>x</th><th>y</th><th>ms</th></tr></thead><tbody>` +
+    vecs.map((v, i) =>
+      `<tr><td>${i + 1}</td><td>${v.x}</td><td>${v.y}</td><td>${v.ms}</td></tr>`
+    ).join('') + '</tbody></table>';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════════════════════
+function buildTxt() {
+  const vecs = W.finalVectors;
+  return [
+    '# x_offset, y_offset, delay_ms',
+    `# Game    : ${W.game   || 'Unknown'}`,
+    `# Weapon  : ${W.weapon || 'weapon'}`,
+    `# RPM     : ${W.rpm}`,
+    `# Vectors : ${vecs.length}`,
+    `# Source  : Cearum Recoil Workshop`,
+    '#',
+    ...vecs.map(v => `${v.x},${v.y},${v.ms}`),
+  ].join('\n');
+}
+async function saveServer() {
+  if (!W.finalVectors.length) { alert('No vectors to save.'); return; }
+  const body = { name: W.weapon || 'weapon', content: buildTxt() };
+  if (W.game) body.game = W.game;
+  try {
+    const r = await fetch('/api/scripts/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (r.ok) alert(`✓ Saved → ${W.game ? W.game + '/' : ''}${W.weapon}.txt`);
+    else       alert('Save failed: ' + r.status);
+  } catch (e) { alert('Cannot reach Cearum-Web server: ' + e.message); }
+}
+function dlTxt() {
+  if (!W.finalVectors.length) { alert('No vectors to download.'); return; }
+  const a = document.createElement('a');
+  a.href     = URL.createObjectURL(new Blob([buildTxt()], { type: 'text/plain' }));
+  a.download = `${W.weapon || 'weapon'}.txt`;
+  a.click();
+}
+function copyClip() {
+  if (!W.finalVectors.length) { alert('No vectors to copy.'); return; }
+  navigator.clipboard.writeText(buildTxt())
+    .then(() => alert('Copied to clipboard ✓'));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  EDIT EXISTING MODE
+// ═══════════════════════════════════════════════════════════════════
+function openEdit() { document.getElementById('edit-inp').click(); }
+
+function loadEditFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const vecs = [];
+    for (const line of e.target.result.split('\n')) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      const p = t.split(',').map(s => parseFloat(s.trim()));
+      if (p.length >= 3 && !isNaN(p[0])) vecs.push({ x: p[0], y: p[1], ms: p[2] });
+    }
+    if (!vecs.length) { alert('No valid vectors found in file.'); return; }
+
+    W.editMode  = true;
+    W.editBase  = vecs;
+    W.rawVectors = [...vecs];
+    W.finalVectors = [...vecs];
+
+    // Try to extract RPM from first ms value
+    if (vecs[0].ms > 0) {
+      W.rpm = Math.round(60000 / vecs[0].ms);
+      document.getElementById('s-rpm').value = W.rpm;
+      updRPM();
+    }
+
+    // Reset scale to 1.0 for multiplicative edit mode
+    W.scaleX = 1.0; W.scaleY = 1.0;
+    const _sy = document.getElementById('sy-sl');
+    const _sv = document.getElementById('sy-sv');
+    const _sx = document.getElementById('sx-sl');
+    const _sxv = document.getElementById('sx-sv');
+    if (_sy) { _sy.value = 1.0; _sv.value = '1.000'; }
+    if (_sx) { _sx.value = 1.0; _sxv.value = '1.000'; }
+    const si = document.getElementById('scale-info');
+    if (si) si.textContent = 'Edit mode — Scale X/Y act as multipliers on the loaded vectors (1.0 = unchanged).';
+
+    // Try to extract weapon name from filename
+    const nm = file.name.replace('.txt','');
+    W.weapon = nm;
+    document.getElementById('s-wpn').value = nm;
+
+    alert(`Loaded ${vecs.length} vectors from ${file.name}\nAdjust via Optimization or go straight to Result.`);
+    goStep(4);
+    recompute();
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  STEP NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+const PANELS = ['p1','p2','p3','p5','p6'];   // p4 (scale) removed — runs silently in step 3
+const HINTS  = [
+  'Set weapon name and fire rate before proceeding',
+  'Set spread values, load the script into Cearum-Web, fire at a wall, then screenshot',
+  'Upload your bullet hole screenshot — click each hole in order to trace the pattern',
+  'Review and adjust vectors — merge similar adjacent shots to reduce script length',
+  'Review the generated script and save to Cearum-Web or download',
+];
+const MODES  = ['Setup','Spread','Modeling','Optimization','Result'];
+
+function goStep(n) {
+  // Suppress alt-tab timer during navigation
+  _navigating = true;
+  setTimeout(() => { _navigating = false; }, 300);
+
+  // Auto-finish active pass when leaving step 3
+  if (W.step === 3 && W.activePass && W.activePass.pts.length >= 2) finishPass();
+  // Auto-restore previous script when leaving step 2
+  if (W.step === 2 && W.spreadActive) clearSpreadScript();
+
+  W.step = n;
+
+  PANELS.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (i + 1 === n) el.classList.remove('hidden'); else el.classList.add('hidden');
+  });
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('s' + i);
+    if (el) el.className = 'stp' + (i === n ? ' cur' : i < n ? ' ok' : '');
+  }
+  document.getElementById('ftr-lbl').textContent = `Step ${n} of 5`;
+  document.getElementById('btn-back').style.visibility = n === 1 ? 'hidden' : 'visible';
+  document.getElementById('btn-next').textContent = 'Next →';
+  document.getElementById('btn-next').style.visibility = n === 5 ? 'hidden' : 'visible';
+  document.getElementById('chint').textContent = HINTS[n - 1];
+  document.getElementById('cmode').textContent  = MODES[n - 1];
+
+  // Pre-fill spread delay from measured/calculated ms when entering step 2
+  if (n === 2) {
+    const shots = W.magSize || 30;
+    const msShot = W.measuredDumpSecs > 0
+      ? Math.round((W.measuredDumpSecs * 1000) / Math.max(1, shots - 1))
+      : (W.rpm > 0 ? Math.round(60000 / W.rpm) : 80);
+    W.spreadMs = msShot;
+    const spMs = document.getElementById('sp-ms');
+    if (spMs) spMs.value = msShot;
+    const lbl = document.getElementById('sp-ms-lbl');
+    if (lbl) lbl.textContent = msShot + ' ms';
+    updSpreadPreview();
+  }
+  // Pre-fill spread delay from measured time when entering step 2
+  if (n === 2) {
+    const shots = W.magSize || 30;
+    const msShot = W.measuredDumpSecs > 0
+      ? Math.round((W.measuredDumpSecs * 1000) / Math.max(1, shots - 1))
+      : (W.rpm > 0 ? Math.round(60000 / W.rpm) : 80);
+    W.spreadMs = msShot;
+    const spMs = document.getElementById('sp-ms');
+    if (spMs) spMs.value = msShot;
+    const lbl = document.getElementById('sp-ms-lbl');
+    if (lbl) lbl.textContent = msShot + ' ms';
+    updSpreadPreview();
+  }
+  if (n === 4 && !W.editMode) calcAutoScale();
+  if (n >= 4) recompute();  // n>=4 is now optimization(4) and result(5)
+  redraw();
+}
+
+function nextStep() { if (W.step < 5) goStep(W.step + 1); }
+function prevStep() { if (W.step > 1) goStep(W.step - 1); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════
+updRPM();
+goStep(1);
+resize();
+</script>
+</body>
+</html>

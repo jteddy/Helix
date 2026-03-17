@@ -530,11 +530,11 @@ function pDebounced(key,url,body,delay=350){clearTimeout(_pT[key]);_pT[key]=setT
 async function api(url,opts={}){const r=await fetch(url,opts);if(!r.ok)throw new Error(await r.text());return r.json();}
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
-let ws;
+let ws;let _wsPingInterval;
 function wsConnect(){
   const proto=location.protocol==='https:'?'wss:':'ws:';
   ws=new WebSocket(`${proto}//${location.host}/ws`);
-  ws.onopen=()=>{$('s-ws').textContent='Connected';$('s-ws').style.color='var(--green)';setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);};
+  ws.onopen=()=>{$('s-ws').textContent='Connected';$('s-ws').style.color='var(--green)';clearInterval(_wsPingInterval);_wsPingInterval=setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);};
   ws.onmessage=e=>applyStatus(JSON.parse(e.data));
   ws.onclose=()=>{$('ws-dot').className='err';$('s-ws').textContent='Reconnecting…';$('s-ws').style.color='var(--red)';setTimeout(wsConnect,2000);};
 }
