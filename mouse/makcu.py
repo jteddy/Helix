@@ -174,7 +174,7 @@ class makcu_controller:
         if not makcu_controller.is_connected():
             return False
         if dx == 0 and dy == 0:
-            return False
+            return True  # No movement needed — treat as completed, not interrupted
 
         def ease_out_quad(t):
             return t * (2 - t)
