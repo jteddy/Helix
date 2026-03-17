@@ -144,9 +144,8 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
     <button class="stp cur" id="s1" onclick="goStep(1)"><span class="sn">1</span>Setup</button>
     <button class="stp"     id="s2" onclick="goStep(2)"><span class="sn">2</span>Pattern Spread</button>
     <button class="stp"     id="s3" onclick="goStep(3)"><span class="sn">3</span>Modeling</button>
-    <button class="stp"     id="s4" onclick="goStep(4)"><span class="sn">4</span>Scale</button>
-    <button class="stp"     id="s5" onclick="goStep(5)"><span class="sn">5</span>Optimization</button>
-    <button class="stp"     id="s6" onclick="goStep(6)"><span class="sn">6</span>Result</button>
+    <button class="stp"     id="s4" onclick="goStep(4)"><span class="sn">4</span>Optimization</button>
+    <button class="stp"     id="s5" onclick="goStep(5)"><span class="sn">5</span>Result</button>
   </div>
 
   <!-- Body -->
@@ -156,20 +155,6 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
     <div id="cw">
       <canvas id="cv"></canvas>
       <div id="czoom">1.0×</div>
-      <button onclick="veFit()" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);
-        font-size:9px;font-family:var(--fu);letter-spacing:.05em;text-transform:uppercase;
-        background:rgba(11,12,14,.8);border:1px solid var(--bdr);color:var(--txt3);
-        border-radius:var(--rs);padding:2px 8px;cursor:pointer;transition:color .15s,border-color .15s"
-        onmouseover="this.style.color='var(--acc)';this.style.borderColor='var(--acc)'"
-        onmouseout="this.style.color='var(--txt3)';this.style.borderColor='var(--bdr)'">Fit to screen</button>
-      <button onclick="veFit()" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);
-        font-size:9px;font-family:var(--fu);letter-spacing:.05em;text-transform:uppercase;
-        background:rgba(11,12,14,.8);border:1px solid var(--bdr);color:var(--txt3);
-        border-radius:var(--rs);padding:2px 8px;cursor:pointer;transition:all .15s"
-        onmouseover="this.style.color='var(--acc)';this.style.borderColor='var(--acc)'"
-        onmouseout="this.style.color='var(--txt3)';this.style.borderColor='var(--bdr)'">
-        Fit to screen
-      </button>
       <div id="cmode">Modeling</div>
       <div id="chint">Upload a screenshot to begin tracing</div>
     </div>
@@ -198,52 +183,31 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
         </div>
         <div class="sec">
           <div class="sec-h">Fire Rate — Measure</div>
-          <div class="info" style="margin-bottom:8px">MAKCU connected → hold LMB in-game and the stopwatch starts/stops automatically. Or use the buttons manually.</div>
-          <!-- Stopwatch: display only, never drives RPM directly -->
-          <div class="info" style="margin-bottom:8px">Hold LMB in-game → stopwatch starts automatically via MAKCU. Release → it stops. Or use the buttons below.</div>
+          <div class="info">Alt-tab into game → fire full mag → alt-tab back. Timer starts/stops on tab switch automatically. Or use keyboard shortcut / Stream Deck.</div>
           <div id="mbox">
-            <span id="m-time" style="display:block;font-size:26px;font-weight:700;color:var(--acc);
-              font-family:var(--fm);text-align:center;letter-spacing:.04em;
-              font-variant-numeric:tabular-nums;padding:4px 0;border-bottom:1px solid var(--bdr2);
-              margin-bottom:4px">0.000 s</span>
-            <div style="font-size:9px;color:var(--txt3);text-align:center;margin-bottom:8px">stopwatch — press start, fire, press stop</div>
-            <div class="bgrp" style="justify-content:center;margin-bottom:6px">
-              <button class="btn bp" id="m-btn" onclick="toggleMeasure()" style="flex:1">&#9658; Start</button>
+            <input id="m-time" type="number" step="0.001" min="0" placeholder="0.000"
+              oninput="onTimeEdit(this.value)">
+            <span id="m-rpm">— RPM</span>
+            <div style="font-size:9px;color:var(--txt3);margin-bottom:6px">seconds · type from video, or use auto-measure</div>
+            <div class="bgrp" style="justify-content:center">
+              <button class="btn bp" id="m-btn" onclick="toggleMeasure()">&#9658; Manual Toggle</button>
               <button class="btn bg" onclick="resetMeasure()">Reset</button>
             </div>
-            <button class="btn bg btn-full" id="m-use-btn" onclick="useTimerValue()" style="font-size:10px;display:none">
-              ↓ Use this time
-            </button>
           </div>
-          <!-- Locked mag dump time — this is the master value -->
-          <div style="margin-top:10px">
-            <div class="fld">
-              <label>Mag Dump Time (seconds) <span id="m-locked-lbl" style="color:var(--txt3);font-weight:400">— not set</span></label>
-              <div style="display:flex;gap:4px">
-                <input type="number" id="m-locked" step="0.01" min="0.1" placeholder="e.g. 3.20"
-                  style="flex:1" oninput="onLockedTimeEdit(this.value)">
-              </div>
-              <div style="font-size:9px;color:var(--txt3);margin-top:3px">Type directly from a video, or press <em>Use this time</em> above to copy from stopwatch</div>
-            </div>
-            <div id="m-rpm" style="font-size:10px;color:var(--acc);text-align:center;margin-top:2px">— RPM</div>
-          </div>
-          <!-- Keyboard shortcut -->
           <div style="margin-top:8px">
             <div class="fld">
-              <label>Keyboard Shortcut (stopwatch start/stop)</label>
+              <label>Keyboard Shortcut (start/stop toggle)</label>
               <div style="display:flex;gap:4px">
-                <div id="hk-el" onclick="captureHK()" style="flex:1;display:flex;align-items:center;
-                  justify-content:center;height:var(--rh);background:var(--bg0);border:1px solid var(--bdr);
-                  border-radius:var(--rs);font-size:11px;color:var(--acc);cursor:pointer">—</div>
+                <div id="hk-el" onclick="captureHK()" style="flex:1;display:flex;align-items:center;justify-content:center;height:var(--rh);background:var(--bg0);border:1px solid var(--bdr);border-radius:var(--rs);font-size:11px;color:var(--acc);cursor:pointer">—</div>
                 <button class="btn bg" onclick="clearHK()" style="flex-shrink:0;font-size:10px">Clear</button>
               </div>
-              <div style="font-size:9px;color:var(--txt3);margin-top:3px">Click box then press any key to bind. Only controls the stopwatch — does not auto-set the locked time.</div>
+              <div style="font-size:9px;color:var(--txt3);margin-top:3px">Click box then press any key to bind</div>
             </div>
           </div>
           <div style="margin-top:4px">
             <div class="sec-h" style="margin-bottom:5px">Stream Deck</div>
             <div style="background:var(--bg0);border-radius:var(--rs);border:1px solid var(--bdr);padding:6px 8px;font-size:10px;color:var(--acc);line-height:2.1;font-family:var(--fm)">POST /api/workshop/measure/toggle</div>
-            <div style="font-size:9px;color:var(--txt3);margin-top:4px;line-height:1.6">Controls the stopwatch only. Press <em>Use this time</em> in the browser to lock the value.</div>
+            <div style="font-size:9px;color:var(--txt3);margin-top:4px;line-height:1.6">One button toggles start/stop. Web Requests plugin, same setup as recoil toggle.</div>
           </div>
         </div>
       </div>
@@ -342,45 +306,46 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
       <div id="p4" class="hidden">
         <div class="sec">
           <div class="sec-h">Scale</div>
-          <div class="info" id="scale-info">Scale converts screenshot pixel distances into MAKCU movement units. An auto-estimate is shown below — but it depends on your screenshot zoom and FOV so it may need adjusting. Start at the suggested value, test in-game, then tune up or down.</div>
+          <div class="info">Converts screenshot pixels into MAKCU units. The suggestion below is calculated from your spread — it auto-applies when you arrive here. Test in-game and tune up or down from there.</div>
         </div>
         <div class="sec">
-          <div class="sec-h">Suggestion <span id="sc-hint" style="color:var(--txt3);font-weight:400;font-size:9px">from spread ÷ avg px</span></div>
-          <div class="stat"><span>Spread Y used</span><span id="sc-spy" style="color:var(--acc)">—</span></div>
-          <div class="stat"><span>Avg px between holes (Y)</span><span id="sc-apy" style="color:var(--txt2)">—</span></div>
-          <div class="stat"><span>Suggested Scale Y</span><span id="sc-sy" style="color:var(--grn)">—</span></div>
-          <button class="btn bg btn-full" style="margin-top:6px;font-size:10px" onclick="applyAutoScale()">Apply Suggestion</button>
+          <div class="sec-h">Auto-suggestion</div>
+          <div class="stat"><span>Spread Y</span><span id="sc-spy" style="color:var(--acc)">—</span></div>
+          <div class="stat"><span>Avg px between holes</span><span id="sc-apy" style="color:var(--txt2)">—</span></div>
+          <div class="stat"><span>Suggested scale</span><span id="sc-sy" style="color:var(--grn);font-weight:600">—</span></div>
+          <button class="btn bg btn-full" style="margin-top:6px;font-size:10px" onclick="applyAutoScale()">↺ Re-apply suggestion</button>
         </div>
         <div class="sec">
-          <div class="sec-h">Scale X</div>
+          <div class="sec-h">Scale Y <span style="color:var(--txt3);font-weight:400;font-size:9px">vertical compensation</span></div>
           <div class="fld">
             <div class="srow">
-              <input type="range" id="sx-sl" min="0.001" max="2" step="0.001" value="0.1" oninput="onSX(this.value)">
-              <input type="number" id="sx-sv" value="0.100" step="0.001" min="0.001" max="2"
-                style="width:60px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
-                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);
-                padding:2px 4px;height:var(--rh)" oninput="onSX(this.value)">
+              <input type="range" id="sy-sl" min="0.001" max="5" step="0.001" value="0.1"
+                oninput="onSY(this.value)">
+              <input type="number" id="sy-sv" value="0.100" step="0.001" min="0.001" max="5"
+                style="width:64px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
+                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);
+                border-radius:var(--rs);padding:2px 4px;height:var(--rh)"
+                oninput="onSY(this.value)">
             </div>
           </div>
-          <div class="sec-h" style="margin-top:4px">Scale Y</div>
+          <div class="sec-h" style="margin-top:6px">Scale X <span style="color:var(--txt3);font-weight:400;font-size:9px">horizontal — usually same as Y</span></div>
           <div class="fld">
             <div class="srow">
-              <input type="range" id="sy-sl" min="0.001" max="2" step="0.001" value="0.1" oninput="onSY(this.value)">
-              <input type="number" id="sy-sv" value="0.100" step="0.001" min="0.001" max="2"
-                style="width:60px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
-                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);
-                padding:2px 4px;height:var(--rh)" oninput="onSY(this.value)">
+              <input type="range" id="sx-sl" min="0.001" max="5" step="0.001" value="0.1"
+                oninput="onSX(this.value)">
+              <input type="number" id="sx-sv" value="0.100" step="0.001" min="0.001" max="5"
+                style="width:64px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
+                background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);
+                border-radius:var(--rs);padding:2px 4px;height:var(--rh)"
+                oninput="onSX(this.value)">
             </div>
           </div>
-          <div class="warn" style="margin-top:6px">
-            Reticle pulling too far down → reduce Scale Y<br>
-            Not compensating enough → increase Scale Y<br>
-            Horizontal drift → adjust Scale X
+          <div class="warn" style="margin-top:8px;font-size:9px">
+            Y vectors should be small positive numbers (e.g. 0–20).<br>
+            If Y is large negative → scale is too small, increase it.<br>
+            If Y is too large positive → scale is too big, reduce it.<br>
+            Reticle drifts sideways → adjust X independently.
           </div>
-        </div>
-        <div class="sec">
-          <div class="sec-h">Preview</div>
-          <div style="font-size:10px;color:var(--txt3);line-height:1.7">Canvas shows the recoil path the MAKCU will apply. Adjust scale and watch the shape change.</div>
         </div>
       </div>
 
@@ -688,7 +653,6 @@ function drawVectorPath(W2, H) {
 //  FIRE RATE / MEASURE
 // ═══════════════════════════════════════════════════════════════════
 let measuring = false, measureT0 = 0, measureIv = null;
-let _stopwatchSecs = 0;   // last stopwatch reading — not locked until useTimerValue() called
 let hkCapturing = false, hkBound = '';
 
 // ── RPM validation display ────────────────────────────────────────
@@ -699,69 +663,75 @@ function updRPM() {
   const dumpS  = rpm > 0 ? ((mag - 1) * (60000 / rpm) / 1000).toFixed(2) : '—';
   document.getElementById('rpm-ms').textContent   = msShot + ' ms';
   document.getElementById('rpm-dump').textContent = dumpS + ' s';
+
 }
 
-// ── Stopwatch — display only, does NOT drive RPM ─────────────────
+// ── Core toggle ───────────────────────────────────────────────────
 function toggleMeasure() {
   if (!measuring) {
     measuring  = true;
     measureT0  = performance.now();
     document.getElementById('m-btn').textContent = '■ Stop';
     document.getElementById('m-btn').className   = 'btn br';
-    document.getElementById('m-use-btn').style.display = 'none';
     measureIv = setInterval(() => {
       const el = (performance.now() - measureT0) / 1000;
-      document.getElementById('m-time').textContent = el.toFixed(3) + ' s';
+      document.getElementById('m-time').value = el.toFixed(3);
     }, 50);
   } else {
     clearInterval(measureIv);
     measuring = false;
-    _stopwatchSecs = (performance.now() - measureT0) / 1000;
-    document.getElementById('m-time').textContent = _stopwatchSecs.toFixed(3) + ' s';
-    document.getElementById('m-btn').textContent  = '▶ Start';
+    const el    = (performance.now() - measureT0) / 1000;
+    const shots = W.magSize || +document.getElementById('s-shots').value || 30;
+    const rpm   = Math.round((shots - 1) / el * 60);
+    W.rpm             = rpm;
+    W.measuredDumpSecs = el;
+    document.getElementById('s-rpm').value        = rpm;
+    document.getElementById('m-time').value       = el.toFixed(3);
+    document.getElementById('m-rpm').textContent  = rpm + ' RPM  (' + el.toFixed(2) + 's measured)';
+    document.getElementById('m-btn').textContent  = '▶ Manual Toggle';
     document.getElementById('m-btn').className    = 'btn bp';
-    document.getElementById('m-use-btn').style.display = '';
+    updRPM();
   }
 }
 
 function resetMeasure() {
-  clearInterval(measureIv);
-  measuring      = false;
-  _stopwatchSecs = 0;
-  document.getElementById('m-time').textContent   = '0.000 s';
-  document.getElementById('m-btn').textContent    = '▶ Start';
-  document.getElementById('m-btn').className      = 'btn bp';
-  document.getElementById('m-use-btn').style.display = 'none';
+  clearInterval(measureIv); measuring = false;
+  document.getElementById('m-time').value = '';
+  document.getElementById('m-rpm').textContent  = '— RPM';
+  document.getElementById('m-btn').textContent  = '▶ Manual Toggle';
+  document.getElementById('m-btn').className    = 'btn bp';
 }
 
-// ── Copy stopwatch result into locked time ────────────────────────
-function useTimerValue() {
-  if (_stopwatchSecs <= 0) return;
-  document.getElementById('m-locked').value = _stopwatchSecs.toFixed(3);
-  onLockedTimeEdit(_stopwatchSecs.toFixed(3));
-  document.getElementById('m-use-btn').style.display = 'none';
-}
-
-// ── Locked time field — this is the master value ──────────────────
-function onLockedTimeEdit(v) {
+// ── Manual time entry from video ─────────────────────────────────
+function onTimeEdit(v) {
   const secs  = parseFloat(v);
   const shots = W.magSize || +document.getElementById('s-shots').value || 30;
   if (!secs || secs <= 0 || isNaN(secs)) {
-    document.getElementById('m-rpm').textContent    = '— RPM';
-    document.getElementById('m-locked-lbl').textContent = '— not set';
-    document.getElementById('m-locked-lbl').style.color = 'var(--txt3)';
-    W.measuredDumpSecs = 0;
+    document.getElementById('m-rpm').textContent = '— RPM';
     return;
   }
   const rpm = Math.round((shots - 1) / secs * 60);
   W.rpm              = rpm;
   W.measuredDumpSecs = secs;
-  document.getElementById('s-rpm').value               = rpm;
-  document.getElementById('m-rpm').textContent         = rpm + ' RPM';
-  document.getElementById('m-locked-lbl').textContent  = '✓ locked — ' + secs + 's';
-  document.getElementById('m-locked-lbl').style.color  = 'var(--grn)';
+  document.getElementById('s-rpm').value       = rpm;
+  document.getElementById('m-rpm').textContent = rpm + ' RPM';
   updRPM();
 }
+
+// ── Alt-tab detection (focus/blur) ────────────────────────────────
+// Only fires on step 1, only if no measurement taken yet, and not mid-navigation
+let _navigating = false;
+window.addEventListener('blur', () => {
+  if (_navigating) return;                     // ignore blur caused by clicking buttons
+  if (W.step !== 1) return;
+  if (W.measuredDumpSecs > 0) return;
+  if (!measuring) toggleMeasure();
+});
+window.addEventListener('focus', () => {
+  if (_navigating) return;
+  if (W.step !== 1) return;
+  if (measuring) toggleMeasure();
+});
 
 // ── Keyboard shortcut ─────────────────────────────────────────────
 function captureHK() {
@@ -795,40 +765,17 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// ── WebSocket — LMB auto-stopwatch + Stream Deck ─────────────────
-let _lmbWasPressed = false;
+// ── WebSocket — receive Stream Deck toggle from server ─────────────
 (function initWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws    = new WebSocket(`${proto}://${location.host}/ws`);
   ws.addEventListener('message', e => {
     try {
       const d = JSON.parse(e.data);
-
-      // Stream Deck stopwatch toggle
       if (d.workshop_measure === 'toggle') toggleMeasure();
-
-      // LMB auto-stopwatch — only on Step 1 and only when MAKCU is connected
-      if (d.makcu_connected && W.step === 1 && typeof d.lmb_pressed !== 'undefined') {
-        const lmb = d.lmb_pressed;
-
-        // LMB down → start stopwatch (if not already running)
-        if (lmb && !_lmbWasPressed && !measuring) {
-          toggleMeasure();
-        }
-
-        // LMB up → stop stopwatch (if running)
-        if (!lmb && _lmbWasPressed && measuring) {
-          toggleMeasure();
-        }
-
-        _lmbWasPressed = lmb;
-      }
     } catch {}
   });
-  ws.addEventListener('close', () => {
-    _lmbWasPressed = false;
-    setTimeout(initWS, 3000);
-  });
+  ws.addEventListener('close', () => setTimeout(initWS, 3000));
 })();
 
 // ═══════════════════════════════════════════════════════════════════
@@ -894,31 +841,24 @@ async function loadSpreadScript() {
     const lr = await fetch('/api/scripts/load/workshop_spread', { method: 'POST' });
     if (!lr.ok) throw new Error('Load failed: ' + lr.status);
 
+    // Enable loop recoil so the single-line script repeats for the full mag
+    await fetch('/api/recoil', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loop_recoil: true, enabled: true }),
+    });
+
     W.spreadActive = true;
     document.getElementById('sp-status').textContent       = '● active in Cearum-Web';
     document.getElementById('sp-status').style.color       = 'var(--grn)';
     document.getElementById('sp-load-btn').style.display   = 'none';
     document.getElementById('sp-clear-btn').style.display  = '';
     document.getElementById('sp-loaded-warn').classList.remove('hidden');
+    // Force a state broadcast so any open Cearum-Web tabs refresh their script list
+    try { fetch('/api/state'); } catch(_) {}
   } catch (e) {
     alert('Failed to load spread script: ' + e.message);
-    return;
   }
-
-  // Enable loop recoil + recoil ON — separate try so we can report this failure clearly
-  try {
-    const rr = await fetch('/api/recoil', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loop_recoil: true, enabled: true }),
-    });
-    if (!rr.ok) throw new Error('status ' + rr.status);
-  } catch (e) {
-    alert('Spread script loaded but could not enable loop recoil: ' + e.message + '\nPlease enable Loop Recoil and Recoil manually in Cearum-Web.');
-  }
-
-  // Force state broadcast so open Cearum-Web tabs refresh
-  try { fetch('/api/state'); } catch(_) {}
 }
 
 async function clearSpreadScript() {
@@ -1144,101 +1084,64 @@ function updOptStats() {
 //  AUTO SCALE CALCULATION
 // ═══════════════════════════════════════════════════════════════════
 function calcAutoScale() {
-  const all = W.passes.length ? W.passes : [];
-  const spY = W.spreadY || 0;
-  const spX = W.spreadX || 0;
-  const noSpread = spY === 0 && spX === 0;
+  const all      = W.passes.length ? W.passes : [];
+  const spY      = W.spreadY || 0;
+  const noSpread = spY === 0;
 
-  document.getElementById('sc-no-spread').classList.toggle('hidden', !noSpread);
-  document.getElementById('sc-spy').textContent = spY + ' units';
-  document.getElementById('sc-spx').textContent = spX + ' units';
+  document.getElementById('sc-spy').textContent = spY ? spY + ' units' : '— no spread';
 
   if (!all.length || all[0].pts.length < 2) {
     document.getElementById('sc-apy').textContent = '—';
-    document.getElementById('sc-apx').textContent = '—';
-    document.getElementById('sc-sy').textContent  = noSpread ? 'n/a' : '—';
-    document.getElementById('sc-sx').textContent  = noSpread ? 'n/a' : '—';
+    document.getElementById('sc-sy').textContent  = '—';
     return;
   }
 
-  // Average absolute delta per shot across all passes
-  let sumDY = 0, sumDX = 0, count = 0;
+  // Average pixel distance between consecutive holes (Y axis only — spread is Y)
+  let sumDY = 0, count = 0;
   for (const p of all) {
     for (let i = 0; i < p.pts.length - 1; i++) {
       sumDY += Math.abs(p.pts[i+1].y - p.pts[i].y);
-      sumDX += Math.abs(p.pts[i+1].x - p.pts[i].x);
       count++;
     }
   }
   const avgPxY = count > 0 ? sumDY / count : 0;
-  const avgPxX = count > 0 ? sumDX / count : 0;
-
   document.getElementById('sc-apy').textContent = avgPxY.toFixed(1) + ' px';
-  document.getElementById('sc-apx').textContent = avgPxX.toFixed(1) + ' px';
 
-  // Derive suggested scale — purely a starting guess, user must validate in-game
+  // Suggested scale = spread_units / avg_pixels
+  // This is the conversion factor so that spread subtraction cancels exactly
   const scY = !noSpread && avgPxY > 0 ? +(spY / avgPxY).toFixed(4) : 0.1;
-  const scX = scY;  // assume uniform sensitivity; user can override X independently
-  // Store as suggestion only — don't override W.scaleX/Y if user has already changed them
+  const scX = scY;  // assume equal sensitivity on both axes
+
+  // Always update the suggestion display
   document.getElementById('sc-sy').textContent = scY;
-  if ('_scaleAutoApplied' in W === false) {
-    // First time on this step — apply the suggestion automatically
-    W._scaleAutoApplied = true;
-    W.scaleX = scX;
-    W.scaleY = scY;
-    document.getElementById('sx-sl').value = scX;
-    document.getElementById('sx-sv').value = scX.toFixed(3);
-    document.getElementById('sy-sl').value = scY;
-    document.getElementById('sy-sv').value = scY.toFixed(3);
-  }
-  if (noSpread) {
-    document.getElementById('sc-hint').textContent = '— no spread used, defaulting to 0.1';
-    document.getElementById('sc-spy').textContent  = '—';
-    document.getElementById('sc-apy').textContent  = '—';
-    document.getElementById('sc-sy').textContent   = '0.100 (default)';
-  }
+
+  // Auto-apply: set W.scaleX/Y and update sliders
+  W.scaleX = scX;
+  W.scaleY = scY;
+  document.getElementById('sy-sl').value = scY;
+  document.getElementById('sy-sv').value = scY.toFixed(4);
+  document.getElementById('sx-sl').value = scX;
+  document.getElementById('sx-sv').value = scX.toFixed(4);
 }
 
 function onSX(v) {
-  const val = Math.max(0.001, Math.min(2, parseFloat(v) || 0.1));
+  const val = Math.max(0.001, Math.min(5, parseFloat(v) || 0.1));
   W.scaleX = val;
   document.getElementById('sx-sl').value = val;
   document.getElementById('sx-sv').value = val.toFixed(3);
   recompute();
 }
 function onSY(v) {
-  const val = Math.max(0.001, Math.min(2, parseFloat(v) || 0.1));
+  const val = Math.max(0.001, Math.min(5, parseFloat(v) || 0.1));
   W.scaleY = val;
   document.getElementById('sy-sl').value = val;
   document.getElementById('sy-sv').value = val.toFixed(3);
   recompute();
 }
 function applyAutoScale() {
-  // Apply the auto-calculated scale values to the sliders
-  document.getElementById('sx-sl').value = W.scaleX;
+  document.getElementById('sx-sl').value = W.scaleX.toFixed(3);
   document.getElementById('sx-sv').value = W.scaleX.toFixed(3);
-  document.getElementById('sy-sl').value = W.scaleY;
-  document.getElementById('sy-sv').value = W.scaleY.toFixed(3);
-  recompute();
-}
-function onSX(v) {
-  const val = Math.max(0.001, Math.min(2, parseFloat(v) || 0.1));
-  W.scaleX = val;
-  document.getElementById('sx-sl').value = val;
-  document.getElementById('sx-sv').value = val.toFixed(3);
-  recompute();
-}
-function onSY(v) {
-  const val = Math.max(0.001, Math.min(2, parseFloat(v) || 0.1));
-  W.scaleY = val;
-  document.getElementById('sy-sl').value = val;
-  document.getElementById('sy-sv').value = val.toFixed(3);
-  recompute();
-}
-function applyAutoScale() {
-  document.getElementById('sx-sl').value = W.scaleX;
-  document.getElementById('sx-sv').value = W.scaleX.toFixed(3);
-  document.getElementById('sy-sl').value = W.scaleY;
+  document.getElementById('sy-sl').value = W.scaleY.toFixed(3);
   document.getElementById('sy-sv').value = W.scaleY.toFixed(3);
   recompute();
 }
@@ -1344,12 +1247,14 @@ function loadEditFile(input) {
 
     // Reset scale to 1.0 for multiplicative edit mode
     W.scaleX = 1.0; W.scaleY = 1.0;
-    document.getElementById('sx-sl').value = 1.0;
-    document.getElementById('sy-sl').value = 1.0;
-    document.getElementById('sx-sv').textContent = '1.00';
-    document.getElementById('sy-sv').textContent = '1.00';
-    document.getElementById('scale-info').textContent =
-      'Edit mode — Scale X/Y act as multipliers on the loaded vectors (1.0 = unchanged).';
+    const _sy = document.getElementById('sy-sl');
+    const _sv = document.getElementById('sy-sv');
+    const _sx = document.getElementById('sx-sl');
+    const _sxv = document.getElementById('sx-sv');
+    if (_sy) { _sy.value = 1.0; _sv.value = '1.000'; }
+    if (_sx) { _sx.value = 1.0; _sxv.value = '1.000'; }
+    const si = document.getElementById('scale-info');
+    if (si) si.textContent = 'Edit mode — Scale X/Y act as multipliers on the loaded vectors (1.0 = unchanged).';
 
     // Try to extract weapon name from filename
     const nm = file.name.replace('.txt','');
@@ -1366,18 +1271,21 @@ function loadEditFile(input) {
 // ═══════════════════════════════════════════════════════════════════
 //  STEP NAVIGATION
 // ═══════════════════════════════════════════════════════════════════
-const PANELS = ['p1','p2','p3','p4','p5','p6'];
+const PANELS = ['p1','p2','p3','p5','p6'];   // p4 (scale) removed — runs silently in step 3
 const HINTS  = [
   'Set weapon name and fire rate before proceeding',
   'Set spread values, load the script into Cearum-Web, fire at a wall, then screenshot',
   'Upload your bullet hole screenshot — click each hole in order to trace the pattern',
-  'Adjust scale until compensation matches in-game — start from the suggestion then tune',
-  'Review and merge vectors to reduce script length',
+  'Review and adjust vectors — merge similar adjacent shots to reduce script length',
   'Review the generated script and save to Cearum-Web or download',
 ];
-const MODES  = ['Setup','Spread','Modeling','Scale','Optimization','Result'];
+const MODES  = ['Setup','Spread','Modeling','Optimization','Result'];
 
 function goStep(n) {
+  // Suppress alt-tab timer during navigation
+  _navigating = true;
+  setTimeout(() => { _navigating = false; }, 300);
+
   // Auto-finish active pass when leaving step 3
   if (W.step === 3 && W.activePass && W.activePass.pts.length >= 2) finishPass();
   // Auto-restore previous script when leaving step 2
@@ -1389,14 +1297,14 @@ function goStep(n) {
     const el = document.getElementById(id);
     if (i + 1 === n) el.classList.remove('hidden'); else el.classList.add('hidden');
   });
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 5; i++) {
     const el = document.getElementById('s' + i);
     if (el) el.className = 'stp' + (i === n ? ' cur' : i < n ? ' ok' : '');
   }
-  document.getElementById('ftr-lbl').textContent = `Step ${n} of 6`;
+  document.getElementById('ftr-lbl').textContent = `Step ${n} of 5`;
   document.getElementById('btn-back').style.visibility = n === 1 ? 'hidden' : 'visible';
   document.getElementById('btn-next').textContent = 'Next →';
-  document.getElementById('btn-next').style.visibility = n === 6 ? 'hidden' : 'visible';
+  document.getElementById('btn-next').style.visibility = n === 5 ? 'hidden' : 'visible';
   document.getElementById('chint').textContent = HINTS[n - 1];
   document.getElementById('cmode').textContent  = MODES[n - 1];
 
@@ -1431,7 +1339,7 @@ function goStep(n) {
   redraw();
 }
 
-function nextStep() { if (W.step < 6) goStep(W.step + 1); }
+function nextStep() { if (W.step < 5) goStep(W.step + 1); }
 function prevStep() { if (W.step > 1) goStep(W.step - 1); }
 
 // ═══════════════════════════════════════════════════════════════════
