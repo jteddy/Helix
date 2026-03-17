@@ -204,6 +204,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <div class="tab active" data-tab="recoil"     onclick="st('recoil')">Recoil</div>
   <div class="tab"        data-tab="flashlight" onclick="st('flashlight')">Flashlight</div>
   <div class="tab"        data-tab="settings"   onclick="st('settings')">Settings</div>
+  <div class="tab"        data-tab="recorder"   onclick="st('recorder')">Record</div>
 </div>
 
 <div id="content">
@@ -322,6 +323,44 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 </div>
 </div>
 
+<!-- ═══ RECORDER ═══ -->
+<div class="panel" id="tab-recorder">
+<div class="cfg">
+
+  <div class="card">
+    <div class="ch">Settings</div>
+    <div class="cb">
+      <div class="crow"><span class="lbl">Bucket Size (ms)</span><div class="ctl"><input type="number" id="rec-bucket" min="10" max="500" value="85"></div></div>
+    </div>
+    <p class="note">Set bucket to roughly <code>60000 / RPM</code>. E.g. 700 RPM → 85 ms.</p>
+  </div>
+
+  <div class="card">
+    <div class="ch">Status</div>
+    <div class="cb">
+      <div class="crow"><span class="lbl">State</span><div class="ctl"><span id="rec-state" style="font-size:11px;color:var(--text3)">DISARMED</span></div></div>
+    </div>
+    <p class="note">Recoil auto-pauses when armed. Alt-tab to game → hold LMB → fire full mag → release LMB.</p>
+  </div>
+
+  <button class="btn full" id="rec-arm-btn" onclick="toggleArm()" style="margin:2px 0 5px">ARM RECORDER</button>
+
+  <div class="card" id="rec-result-card" style="display:none">
+    <div class="ch">Captured Vectors</div>
+    <div class="s-body" style="height:160px">
+      <textarea id="rec-ta" style="flex:1;resize:none;background:var(--bg1);border:none;color:var(--text);font-family:var(--fm);font-size:11px;padding:6px 8px;line-height:1.6;outline:none;width:100%" spellcheck="false" readonly></textarea>
+    </div>
+    <div class="s-bot">
+      <select id="rec-game-sel" style="height:22px;font-size:10px"></select>
+      <input type="text" id="rec-name" placeholder="weapon name" style="flex:1;min-width:0">
+      <button class="btn sm pri" onclick="saveRecording()">Save &amp; Load</button>
+      <button class="btn sm dng" onclick="discardRecording()">✕</button>
+    </div>
+  </div>
+
+</div>
+</div><!-- /recorder -->
+
 </div><!-- /content -->
 </div><!-- /root -->
 <div id="notif"></div>
@@ -353,7 +392,16 @@ function wsConnect(){
   const proto=location.protocol==='https:'?'wss:':'ws:';
   ws=new WebSocket(`${proto}//${location.host}/ws`);
   ws.onopen=()=>{$('s-ws').textContent='Connected';$('s-ws').style.color='var(--green)';clearInterval(_wsPingInterval);_wsPingInterval=setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);};
-  ws.onmessage=e=>applyStatus(JSON.parse(e.data));
+  ws.onmessage=e=>{
+    const d=JSON.parse(e.data);
+    if(d.recorder_result!==undefined||d.recorder_armed!==undefined||d.recorder_recording!==undefined){
+      applyRecorderWs(d);
+      // Also pass standard fields if present
+      if(d.makcu_connected!==undefined) applyStatus(d);
+    } else {
+      applyStatus(d);
+    }
+  };
   ws.onclose=()=>{$('ws-dot').className='err';$('s-ws').textContent='Reconnecting…';$('s-ws').style.color='var(--red)';setTimeout(wsConnect,2000);};
 }
 wsConnect();
@@ -369,6 +417,100 @@ function applyStatus(d){
   if(hs&&!sNewScriptMode&&document.activeElement!==$('s-name-inp')){$('s-name-inp').value=d.loaded_script.split('/').pop();}
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}
+
+// ── Recorder ──────────────────────────────────────────────────────────────────
+let recArmed = false;
+
+async function toggleArm() {
+  if (!recArmed) {
+    const bucket = parseInt($('rec-bucket').value) || 85;
+    try {
+      const r = await api('/api/recorder/arm', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({bucket_ms: bucket})
+      });
+      if (r.armed) {
+        recArmed = true;
+        $('rec-arm-btn').textContent = 'DISARM';
+        $('rec-arm-btn').classList.add('dng');
+        $('rec-state').textContent = 'ARMED — fire in-game';
+        $('rec-state').style.color = 'var(--green)';
+        notify('Recorder armed — fire in-game');
+      } else {
+        notify('Arm failed — is MAKCU connected?');
+      }
+    } catch(e) { notify('Network error'); }
+  } else {
+    await fetch('/api/recorder/disarm', {method: 'POST'});
+    recArmed = false;
+    $('rec-arm-btn').textContent = 'ARM RECORDER';
+    $('rec-arm-btn').classList.remove('dng');
+    $('rec-state').textContent = 'DISARMED';
+    $('rec-state').style.color = 'var(--text3)';
+    notify('Recorder disarmed');
+  }
+}
+
+function applyRecorderWs(d) {
+  if (d.recorder_result !== undefined) {
+    $('rec-ta').value = d.recorder_result;
+    $('rec-result-card').style.display = '';
+    recArmed = false;
+    $('rec-arm-btn').textContent = 'ARM RECORDER';
+    $('rec-arm-btn').classList.remove('dng');
+    $('rec-state').textContent = 'CAPTURED';
+    $('rec-state').style.color = 'var(--accent)';
+    notify('Capture complete — name and save below');
+    st('recorder');
+    return;
+  }
+  if (d.recorder_armed !== undefined) {
+    recArmed = d.recorder_armed;
+    if (!recArmed) {
+      $('rec-arm-btn').textContent = 'ARM RECORDER';
+      $('rec-arm-btn').classList.remove('dng');
+    }
+  }
+  if (d.recorder_recording !== undefined) {
+    const st_el = $('rec-state');
+    if (d.recorder_recording) {
+      st_el.textContent = '● RECORDING';
+      st_el.style.color = 'var(--red)';
+    } else if (recArmed) {
+      st_el.textContent = 'ARMED — fire in-game';
+      st_el.style.color = 'var(--green)';
+    }
+  }
+}
+
+async function saveRecording() {
+  const name = ($('rec-name').value || '').trim();
+  const content = $('rec-ta').value.trim();
+  const gameSel = $('rec-game-sel');
+  const game = (gameSel && gameSel.value) ? gameSel.value : (sCurrentGame || null);
+  if (!name) { notify('Enter weapon name'); return; }
+  if (!content) { notify('Nothing to save'); return; }
+  await api('/api/scripts/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, content, game})
+  });
+  const loadUrl = game
+    ? `/api/scripts/load/${encodeURIComponent(game)}/${encodeURIComponent(name)}`
+    : `/api/scripts/load/${encodeURIComponent(name)}`;
+  await fetch(loadUrl, {method: 'POST'});
+  await refreshScripts(game || sCurrentGame);
+  notify(`Saved & loaded: ${name}`);
+  discardRecording();
+}
+
+function discardRecording() {
+  $('rec-ta').value = '';
+  $('rec-result-card').style.display = 'none';
+  $('rec-state').textContent = 'DISARMED';
+  $('rec-state').style.color = 'var(--text3)';
+}
 
 // ── Load state ────────────────────────────────────────────────────────────────
 async function loadState(){
@@ -395,6 +537,11 @@ async function loadState(){
     sCurrentGame = defaultGame;
     updateDirLabel(defaultGame);
     populateGameSelector(d.games||[], defaultGame);
+    // Populate recorder game selector with same games list
+    const recSel=$('rec-game-sel');
+    if(recSel){
+      recSel.innerHTML='<option value="">(root)</option>'+(d.games||[]).map(g=>`<option value="${g}">${g}</option>`).join('');
+    }
     renderScripts([],r.loaded_script||'NONE');
     await refreshScripts(defaultGame);
     if(r.loaded_script&&r.loaded_script!=='NONE') await loadScriptContent(r.loaded_script);

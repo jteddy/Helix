@@ -228,6 +228,37 @@ class makcu_controller:
         return makcu_controller.button_states.get(button_name, False)
 
     @staticmethod
+    def start_recording(on_frame) -> bool:
+        """Switch to mouse streaming mode for recording. on_frame(buttons, dx, dy)."""
+        if not makcu_controller.is_connected():
+            return False
+        with makcu_controller.connection_lock:
+            ctrl = makcu_controller.controller
+        if ctrl is None:
+            return False
+        try:
+            ctrl.set_mouse_callback(on_frame)
+            ctrl.start_mouse_streaming(1)
+            return True
+        except Exception as e:
+            print(f"[MAKCU] start_recording error: {e}")
+            return False
+
+    @staticmethod
+    def stop_recording() -> None:
+        """Restore normal button-streaming mode after recording."""
+        with makcu_controller.connection_lock:
+            ctrl = makcu_controller.controller
+        if ctrl is None:
+            return
+        try:
+            ctrl.stop_mouse_streaming()
+            ctrl.set_mouse_callback(None)
+        except Exception as e:
+            print(f"[MAKCU] stop_recording error: {e}")
+        makcu_controller._clear_button_states()
+
+    @staticmethod
     def disconnect():
         with makcu_controller.connection_lock:
             if makcu_controller.controller:
