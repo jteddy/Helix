@@ -221,8 +221,8 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
           <div class="fld">
             <label>Spread Y — vertical units per shot</label>
             <div class="srow">
-              <input type="range" id="sp-y-sl" min="-10" max="10" step="1" value="0" oninput="syncSpread('y',this.value)">
-              <input type="number" id="sp-y-sv" value="0" min="-10" max="10" step="1"
+              <input type="range" id="sp-y-sl" min="-20" max="20" step="1" value="0" oninput="syncSpread('y',this.value)">
+              <input type="number" id="sp-y-sv" value="0" min="-20" max="20" step="1"
                 style="width:52px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
                 background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);
                 padding:2px 4px;height:var(--rh)"
@@ -232,8 +232,8 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
           <div class="fld">
             <label>Spread X — horizontal units per shot</label>
             <div class="srow">
-              <input type="range" id="sp-x-sl" min="-10" max="10" step="1" value="0" oninput="syncSpread('x',this.value)">
-              <input type="number" id="sp-x-sv" value="0" min="-10" max="10" step="1"
+              <input type="range" id="sp-x-sl" min="-20" max="20" step="1" value="0" oninput="syncSpread('x',this.value)">
+              <input type="number" id="sp-x-sv" value="0" min="-20" max="20" step="1"
                 style="width:52px;flex-shrink:0;text-align:center;font-size:11px;font-family:var(--fm);
                 background:var(--bg0);border:1px solid var(--bdr);color:var(--acc);border-radius:var(--rs);
                 padding:2px 4px;height:var(--rh)"
@@ -241,7 +241,7 @@ html,body{height:100%;background:var(--bg0);color:var(--txt);font-family:var(--f
             </div>
           </div>
           <div class="fld">
-            <label>Delay ms</label>
+            <label>Delay ms <span style="color:var(--txt3);font-weight:400">(auto-synced from RPM)</span></label>
             <input type="number" id="sp-ms" min="1" max="500" value="80" oninput="W.spreadMs=+this.value||80;updSpreadPreview()">
           </div>
         </div>
@@ -636,6 +636,13 @@ function updRPM() {
   const dumpS  = rpm > 0 ? ((mag - 1) * (60000 / rpm) / 1000).toFixed(2) : '—';
   document.getElementById('rpm-ms').textContent   = msShot + ' ms';
   document.getElementById('rpm-dump').textContent = dumpS + ' s';
+  // Auto-sync spread delay to match weapon fire rate
+  W.spreadMs = msShot;
+  const spMs = document.getElementById('sp-ms');
+  if (spMs && !spMs.matches(':focus')) {
+    spMs.value = msShot;
+    if (typeof updSpreadPreview === 'function') updSpreadPreview();
+  }
 }
 
 // ── Core toggle ───────────────────────────────────────────────────
@@ -746,7 +753,7 @@ document.addEventListener('keydown', e => {
 //  SPREAD
 // ═══════════════════════════════════════════════════════════════════
 function syncSpread(axis, v) {
-  const val = parseInt(v) || 0;
+  const val = Math.max(-20, Math.min(20, parseInt(v) || 0));
   if (axis === 'y') {
     W.spreadY = val;
     document.getElementById('sp-y-sl').value = val;
