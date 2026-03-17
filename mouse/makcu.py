@@ -35,6 +35,10 @@ class makcu_controller:
 
     @staticmethod
     def _watchdog():
+        """Ping the device every 8 s to detect silent USB drops.
+        auto_reconnect=True means the library owns reconnection — the
+        watchdog only marks the flag False on a failed ping so the rest
+        of the app knows the device is gone."""
         INTERVAL = 8
         while True:
             time.sleep(INTERVAL)
@@ -44,28 +48,24 @@ class makcu_controller:
                     and makcu_controller.controller is not None
                 )
                 ctrl = makcu_controller.controller if connected else None
-            if connected:
-                if makcu_controller._spray_active.is_set():
-                    continue
-                try:
-                    with makcu_controller.command_lock:
-                        ctrl.move(0, 0)
-                except Exception as e:
-                    print(f"[MAKCU] Watchdog detected disconnect: {e}")
-                    with makcu_controller.connection_lock:
-                        makcu_controller.is_connected_flag = False
-                        makcu_controller.controller = None
-                    makcu_controller._clear_button_states()
-            else:
-                print("[MAKCU] Watchdog attempting reconnect...")
-                result = makcu_controller._do_connect()
-                if result is not None:
-                    print("[MAKCU] Watchdog reconnected successfully")
+            if not connected:
+                continue
+            if makcu_controller._spray_active.is_set():
+                continue
+            try:
+                with makcu_controller.command_lock:
+                    ctrl.move(0, 0)
+            except Exception as e:
+                print(f"[MAKCU] Watchdog detected disconnect: {e}")
+                with makcu_controller.connection_lock:
+                    makcu_controller.is_connected_flag = False
+                    makcu_controller.controller = None
+                makcu_controller._clear_button_states()
 
     @staticmethod
     def _do_connect():
         try:
-            controller = create_controller(debug=False, auto_reconnect=False)
+            controller = create_controller(debug=False, auto_reconnect=True)
 
             def on_button_event(button, pressed):
                 if button == MouseButton.LEFT:
