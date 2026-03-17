@@ -1,3 +1,49 @@
+#!/usr/bin/env python3
+"""
+apply_patches.py
+================
+Run this from the root of your Cearum-Web repo:
+
+    python3 apply_patches.py
+
+It will:
+  1. Back up the three files it modifies (.bak copies)
+  2. Replace mouse/makcu.py with the fully corrected version
+  3. Patch the one line in main.py  (Bug 7)
+  4. Patch the two lines in static/index.html  (Bug 6)
+  5. Print a summary of every change made
+"""
+
+import os
+import re
+import shutil
+import sys
+
+# -- Locate repo root (script must be run from there) -------------------------
+REPO = os.path.dirname(os.path.abspath(__file__))
+
+MAKCU_PATH  = os.path.join(REPO, "mouse", "makcu.py")
+MAIN_PATH   = os.path.join(REPO, "main.py")
+HTML_PATH   = os.path.join(REPO, "static", "index.html")
+
+errors = []
+
+def backup(path):
+    bak = path + ".bak"
+    shutil.copy2(path, bak)
+    print(f"  OK Backed up -> {os.path.relpath(bak, REPO)}")
+
+def check(path):
+    if not os.path.exists(path):
+        errors.append(f"File not found: {os.path.relpath(path, REPO)}")
+        return False
+    return True
+
+# -----------------------------------------------------------------------------
+# 1. mouse/makcu.py -- full replacement
+# -----------------------------------------------------------------------------
+
+MAKCU_CONTENT = '''\
 import time
 import threading
 from makcu import create_controller, MouseButton
@@ -56,7 +102,7 @@ class makcu_controller:
 
         FIX 2: Because the library is now created with auto_reconnect=False,
         this watchdog is the single owner of reconnection logic.  There is no
-        longer a race between the library's internal reconnect and ours.
+        longer a race between the library\'s internal reconnect and ours.
 
         FIX 5: The watchdog skips its ping entirely while move_mouse_smoothly
         is executing (_spray_active is set) to prevent injecting a USB
@@ -105,7 +151,7 @@ class makcu_controller:
         Returns the controller on success, None on failure.
 
         FIX 2: auto_reconnect=False -- the library must NOT try to reconnect
-        on its own.  If both the library's internal reconnect and our watchdog
+        on its own.  If both the library\'s internal reconnect and our watchdog
         fire simultaneously they can open two overlapping HID connections,
         corrupt the USB state, and force a hard reset of the MAKCU.
         """
@@ -149,7 +195,7 @@ class makcu_controller:
 
         result = makcu_controller._do_connect()
 
-        # FIX 9: Start watchdog only if it isn't already alive.
+        # FIX 9: Start watchdog only if it isn\'t already alive.
         if result is not None:
             t = makcu_controller._watchdog_thread
             if t is None or not t.is_alive():
@@ -285,3 +331,120 @@ class makcu_controller:
                 makcu_controller.is_connected_flag = False
         makcu_controller._clear_button_states()  # FIX 1
         print("[MAKCU] Disconnected")
+'''
+
+# -----------------------------------------------------------------------------
+# 2. main.py -- insert await _save_async() into save_pattern
+# -----------------------------------------------------------------------------
+
+MAIN_OLD = '    return {"saved": True}'
+
+# We only want to patch the save_pattern function, not any other return.
+# Anchor on the line that precedes it to make the match unique.
+MAIN_SEARCH = '''\
+    if state.loaded_script in (full_name, weapon):
+        state.load_script(weapon, game)
+    return {"saved": True}'''
+
+MAIN_REPLACE = '''\
+    if state.loaded_script in (full_name, weapon):
+        state.load_script(weapon, game)
+    await _save_async()   # FIX 7: persist config so loaded_script survives restart
+    return {"saved": True}'''
+
+# -----------------------------------------------------------------------------
+# 3. static/index.html -- fix WebSocket ping interval leak
+# -----------------------------------------------------------------------------
+
+# Old: single let ws; declaration
+HTML_OLD_DECL   = "let ws;"
+HTML_NEW_DECL   = "let ws;let _wsPingInterval;"  # FIX 6
+
+# Old: bare setInterval inside ws.onopen
+HTML_OLD_INTERVAL = "setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);"
+HTML_NEW_INTERVAL = "clearInterval(_wsPingInterval);_wsPingInterval=setInterval(()=>{if(ws.readyState===1)ws.send('ping');},10000);"  # FIX 6
+
+# -----------------------------------------------------------------------------
+# Apply patches
+# -----------------------------------------------------------------------------
+
+def apply():
+    ok = True
+
+    # -- Validate paths --------------------------------------------------------
+    for p in (MAKCU_PATH, MAIN_PATH, HTML_PATH):
+        if not check(p):
+            ok = False
+    if not ok:
+        print("\n[ERROR] Some files were not found. Make sure you run this script")
+        print("        from the root of your Cearum-Web repo:\n")
+        print("        cd /path/to/Cearum-Web")
+        print("        python3 apply_patches.py\n")
+        for e in errors:
+            print(f"  !! {e}")
+        sys.exit(1)
+
+    # -- Patch 1: makcu.py (full replace) -------------------------------------
+    print("\n[ 1/3 ] Patching mouse/makcu.py ...")
+    backup(MAKCU_PATH)
+    with open(MAKCU_PATH, "w", encoding="utf-8") as f:
+        f.write(MAKCU_CONTENT)
+    print("  OK Replaced with corrected version (Fixes 1-5, 9)")
+
+    # -- Patch 2: main.py ------------------------------------------------------
+    print("\n[ 2/3 ] Patching main.py ...")
+    backup(MAIN_PATH)
+    with open(MAIN_PATH, "r", encoding="utf-8") as f:
+        src = f.read()
+
+    if MAIN_SEARCH not in src:
+        print("  !! Could not find the target block in main.py -- already patched?")
+        print("     Skipping main.py patch.")
+    elif "await _save_async()   # FIX 7" in src:
+        print("  -- Fix 7 already present -- skipping.")
+    else:
+        src = src.replace(MAIN_SEARCH, MAIN_REPLACE, 1)
+        with open(MAIN_PATH, "w", encoding="utf-8") as f:
+            f.write(src)
+        print("  OK Added await _save_async() to save_pattern() (Fix 7)")
+
+    # -- Patch 3: index.html ---------------------------------------------------
+    print("\n[ 3/3 ] Patching static/index.html ...")
+    backup(HTML_PATH)
+    with open(HTML_PATH, "r", encoding="utf-8") as f:
+        src = f.read()
+
+    changed = False
+
+    if "_wsPingInterval" in src:
+        print("  -- Fix 6 already present -- skipping.")
+    else:
+        if HTML_OLD_DECL not in src:
+            print("  !! Could not find 'let ws;' declaration in index.html -- skipping declaration patch.")
+        else:
+            src = src.replace(HTML_OLD_DECL, HTML_NEW_DECL, 1)
+            changed = True
+            print("  OK Added _wsPingInterval declaration (Fix 6)")
+
+        if HTML_OLD_INTERVAL not in src:
+            print("  !! Could not find setInterval ping line in index.html -- skipping interval patch.")
+        else:
+            src = src.replace(HTML_OLD_INTERVAL, HTML_NEW_INTERVAL, 1)
+            changed = True
+            print("  OK Added clearInterval() guard before setInterval (Fix 6)")
+
+        if changed:
+            with open(HTML_PATH, "w", encoding="utf-8") as f:
+                f.write(src)
+
+    # -- Done ------------------------------------------------------------------
+    print("\n" + "="*54)
+    print("  All patches applied.")
+    print("  Restart the service to pick up the changes:\n")
+    print("    sudo systemctl restart cearum-web")
+    print("\n  Check logs with:")
+    print("    sudo journalctl -u cearum-web -f")
+    print("="*54 + "\n")
+
+if __name__ == "__main__":
+    apply()

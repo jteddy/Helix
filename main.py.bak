@@ -316,7 +316,6 @@ async def save_pattern(game: str, weapon: str, request: Request):
     full_name = f"{game}/{weapon}"
     if state.loaded_script in (full_name, weapon):
         state.load_script(weapon, game)
-    await _save_async()   # FIX 7: persist config so loaded_script survives restart
     return {"saved": True}
 
 @app.delete("/api/patterns/{game}/{weapon}")
