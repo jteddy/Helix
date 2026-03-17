@@ -51,9 +51,10 @@ class recorder:
         return buckets
 
     @staticmethod
-    def _on_mouse_frame(buttons: int, dx: int, dy: int) -> None:
-        """Called by the makcu listener thread for every mouse streaming frame."""
-        lmb = bool(buttons & 0x01)
+    def _on_mouse_frame(dx: int, dy: int) -> None:
+        """Called by the makcu listener thread for every axis streaming frame."""
+        from mouse.makcu import makcu_controller
+        lmb = makcu_controller.button_states.get("LMB", False)
         pending_callback = None
         pending_buckets = None
 
