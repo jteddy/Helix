@@ -331,9 +331,21 @@ async def recorder_arm(u: RecorderArm):
 
 @app.post("/api/recorder/disarm")
 async def recorder_disarm():
-    global _recorder_was_recoil_enabled
+    global _recorder_was_recoil_enabled, _recorder_pending_result
+    # Grab any in-progress events before disarming
+    with recorder_feature._lock:
+        partial_events = list(recorder_feature._events) if recorder_feature._recording else []
+        bucket_ms = recorder_feature._bucket_ms
     recorder_feature.disarm()
     state.recoil_enabled = _recorder_was_recoil_enabled
+    # Deliver partial result if the user was mid-recording when they hit Disarm
+    if partial_events:
+        from features.recorder.recorder import recorder as _rec
+        buckets = _rec._bucket(partial_events, bucket_ms)
+        if buckets:
+            lines = ["# x_offset, y_offset, delay_ms"]
+            lines += [f"{x}, {y}, {ms}" for x, y, ms in buckets]
+            _recorder_pending_result = "\n".join(lines)
     return {"armed": False}
 
 @app.get("/api/recorder/status")
