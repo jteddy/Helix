@@ -11,7 +11,7 @@ _click_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="flashlig
 
 def shutdown_executor():
     """Call during app shutdown to cleanly drain the flashlight click executor."""
-    _click_executor.shutdown(wait=False)
+    _click_executor.shutdown(wait=True)
 
 
 class flashlight:
@@ -59,7 +59,6 @@ class flashlight:
             if lmb_pressed and not lmb_was_pressed:
                 lmb_press_time      = now
                 threshold_triggered = False
-                print(f"[Flashlight] LMB down — waiting {state.get_hold_threshold()*1000:.0f}ms threshold")
 
             # While held — check threshold
             if lmb_pressed and not threshold_triggered:

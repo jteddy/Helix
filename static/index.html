@@ -515,7 +515,6 @@ async function loadScriptContent(fullName) {
 
 async function loadScript(name, game) {
   sNewScriptMode = false;
-  sNewScriptMode = false;
   let url;
   if(game) url=`/api/scripts/load/${encodeURIComponent(game)}/${encodeURIComponent(name)}`;
   else url=`/api/scripts/load/${encodeURIComponent(name)}`;
@@ -540,7 +539,6 @@ async function delScript(name, game) {
 }
 
 async function saveScript() {
-  sNewScriptMode = false;
   sNewScriptMode = false;
   const name=($('s-name-inp').value||'').trim();
   const content=$('vec-ta').value.trim();

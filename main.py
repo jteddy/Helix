@@ -7,10 +7,20 @@ root are also supported for backward compatibility.
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import threading
 from contextlib import asynccontextmanager
 from typing import List, Optional
+
+# Suppress uvicorn access-log noise from high-frequency polling endpoints.
+class _SuppressPollingLogs(logging.Filter):
+    _MUTED = ("/api/streamdeck", "/api/health")
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not any(ep in msg for ep in self._MUTED)
+
+logging.getLogger("uvicorn.access").addFilter(_SuppressPollingLogs())
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
