@@ -6,6 +6,17 @@ Recoil control system with a web UI. Runs as a FastAPI server on Linux connected
 
 ---
 
+## Android App
+
+A native Android companion app is available — full functionality except the vector editor.
+
+- Download / auto-update via [Obtainium](https://github.com/ImranR98/Obtainium) from the [releases page](https://github.com/jteddy/Helix/releases)
+- Requires Android 8.0+ and the Helix server on the same Wi-Fi network
+- Maintains a persistent WebSocket connection for live 200ms status updates; all changes sent instantly via REST
+- Status bar shows two indicator dots: **MAKCU** (device connected) and **WS** (WebSocket live)
+
+---
+
 ## Architecture
 
 ### Server
