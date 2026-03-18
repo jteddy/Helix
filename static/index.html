@@ -251,8 +251,8 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     <div class="ch">Control</div>
     <div class="cb">
       <div class="crow"><span class="lbl">Enable Recoil</span><div class="ctl"><label class="tog"><input type="checkbox" id="r-en" onchange="p('/api/recoil',{enabled:this.checked})"><div class="tog-tr"></div></label></div></div>
-      <div class="crow"><span class="lbl">Toggle Keybind (MAKCU)</span><div class="ctl"><select id="r-tkb" onchange="p('/api/recoil',{toggle_keybind:this.value})"><option>NONE</option><option>M4</option><option>M5</option><option>MMB</option></select></div></div>
-      <div class="crow"><span class="lbl">Cycle Script Keybind</span><div class="ctl"><select id="r-ckb" onchange="p('/api/recoil',{cycle_keybind:this.value})"><option>NONE</option><option>M4</option><option>M5</option><option>MMB</option></select></div></div>
+      <div class="crow"><span class="lbl">Toggle Mouse Button</span><div class="ctl"><select id="r-tkb" onchange="p('/api/recoil',{toggle_keybind:this.value})"><option>NONE</option><option>M4</option><option>M5</option><option>MMB</option></select></div></div>
+      <div class="crow"><span class="lbl">Cycle Script Mouse Button</span><div class="ctl"><select id="r-ckb" onchange="p('/api/recoil',{cycle_keybind:this.value})"><option>NONE</option><option>M4</option><option>M5</option><option>MMB</option></select></div></div>
       <div class="crow"><span class="lbl">Require Aim (RMB)</span><div class="ctl"><label class="tog"><input type="checkbox" id="r-aim" onchange="p('/api/recoil',{require_aim:this.checked})"><div class="tog-tr"></div></label></div></div>
       <div class="crow"><span class="lbl">Loop Recoil</span><div class="ctl"><label class="tog"><input type="checkbox" id="r-loop" onchange="p('/api/recoil',{loop_recoil:this.checked})"><div class="tog-tr"></div></label></div></div>
       <div class="crow"><span class="lbl">Randomisation</span><div class="ctl"><label class="tog"><input type="checkbox" id="r-rand" onchange="p('/api/recoil',{randomisation:this.checked})"><div class="tog-tr"></div></label></div></div>
@@ -306,7 +306,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     <div class="ch">Control</div>
     <div class="cb">
       <div class="crow"><span class="lbl">Enable Flashlight</span><div class="ctl"><label class="tog"><input type="checkbox" id="fl-en" onchange="p('/api/flashlight',{enabled:this.checked})"><div class="tog-tr"></div></label></div></div>
-      <div class="crow"><span class="lbl">Flashlight Keybind</span><div class="ctl"><select id="fl-kb" onchange="p('/api/flashlight',{keybind:this.value})"><option>NONE</option><option>LMB</option><option>RMB</option><option>MMB</option><option>M4</option><option>M5</option></select></div></div>
+      <div class="crow"><span class="lbl">Flashlight Mouse Button</span><div class="ctl"><select id="fl-kb" onchange="p('/api/flashlight',{keybind:this.value})"><option>NONE</option><option>LMB</option><option>RMB</option><option>MMB</option><option>M4</option><option>M5</option></select></div></div>
     </div>
   </div>
   <div class="card">
@@ -407,6 +407,19 @@ function applyStatus(d){
   const cb=$('r-en');if(cb&&cb.checked!==d.recoil_enabled)cb.checked=d.recoil_enabled;
   const ms=$('s-mst');if(ms){ms.textContent=d.makcu_connected?'Connected':'Not connected';ms.style.color=d.makcu_connected?'var(--green)':'var(--red)';}
   if(hs&&!sNewScriptMode&&document.activeElement!==$('s-name-inp')){$('s-name-inp').value=d.loaded_script.split('/').pop();}
+  // Sync sliders and controls changed by other clients (e.g. Android app) — skip if user is actively editing
+  const ae=document.activeElement;
+  if(d.recoil_scalar!==undefined&&ae!==$('r-sc')&&ae!==$('v-sc'))slid('r-sc','v-sc',d.recoil_scalar);
+  if(d.x_control!==undefined&&ae!==$('r-xc')&&ae!==$('v-xc'))slid('r-xc','v-xc',d.x_control);
+  if(d.y_control!==undefined&&ae!==$('r-yc')&&ae!==$('v-yc'))slid('r-yc','v-yc',d.y_control);
+  if(d.randomisation_strength!==undefined&&ae!==$('r-rs')&&ae!==$('v-rs'))slid('r-rs','v-rs',d.randomisation_strength);
+  if(d.return_speed!==undefined&&ae!==$('r-rspd')&&ae!==$('v-rspd'))slid('r-rspd','v-rspd',d.return_speed);
+  if(d.require_aim!==undefined){const el=$('r-aim');if(el&&el.checked!==d.require_aim)el.checked=d.require_aim;}
+  if(d.loop_recoil!==undefined){const el=$('r-loop');if(el&&el.checked!==d.loop_recoil)el.checked=d.loop_recoil;}
+  if(d.randomisation!==undefined){const el=$('r-rand');if(el&&el.checked!==d.randomisation)el.checked=d.randomisation;}
+  if(d.return_crosshair!==undefined){const el=$('r-rch');if(el&&el.checked!==d.return_crosshair)el.checked=d.return_crosshair;}
+  if(d.toggle_keybind!==undefined){const el=$('r-tkb');if(el)el.value=d.toggle_keybind;}
+  if(d.cycle_keybind!==undefined){const el=$('r-ckb');if(el)el.value=d.cycle_keybind;}
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}
 

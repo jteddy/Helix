@@ -368,11 +368,22 @@ async def _broadcast_loop():
     while True:
         if ws_clients:
             msg = json.dumps({
-                "makcu_connected":   makcu_controller.is_connected(),
-                "recoil_enabled":    state.recoil_enabled,
-                "flashlight_active": state.flashlight_enabled and state.recoil_enabled,
-                "loaded_script":     state.loaded_script,
-                "lmb_pressed":       makcu_controller.get_button_state("LMB"),
+                "makcu_connected":          makcu_controller.is_connected(),
+                "recoil_enabled":           state.recoil_enabled,
+                "flashlight_active":        state.flashlight_enabled and state.recoil_enabled,
+                "loaded_script":            state.loaded_script,
+                "lmb_pressed":              makcu_controller.get_button_state("LMB"),
+                "recoil_scalar":            state.recoil_scalar,
+                "x_control":                state.x_control,
+                "y_control":                state.y_control,
+                "randomisation_strength":   state.randomisation_strength,
+                "return_speed":             state.return_speed,
+                "randomisation":            state.randomisation,
+                "return_crosshair":         state.return_crosshair,
+                "require_aim":              state.require_aim,
+                "loop_recoil":              state.loop_recoil,
+                "toggle_keybind":           state.toggle_keybind,
+                "cycle_keybind":            state.cycle_keybind,
             })
             h = hashlib.md5(msg.encode()).hexdigest()
             if h != _last_broadcast_hash:
