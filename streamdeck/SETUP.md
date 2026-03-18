@@ -83,17 +83,10 @@ Method : POST
 
 ### Button 4 — Load a Specific Script
 
-#### Flat script (root of `saved_scripts/`)
-```
-Title  : AK-47
-URL    : http://HELIX_IP:8000/api/scripts/load/ak47
-Method : POST
-```
-
 #### Game-scoped script (organised under a game subfolder)
 ```
-Title  : ABI AK-47
-URL    : http://HELIX_IP:8000/api/scripts/load/ABI/ak47
+Title  : CS2 AK-47
+URL    : http://HELIX_IP:8000/api/scripts/load/CS2/ak47
 Method : POST
 ```
 
@@ -102,16 +95,14 @@ Method : POST
 Spaces in filenames must be URL-encoded as `%20`. Do not use a literal space in the URL.
 
 ```
-Title  : ABI Aug Best
-URL    : http://HELIX_IP:8000/api/scripts/load/ABI/Aug%20-%20Best
+Title  : CS2 AK47 Meta
+URL    : http://HELIX_IP:8000/api/scripts/load/CS2/AK47%20Meta
 Method : POST
 ```
 
-The file on disk is `saved_scripts/ABI/Aug - Best.txt` — the server decodes `%20` back to a space automatically.
+The file on disk is `saved_scripts/CS2/AK47 Meta.txt` — the server decodes `%20` back to a space automatically.
 
-Replace `ABI` with your game folder name and the script name with the filename (no `.txt` extension, case-sensitive, spaces as `%20`). The game folder names match what you see in the Recoil tab's script list.
-
-> **Which format to use?** If your scripts are organised by game in the Vector Editor (e.g. `ABI/ak47`), use the `load/{game}/{weapon}` form. If you have flat legacy scripts in the root `saved_scripts/` folder, use `load/{name}`.
+Replace `CS2` with your game folder name and the script name with the filename (no `.txt` extension, case-sensitive, spaces as `%20`). The game folder names match what you see in the Recoil tab's script list.
 
 ---
 
