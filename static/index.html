@@ -6,10 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0b0c0e">
-<title>Cearum</title>
+<title>Helix</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1.5,8 C1.5,3 5.5,3 8,8 C10.5,13 14.5,13 14.5,8' fill='none' stroke='%234d9cff' stroke-width='2' stroke-linecap='round'/><path d='M1.5,8 C1.5,13 5.5,13 8,8 C10.5,3 14.5,3 14.5,8' fill='none' stroke='%234d9cff' stroke-width='2' stroke-linecap='round' opacity='.35'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -102,6 +103,44 @@ select,input[type=text],input[type=number]{background:var(--bg1);border:1px soli
 select:focus,input[type=text]:focus,input[type=number]:focus{border-color:var(--accent);}
 select{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%237a8090'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;padding-right:20px;}
 input[type=number]{width:72px;text-align:right;}
+#calc-fps::-webkit-inner-spin-button,#calc-fps::-webkit-outer-spin-button,
+#calc-frm::-webkit-inner-spin-button,#calc-frm::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+
+/* ── MAKCU-themed Shot Calc ─────────────────────────────────────────── */
+#tab-calc{
+  --mak-bg:#0c0c0f;--mak-card:#111116;--mak-border:#232328;
+  --mak-text:#e2e2e8;--mak-text2:#55556a;
+  --mak-accent:#4d9cff;
+  --mak-sans:'Space Grotesk',sans-serif;--mak-mono:'Space Mono',monospace;
+  background:var(--mak-bg);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;
+}
+#tab-calc .mak-wrap{width:100%;max-width:440px;padding:28px 18px;display:flex;flex-direction:column;gap:14px;}
+#tab-calc .mak-eyebrow{font-family:var(--mak-sans);font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--mak-text2);}
+#tab-calc .mak-heading{font-family:var(--mak-sans);font-size:20px;font-weight:700;color:var(--mak-text);line-height:1.2;margin-top:3px;}
+#tab-calc .mak-card{background:var(--mak-card);border:1px solid var(--mak-border);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:18px;}
+#tab-calc .mak-field{display:flex;flex-direction:column;gap:7px;}
+#tab-calc .mak-label{font-family:var(--mak-sans);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mak-text2);}
+#tab-calc .mak-input{font-family:var(--mak-mono);font-size:15px;background:rgba(255,255,255,.04);border:1px solid var(--mak-border);border-radius:7px;color:var(--mak-text);padding:11px 14px;width:100%;outline:none;transition:border-color .2s;-moz-appearance:textfield;text-align:center;}
+#tab-calc .mak-input:focus{border-color:var(--mak-accent);}
+#tab-calc .mak-input::-webkit-inner-spin-button,#tab-calc .mak-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+#tab-calc .mak-results{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+#tab-calc .mak-metric{background:rgba(77,156,255,.07);border:1px solid rgba(77,156,255,.22);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:5px;}
+#tab-calc .mak-metric.sec{background:rgba(255,255,255,.03);border-color:var(--mak-border);}
+#tab-calc .mak-metric-label{font-family:var(--mak-sans);font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mak-text2);}
+#tab-calc .mak-metric-val{font-family:var(--mak-mono);font-size:26px;font-weight:700;color:var(--mak-accent);line-height:1.1;}
+#tab-calc .mak-metric.sec .mak-metric-val{font-size:22px;color:var(--mak-text);}
+#tab-calc .mak-note{font-family:var(--mak-sans);font-size:11px;color:var(--mak-text2);line-height:1.65;padding:0 2px;}
+#tab-calc .mak-note code{font-family:var(--mak-mono);color:var(--mak-accent);font-size:11px;}
+/* ── Tools sidebar layout ───────────────────────────────────────── */
+#tab-calc{flex-direction:row;align-items:stretch;overflow:hidden;}
+.tools-sb{width:130px;flex-shrink:0;background:#0a0a0d;border-right:1px solid var(--mak-border);display:flex;flex-direction:column;padding:14px 0;}
+.tools-sb-head{font-family:var(--mak-sans);font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--mak-text2);padding:0 14px 10px;}
+.tools-sb-item{font-family:var(--mak-sans);font-size:12px;font-weight:500;color:var(--mak-text2);padding:9px 14px;cursor:pointer;border-left:2px solid transparent;transition:color .15s,border-color .15s,background .15s;}
+.tools-sb-item:hover{color:var(--mak-text);background:rgba(255,255,255,.03);}
+.tools-sb-item.active{color:var(--mak-text);border-left-color:var(--mak-accent);}
+.tools-content{flex:1;overflow-y:auto;display:flex;justify-content:center;}
+.tool-panel{display:none;width:100%;}
+.tool-panel.active{display:block;}
 
 /* ── Slider ───────────────────────────────────────────────────────── */
 .sr{display:flex;flex-direction:column;gap:1px;padding:3px 0;border-bottom:1px solid var(--border);}
@@ -186,9 +225,9 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 
 <!-- ── Header ──────────────────────────────────────────────────────── -->
 <div id="hdr">
-  <div id="hdr-logo">Cear<span>um</span></div>
+  <div id="hdr-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="15" height="15" style="vertical-align:middle;margin-right:5px;margin-top:-2px;flex-shrink:0"><path d="M1.5,8 C1.5,3 5.5,3 8,8 C10.5,13 14.5,13 14.5,8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M1.5,8 C1.5,13 5.5,13 8,8 C10.5,3 14.5,3 14.5,8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".35"/></svg>Heli<span>x</span></div>
   <div id="hdr-sep"></div>
-  <div id="hdr-ver">V0.2.1</div>
+  <div id="hdr-ver">V0.3</div>
   <div id="ws-dot" title="MAKCU Status"></div>
 </div>
 
@@ -204,6 +243,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <div class="tab active" data-tab="recoil"     onclick="st('recoil')">Recoil</div>
   <div class="tab"        data-tab="flashlight" onclick="st('flashlight')">Flashlight</div>
   <div class="tab"        data-tab="settings"   onclick="st('settings')">Settings</div>
+  <div class="tab"        data-tab="calc"       onclick="st('calc')">Tools</div>
 </div>
 
 <div id="content">
@@ -322,6 +362,47 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 </div>
 </div>
 
+
+<!-- ═══ TOOLS ═══ -->
+<div class="panel" id="tab-calc">
+  <!-- Sidebar -->
+  <div class="tools-sb">
+    <div class="tools-sb-head">Tools</div>
+    <div class="tools-sb-item active" onclick="selTool('shot-calc',this)">Shot Interval</div>
+  </div>
+  <!-- Content -->
+  <div class="tools-content">
+    <div class="tool-panel active" id="tool-shot-calc">
+      <div class="mak-wrap">
+        <div>
+          <div class="mak-eyebrow">Helix / Tools</div>
+          <div class="mak-heading">Shot Interval Calculator</div>
+        </div>
+        <div class="mak-card">
+          <div class="mak-field">
+            <div class="mak-label">Video Frame Rate (fps)</div>
+            <input class="mak-input" type="number" id="calc-fps" min="1" max="1000" step="any" placeholder="120" oninput="runCalc()" onwheel="this.blur()">
+          </div>
+          <div class="mak-field">
+            <div class="mak-label">Frames Between Shots</div>
+            <input class="mak-input" type="number" id="calc-frm" min="1" max="1000" step="1" placeholder="10" oninput="runCalc()" onwheel="this.blur()">
+          </div>
+        </div>
+        <div class="mak-results" id="calc-result" style="display:none">
+          <div class="mak-metric">
+            <div class="mak-metric-label">delay_ms</div>
+            <div class="mak-metric-val" id="calc-ms">—</div>
+          </div>
+          <div class="mak-metric sec">
+            <div class="mak-metric-label">RPM</div>
+            <div class="mak-metric-val" id="calc-rpm">—</div>
+          </div>
+        </div>
+        <p class="mak-note">Record gameplay at a known frame rate, count frames between bullet impacts on the target, then enter the values above. Use the <code>delay_ms</code> result in your recoil script vectors.</p>
+      </div>
+    </div>
+  </div>
+</div>
 
 </div><!-- /content -->
 </div><!-- /root -->
@@ -544,15 +625,35 @@ async function toggleFlashlight(){
 }
 
 // ── Browser hotkey ────────────────────────────────────────────────────────────
-let bHK=localStorage.getItem('cearum_hk')||'',capHK=false;
+let bHK=localStorage.getItem('helix_hk')||'',capHK=false;
 (function(){$('hk-el').textContent=bHK||'—';})();
 function captureHK(){capHK=true;$('hk-el').textContent='press key…';$('hk-el').classList.add('cap');}
-function clearHK(){bHK='';localStorage.removeItem('cearum_hk');capHK=false;$('hk-el').classList.remove('cap');$('hk-el').textContent='—';}
+function clearHK(){bHK='';localStorage.removeItem('helix_hk');capHK=false;$('hk-el').classList.remove('cap');$('hk-el').textContent='—';}
 document.addEventListener('keydown',e=>{
-  if(capHK){if(e.key==='Escape'){capHK=false;$('hk-el').classList.remove('cap');$('hk-el').textContent=bHK||'—';return;}bHK=e.key;localStorage.setItem('cearum_hk',e.key);capHK=false;$('hk-el').classList.remove('cap');$('hk-el').textContent=e.key;e.preventDefault();return;}
+  if(capHK){if(e.key==='Escape'){capHK=false;$('hk-el').classList.remove('cap');$('hk-el').textContent=bHK||'—';return;}bHK=e.key;localStorage.setItem('helix_hk',e.key);capHK=false;$('hk-el').classList.remove('cap');$('hk-el').textContent=e.key;e.preventDefault();return;}
   const tag=document.activeElement.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
   if(bHK&&e.key===bHK){toggleRecoil();e.preventDefault();}
 });
+
+// ── Tools ──────────────────────────────────────────────────────────────────────
+function selTool(id,el){
+  document.querySelectorAll('.tool-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tools-sb-item').forEach(i=>i.classList.remove('active'));
+  const panel=document.getElementById('tool-'+id);
+  if(panel)panel.classList.add('active');
+  if(el)el.classList.add('active');
+}
+function runCalc(){
+  const fps=parseFloat($('calc-fps').value);
+  const frm=parseInt($('calc-frm').value);
+  const res=$('calc-result');
+  if(!fps||!frm||fps<=0||frm<=0){res.style.display='none';return;}
+  const ms=(1000/fps)*frm;
+  const rpm=60000/ms;
+  $('calc-ms').textContent=Math.round(ms*100)/100+' ms';
+  $('calc-rpm').textContent=Math.round(rpm*10)/10+' RPM';
+  res.style.display='grid';
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  VECTOR EDITOR
