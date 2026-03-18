@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Helix</string>
-    <string name="notification_channel_name">Helix Connection</string>
-    <string name="notification_title">Helix</string>
-    <string name="notification_text">Maintaining connection to server…</string>
-</resources>
