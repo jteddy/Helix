@@ -55,6 +55,7 @@ html,body{height:100%;background:var(--bg0);color:var(--text);font-family:var(--
 .sc.on .sc-val{color:var(--green);}
 .sc.err .sc-val{color:var(--red);}
 .sc-hint{position:absolute;bottom:3px;right:6px;font-size:9px;color:var(--text3);}
+.sc-master{position:absolute;bottom:3px;left:12px;font-size:9px;color:var(--text3);}
 .sc.wide{grid-column:1/-1;min-height:auto;flex-direction:row;align-items:center;gap:8px;padding:5px 10px 5px 12px;}
 .sc.wide .sc-lbl{margin-bottom:0;min-width:52px;}
 .sc.wide .sc-val{font-size:12px;font-weight:500;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -230,7 +231,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 <!-- ═══ STATUS PANEL ═══ -->
 <div id="sp">
   <div class="sc tap" id="sc-recoil" onclick="toggleRecoil()"><div class="sc-lbl">Recoil</div><div class="sc-val" id="sc-recoil-v">OFF</div><div class="sc-hint">tap</div></div>
-  <div class="sc tap" id="sc-flash" onclick="toggleFlashlight()"><div class="sc-lbl">Flashlight</div><div class="sc-val" id="sc-flash-v">OFF</div><div class="sc-hint">tap</div></div>
+  <div class="sc tap" id="sc-flash" onclick="toggleFlashlight()"><div class="sc-lbl">Flashlight</div><div class="sc-val" id="sc-flash-v">OFF</div><div class="sc-master" id="sc-flash-master">Master: OFF</div><div class="sc-hint">tap</div></div>
   <div class="sc wide" id="sc-script"><div class="sc-lbl">Script</div><div class="sc-val" id="sc-script-v">NONE</div></div>
 </div>
 
@@ -402,6 +403,7 @@ function applyStatus(d){
   const _mv=$('hdr-makcu-val');if(_mv){_mv.textContent=d.makcu_connected?'OK':'N/C';_mv.className=d.makcu_connected?'ok':'err';}$('ws-dot').className=d.makcu_connected?'ok':'err';
   card('sc-recoil',d.recoil_enabled?'on':'');$('sc-recoil-v').textContent=d.recoil_enabled?'ON':'OFF';
   card('sc-flash',d.flashlight_active?'on':'');$('sc-flash-v').textContent=d.flashlight_active?'ON':'OFF';
+  if(d.flashlight_enabled!==undefined){const m=$('sc-flash-master');if(m)m.textContent=d.flashlight_enabled?'Master: ON':'Master: OFF';}
   const hs=d.loaded_script&&d.loaded_script!=='NONE';
   card('sc-script',hs?'on':'');$('sc-script-v').textContent=d.loaded_script||'NONE';
   const cb=$('r-en');if(cb&&cb.checked!==d.recoil_enabled)cb.checked=d.recoil_enabled;

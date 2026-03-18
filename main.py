@@ -370,6 +370,7 @@ async def _broadcast_loop():
             msg = json.dumps({
                 "makcu_connected":          makcu_controller.is_connected(),
                 "recoil_enabled":           state.recoil_enabled,
+                "flashlight_enabled":        state.flashlight_enabled,
                 "flashlight_active":        state.flashlight_enabled and state.recoil_enabled,
                 "loaded_script":            state.loaded_script,
                 "lmb_pressed":              makcu_controller.get_button_state("LMB"),
