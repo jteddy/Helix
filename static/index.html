@@ -236,6 +236,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .burst-idx{color:var(--text3);width:20px;font-family:var(--fu);}
 .burst-val{color:var(--accent);font-weight:600;font-family:var(--fm);}
 .burst-empty{color:var(--text3);font-weight:400;}
+.burst-click{cursor:pointer;}.burst-click:hover{background:rgba(77,156,255,.06);}
 .rpm-row{display:flex;align-items:center;gap:8px;padding:4px 0;}
 .rpm-row input[type=number]{width:70px;text-align:center;}
 .rpm-unit{font-family:var(--fu);font-size:10px;color:var(--text3);white-space:nowrap;}
@@ -531,7 +532,7 @@ function applyStatus(d){
   // ── Tools: burst history + pattern info ───────────────────────────────
   if(d.burst_history){
     const el=$('burst-list'),h=d.burst_history.slice().reverse();
-    el.innerHTML=[0,1,2,3,4].map(i=>{const v=h[i];return`<div class="burst-row"><span class="burst-idx">${i+1}</span><span class="burst-val${v?'':' burst-empty'}">${v?v+'ms':'—'}</span></div>`;}).join('');
+    el.innerHTML=[0,1,2,3,4].map(i=>{const v=h[i];return`<div class="burst-row${v?' burst-click':''}"${v?` onclick="useBurst(${v})"`:''}><span class="burst-idx">${i+1}</span><span class="burst-val${v?'':' burst-empty'}">${v?v+'ms':'—'}</span></div>`;}).join('');
   }
   if(d.pattern_stats!==undefined){
     const el=$('pat-info'),s=d.pattern_stats;
@@ -716,6 +717,7 @@ function calcRPM(){
   const rpm=fv($('t-rpm'))||0,mag=fv($('t-mag'))||0;
   if(rpm>0){const ms=60000/rpm;$('t-ms').textContent=ms.toFixed(1);if(mag>0)$('t-dur').textContent=((mag*ms)/1000).toFixed(2)+'s';}
 }
+function useBurst(ms){$('m-burst').value=ms;calcMeasured();notify('Burst '+ms+'ms → Measured');}
 function calcMeasured(){
   const burst=fv($('m-burst'))||0,shots=fv($('m-shots'))||0;
   if(burst>0&&shots>0){const ms=burst/shots;$('m-rpm').textContent=Math.round(60000/ms);$('m-ms').textContent=ms.toFixed(1);}
