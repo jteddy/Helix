@@ -38,6 +38,7 @@ class recoil:
             ms = (time.monotonic() - start) * 1000
             if ms > 0:
                 print(f"[Recoil] BURST: {ms:.0f}ms")
+                state.add_burst(ms)
 
         def _reset_burst(y_movement: float) -> None:
             if y_movement != 0 and state.get_return_crosshair_enabled():

@@ -32,6 +32,7 @@ class AppState:
         )
         self.loaded_script: str = "NONE"
         self.vectors: List[Tuple[float, float, float]] = []
+        self.burst_history: List[float] = []
 
         # ── Flashlight ────────────────────────────────────────────────────────
         self.flashlight_enabled = False
@@ -110,6 +111,35 @@ class AppState:
         so a concurrent script load can never mutate the list mid-spray."""
         with self._lock:
             return list(self.vectors)
+
+    # ── Burst history (runtime-only, not persisted) ─────────────────────────
+
+    def add_burst(self, duration_ms: float):
+        with self._lock:
+            self.burst_history.append(round(duration_ms))
+            if len(self.burst_history) > 5:
+                self.burst_history = self.burst_history[-5:]
+
+    def get_burst_history(self) -> List[float]:
+        with self._lock:
+            return list(self.burst_history)
+
+    def get_pattern_stats(self) -> dict:
+        with self._lock:
+            if not self.vectors:
+                return {}
+            n = len(self.vectors)
+            delays_ms = [d * 1000 for _, _, d in self.vectors]
+            total = sum(delays_ms)
+            xs = [x for x, _, _ in self.vectors]
+            ys = [y for _, y, _ in self.vectors]
+            return {
+                "shots": n,
+                "total_ms": round(total),
+                "avg_delay_ms": round(total / n, 1),
+                "x_range": [round(min(xs), 2), round(max(xs), 2)],
+                "y_range": [round(min(ys), 2), round(max(ys), 2)],
+            }
 
     # ── Settings interface ────────────────────────────────────────────────────
 

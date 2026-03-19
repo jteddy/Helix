@@ -226,6 +226,16 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .note strong{color:var(--green);}
 
 
+/* ── Tools ──────────────────────────────────────────────────────── */
+.tool-section-lbl{font-family:var(--fu);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);padding:6px 0 2px;}
+.tool-sep{border-top:1px solid var(--border);margin:6px 0;}
+.tool-empty{font-size:10px;color:var(--text3);text-align:center;padding:10px 0;}
+.val-out{font-family:var(--fm);font-size:11px;font-weight:600;color:var(--accent);}
+.burst-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.burst-row:last-child{border-bottom:none;}
+.burst-idx{color:var(--text3);width:20px;font-family:var(--fu);}
+.burst-val{color:var(--accent);font-weight:600;font-family:var(--fm);}
+
 /* ── Notification ────────────────────────────────────────────────── */
 #notif{position:fixed;bottom:calc(14px + var(--safe-b));left:50%;transform:translateX(-50%);z-index:999;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:6px 16px;font-size:12px;color:var(--text);white-space:nowrap;opacity:0;transition:opacity .25s;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.6);}
 #notif.show{opacity:1;}
@@ -267,6 +277,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 <div id="tabbar">
   <div class="tab active" data-tab="recoil"     onclick="st('recoil')">Recoil</div>
   <div class="tab"        data-tab="flashlight" onclick="st('flashlight')">Flashlight</div>
+  <div class="tab"        data-tab="tools"      onclick="st('tools')">Tools</div>
   <div class="tab"        data-tab="settings"   onclick="st('settings')">Settings</div>
 </div>
 
@@ -347,6 +358,44 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     </div>
   </div>
   <div class="card"><p class="note">Flashlight only fires when <strong>Recoil is ON</strong> — prevents triggering in menus.</p></div>
+</div>
+</div>
+
+<!-- ═══ TOOLS ═══ -->
+<div class="panel" id="tab-tools">
+<div class="cfg">
+
+  <div class="card">
+    <div class="ch">Burst History</div>
+    <div class="cb" id="burst-list">
+      <div class="tool-empty">No bursts recorded</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch">RPM Calculator</div>
+    <div class="cb">
+      <div class="tool-section-lbl">Theoretical</div>
+      <div class="crow"><span class="lbl">RPM</span><div class="ctl"><input type="number" id="t-rpm" min="1" max="2000" value="750" oninput="calcRPM()"></div></div>
+      <div class="crow"><span class="lbl">Magazine Size</span><div class="ctl"><input type="number" id="t-mag" min="1" max="200" value="30" oninput="calcRPM()"></div></div>
+      <div class="crow"><span class="lbl">Ms / Shot</span><div class="ctl val-out" id="t-ms">80.0</div></div>
+      <div class="crow"><span class="lbl">Spray Duration</span><div class="ctl val-out" id="t-dur">2.40s</div></div>
+      <div class="tool-sep"></div>
+      <div class="tool-section-lbl">Measured</div>
+      <div class="crow"><span class="lbl">Burst Time (ms)</span><div class="ctl"><input type="number" id="m-burst" min="1" max="30000" value="2400" oninput="calcMeasured()"></div></div>
+      <div class="crow"><span class="lbl">Shots Fired</span><div class="ctl"><input type="number" id="m-shots" min="1" max="200" value="30" oninput="calcMeasured()"></div></div>
+      <div class="crow"><span class="lbl">Actual RPM</span><div class="ctl val-out" id="m-rpm">750</div></div>
+      <div class="crow"><span class="lbl">Actual Ms / Shot</span><div class="ctl val-out" id="m-ms">80.0</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch">Pattern Info</div>
+    <div class="cb" id="pat-info">
+      <div class="tool-empty">No script loaded</div>
+    </div>
+  </div>
+
 </div>
 </div>
 
@@ -473,6 +522,17 @@ function applyStatus(d){
   if(d.toggle_keybind!==undefined){const el=$('r-tkb');if(el)el.value=d.toggle_keybind;}
   if(d.cycle_keybind!==undefined){const el=$('r-ckb');if(el)el.value=d.cycle_keybind;}
   if(d.theme!==undefined) applyTheme(d.theme);
+  // ── Tools: burst history + pattern info ───────────────────────────────
+  if(d.burst_history){
+    const el=$('burst-list');
+    if(!d.burst_history.length) el.innerHTML='<div class="tool-empty">No bursts recorded</div>';
+    else el.innerHTML=d.burst_history.map((ms,i)=>`<div class="burst-row"><span class="burst-idx">${i+1}</span><span class="burst-val">${ms}ms</span></div>`).join('');
+  }
+  if(d.pattern_stats!==undefined){
+    const el=$('pat-info'),s=d.pattern_stats;
+    if(!s||!s.shots) el.innerHTML='<div class="tool-empty">No script loaded</div>';
+    else el.innerHTML=`<div class="crow"><span class="lbl">Total Shots</span><div class="ctl val-out">${s.shots}</div></div><div class="crow"><span class="lbl">Total Duration</span><div class="ctl val-out">${(s.total_ms/1000).toFixed(2)}s</div></div><div class="crow"><span class="lbl">Avg Delay</span><div class="ctl val-out">${s.avg_delay_ms}ms</div></div><div class="crow"><span class="lbl">X Range</span><div class="ctl val-out">${s.x_range[0]} → ${s.x_range[1]}</div></div><div class="crow"><span class="lbl">Y Range</span><div class="ctl val-out">${s.y_range[0]} → ${s.y_range[1]}</div></div>`;
+  }
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}
 
@@ -646,10 +706,15 @@ async function toggleFlashlight(){
 
 
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  VECTOR EDITOR
-
-
+// ── RPM Calculator ─────────────────────────────────────────────────────────
+function calcRPM(){
+  const rpm=fv($('t-rpm'))||0,mag=fv($('t-mag'))||0;
+  if(rpm>0){const ms=60000/rpm;$('t-ms').textContent=ms.toFixed(1);if(mag>0)$('t-dur').textContent=((mag*ms)/1000).toFixed(2)+'s';}
+}
+function calcMeasured(){
+  const burst=fv($('m-burst'))||0,shots=fv($('m-shots'))||0;
+  if(burst>0&&shots>0){const ms=burst/shots;$('m-rpm').textContent=Math.round(60000/ms);$('m-ms').textContent=ms.toFixed(1);}
+}
 
 loadState();
 
