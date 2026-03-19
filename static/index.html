@@ -236,6 +236,11 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .burst-idx{color:var(--text3);width:20px;font-family:var(--fu);}
 .burst-val{color:var(--accent);font-weight:600;font-family:var(--fm);}
 .burst-empty{color:var(--text3);font-weight:400;}
+.rpm-row{display:flex;align-items:center;gap:8px;padding:4px 0;}
+.rpm-row input[type=number]{width:70px;text-align:center;}
+.rpm-unit{font-family:var(--fu);font-size:10px;color:var(--text3);white-space:nowrap;}
+.rpm-result{font-family:var(--fm);font-size:12px;font-weight:600;color:var(--accent);padding:2px 0 6px;}
+.rpm-dot{color:var(--text3);margin:0 6px;}
 
 /* ── Notification ────────────────────────────────────────────────── */
 #notif{position:fixed;bottom:calc(14px + var(--safe-b));left:50%;transform:translateX(-50%);z-index:999;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:6px 16px;font-size:12px;color:var(--text);white-space:nowrap;opacity:0;transition:opacity .25s;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.6);}
@@ -381,16 +386,12 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     <div class="ch">RPM Calculator</div>
     <div class="cb">
       <div class="tool-section-lbl">Theoretical</div>
-      <div class="crow"><span class="lbl">RPM</span><div class="ctl"><input type="number" id="t-rpm" min="1" max="2000" value="750" oninput="calcRPM()"></div></div>
-      <div class="crow"><span class="lbl">Magazine Size</span><div class="ctl"><input type="number" id="t-mag" min="1" max="200" value="30" oninput="calcRPM()"></div></div>
-      <div class="crow"><span class="lbl">Ms / Shot</span><div class="ctl val-out" id="t-ms">80.0</div></div>
-      <div class="crow"><span class="lbl">Spray Duration</span><div class="ctl val-out" id="t-dur">2.40s</div></div>
+      <div class="rpm-row"><input type="number" id="t-rpm" min="1" max="2000" value="750" oninput="calcRPM()"><span class="rpm-unit">RPM</span><input type="number" id="t-mag" min="1" max="200" value="30" oninput="calcRPM()"><span class="rpm-unit">rounds</span></div>
+      <div class="rpm-result"><span id="t-ms">80.0</span> ms/shot<span class="rpm-dot">&middot;</span><span id="t-dur">2.40s</span> total</div>
       <div class="tool-sep"></div>
       <div class="tool-section-lbl">Measured</div>
-      <div class="crow"><span class="lbl">Burst Time (ms)</span><div class="ctl"><input type="number" id="m-burst" min="1" max="30000" value="2400" oninput="calcMeasured()"></div></div>
-      <div class="crow"><span class="lbl">Shots Fired</span><div class="ctl"><input type="number" id="m-shots" min="1" max="200" value="30" oninput="calcMeasured()"></div></div>
-      <div class="crow"><span class="lbl">Actual RPM</span><div class="ctl val-out" id="m-rpm">750</div></div>
-      <div class="crow"><span class="lbl">Actual Ms / Shot</span><div class="ctl val-out" id="m-ms">80.0</div></div>
+      <div class="rpm-row"><input type="number" id="m-burst" min="1" max="30000" value="2400" oninput="calcMeasured()"><span class="rpm-unit">ms</span><input type="number" id="m-shots" min="1" max="200" value="30" oninput="calcMeasured()"><span class="rpm-unit">shots</span></div>
+      <div class="rpm-result"><span id="m-rpm">750</span> RPM<span class="rpm-dot">&middot;</span><span id="m-ms">80.0</span> ms/shot</div>
     </div>
   </div>
 
@@ -535,7 +536,7 @@ function applyStatus(d){
   if(d.pattern_stats!==undefined){
     const el=$('pat-info'),s=d.pattern_stats;
     if(!s||!s.shots) el.innerHTML='<div class="tool-empty">No script loaded</div>';
-    else el.innerHTML=`<div class="crow"><span class="lbl">Total Shots</span><div class="ctl val-out">${s.shots}</div></div><div class="crow"><span class="lbl">Total Duration</span><div class="ctl val-out">${(s.total_ms/1000).toFixed(2)}s</div></div><div class="crow"><span class="lbl">Avg Delay</span><div class="ctl val-out">${s.avg_delay_ms}ms</div></div>`;
+    else el.innerHTML=`<div class="crow"><span class="lbl">Total Duration</span><div class="ctl val-out">${(s.total_ms/1000).toFixed(2)}s</div></div><div class="crow"><span class="lbl">Avg Delay</span><div class="ctl val-out">${s.avg_delay_ms}ms</div></div>`;
   }
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}
