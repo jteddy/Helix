@@ -235,6 +235,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .burst-row:last-child{border-bottom:none;}
 .burst-idx{color:var(--text3);width:20px;font-family:var(--fu);}
 .burst-val{color:var(--accent);font-weight:600;font-family:var(--fm);}
+.burst-empty{color:var(--text3);font-weight:400;}
 
 /* ── Notification ────────────────────────────────────────────────── */
 #notif{position:fixed;bottom:calc(14px + var(--safe-b));left:50%;transform:translateX(-50%);z-index:999;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:6px 16px;font-size:12px;color:var(--text);white-space:nowrap;opacity:0;transition:opacity .25s;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.6);}
@@ -368,7 +369,11 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <div class="card">
     <div class="ch">Burst History</div>
     <div class="cb" id="burst-list">
-      <div class="tool-empty">No bursts recorded</div>
+      <div class="burst-row"><span class="burst-idx">1</span><span class="burst-val burst-empty">—</span></div>
+      <div class="burst-row"><span class="burst-idx">2</span><span class="burst-val burst-empty">—</span></div>
+      <div class="burst-row"><span class="burst-idx">3</span><span class="burst-val burst-empty">—</span></div>
+      <div class="burst-row"><span class="burst-idx">4</span><span class="burst-val burst-empty">—</span></div>
+      <div class="burst-row"><span class="burst-idx">5</span><span class="burst-val burst-empty">—</span></div>
     </div>
   </div>
 
@@ -524,9 +529,8 @@ function applyStatus(d){
   if(d.theme!==undefined) applyTheme(d.theme);
   // ── Tools: burst history + pattern info ───────────────────────────────
   if(d.burst_history){
-    const el=$('burst-list');
-    if(!d.burst_history.length) el.innerHTML='<div class="tool-empty">No bursts recorded</div>';
-    else el.innerHTML=d.burst_history.map((ms,i)=>`<div class="burst-row"><span class="burst-idx">${i+1}</span><span class="burst-val">${ms}ms</span></div>`).join('');
+    const el=$('burst-list'),h=d.burst_history.slice().reverse();
+    el.innerHTML=[0,1,2,3,4].map(i=>{const v=h[i];return`<div class="burst-row"><span class="burst-idx">${i+1}</span><span class="burst-val${v?'':' burst-empty'}">${v?v+'ms':'—'}</span></div>`;}).join('');
   }
   if(d.pattern_stats!==undefined){
     const el=$('pat-info'),s=d.pattern_stats;
