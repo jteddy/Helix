@@ -10,7 +10,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%234d9cff'/%3E%3Cstop offset='100%25' stop-color='%237eb8ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M2,10 C2,4 6,4 10,10 C14,16 18,16 18,10' fill='none' stroke='url(%23g)' stroke-width='1.8' stroke-linecap='round'/%3E%3Cpath d='M2,10 C2,16 6,16 10,10 C14,4 18,4 18,10' fill='none' stroke='%234d9cff' stroke-width='1.8' stroke-linecap='round' opacity='.4'/%3E%3Cline x1='4.5' y1='8.3' x2='4.5' y2='11.7' stroke='%234d9cff' stroke-width='1.1' stroke-linecap='round' opacity='.6'/%3E%3Cline x1='6.8' y1='9.1' x2='6.8' y2='10.9' stroke='%234d9cff' stroke-width='1.1' stroke-linecap='round' opacity='.6'/%3E%3Cline x1='12' y1='11.7' x2='12' y2='8.3' stroke='%234d9cff' stroke-width='1.1' stroke-linecap='round' opacity='.6'/%3E%3Cline x1='15.5' y1='13.2' x2='15.5' y2='6.8' stroke='%234d9cff' stroke-width='1.1' stroke-linecap='round' opacity='.6'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -20,7 +20,6 @@
   --green:#44ff77;--red:#ff4444;--accent:#4d9cff;--hot:#ff4d6d;
   --fm:'JetBrains Mono',monospace;--fu:'Rajdhani',sans-serif;
   --r:5px;--rs:3px;--rh:28px;
-  --ch-bg:var(--bg3);--ch-color:var(--text2);
   --safe-b:env(safe-area-inset-bottom,0px);
   --safe-l:env(safe-area-inset-left,0px);
   --safe-r:env(safe-area-inset-right,0px);
@@ -83,7 +82,7 @@ html,body{height:100%;background:var(--bg0);color:var(--text);font-family:var(--
 
 /* ── Card ─────────────────────────────────────────────────────────── */
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
-.ch{padding:3px 9px;background:var(--ch-bg);border-bottom:1px solid var(--border);font-family:var(--fu);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ch-color);}
+.ch{padding:3px 9px;background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--fu);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);}
 .cb{padding:0 9px;display:flex;flex-direction:column;}
 
 /* ── Control row — label fixed width, control right-aligned ─────── */
@@ -113,7 +112,16 @@ html[data-theme="midnight"]{
   --text:#e2e2e8;--text2:#6a6a82;--text3:#3d3d52;
   --green:#52b37a;--red:#e05555;--accent:#4d9cff;--hot:#e0506a;
   --fm:'Space Mono',monospace;--fu:'Space Grotesk',sans-serif;
-  --ch-bg:transparent;--ch-color:var(--text);--r:7px;
+  --r:7px;
+}
+/* ── Ember theme ────────────────────────────────────────────────── */
+html[data-theme="ember"]{
+  --bg0:#150f15;--bg1:#1a141c;--bg2:#1f181f;--bg3:#271f28;--bg4:#2f2630;
+  --border:#302830;--border2:#3e3440;
+  --text:#ece8ee;--text2:#8a8490;--text3:#544e58;
+  --green:#4ade80;--red:#ef4444;--accent:#4ade80;--hot:#ef4444;
+  --fm:'JetBrains Mono',monospace;--fu:'Inter',sans-serif;
+  --r:10px;
 }
 .mak-wrap{width:100%;max-width:500px;margin:0 auto;padding:10px 9px;padding-bottom:calc(10px + var(--safe-b));display:flex;flex-direction:column;gap:6px;}
 .mak-eyebrow{font-family:var(--fu);font-size:9px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--text2);}
@@ -124,11 +132,11 @@ html[data-theme="midnight"]{
 .mak-section-head~*:last-child{margin-bottom:10px;}
 .mak-section-head+.mak-row{border-top:none;margin-top:0;}
 .mak-section-head+.mak-field{margin-top:8px;}
-html[data-theme="midnight"] .ch{background:transparent;color:var(--text);font-size:11px;letter-spacing:normal;text-transform:none;}
-html[data-theme="midnight"] .mak-card{border-radius:7px;padding:10px 14px;overflow:visible;}
-html[data-theme="midnight"] .mak-section-head{font-size:11px;letter-spacing:normal;text-transform:none;padding:0 0 6px;background:transparent;color:var(--text);}
-html[data-theme="midnight"] .mak-section-head~*{margin-left:0;margin-right:0;}
-html[data-theme="midnight"] .mak-section-head~*:last-child{margin-bottom:0;}
+html[data-theme] .ch{background:transparent;color:var(--text);font-size:11px;letter-spacing:normal;text-transform:none;}
+html[data-theme] .mak-card{padding:10px 14px;overflow:visible;}
+html[data-theme] .mak-section-head{font-size:11px;letter-spacing:normal;text-transform:none;padding:0 0 6px;background:transparent;color:var(--text);}
+html[data-theme] .mak-section-head~*{margin-left:0;margin-right:0;}
+html[data-theme] .mak-section-head~*:last-child{margin-bottom:0;}
 .mak-field+.mak-field{margin-top:8px;}
 .mak-card>.mak-note{margin-top:6px;}
 input[type=number].mak-input{width:100%;}
@@ -342,6 +350,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
         <select class="mak-input" id="st-theme" onchange="applyTheme(this.value);p('/api/settings',{theme:this.value})">
           <option>Default</option>
           <option>Midnight</option>
+          <option>Ember</option>
         </select>
       </div>
     </div>
@@ -392,12 +401,13 @@ const fv = el => parseFloat(el.value);
 function syncFromRange(valId, rangeEl){const v=parseFloat(rangeEl.value);$(valId).value=v.toFixed(2);}
 function syncFromNum(rangeId, numEl, min, max){let v=parseFloat(numEl.value);if(isNaN(v))return;v=Math.min(max,Math.max(min,v));numEl.value=v.toFixed(2);$(rangeId).value=v;}
 
+const _themeColors={'Default':'#0b0c0e','Midnight':'#0c0c0f','Ember':'#150f15'};
 function applyTheme(name){
   const el=document.documentElement;
-  if(name==='Midnight') el.setAttribute('data-theme','midnight');
-  else el.removeAttribute('data-theme');
+  if(name==='Default') el.removeAttribute('data-theme');
+  else el.setAttribute('data-theme',name.toLowerCase());
   const mc=document.querySelector('meta[name="theme-color"]');
-  if(mc) mc.content=name==='Midnight'?'#0c0c0f':'#0b0c0e';
+  if(mc) mc.content=_themeColors[name]||'#0b0c0e';
   sel('st-theme',name);
 }
 function st(name){
