@@ -121,8 +121,16 @@ html[data-theme="ember"]{
   --text:#ece8ee;--text2:#8a8490;--text3:#544e58;
   --green:#4ade80;--red:#ef4444;--accent:#4ade80;--hot:#ef4444;
   --fm:'JetBrains Mono',monospace;--fu:'Inter',sans-serif;
-  --r:10px;
+  --r:10px;--rs:6px;
 }
+html[data-theme="ember"],html[data-theme="ember"] body{font-family:var(--fu);}
+html[data-theme="ember"] .btn{font-family:var(--fu);border-radius:var(--r);}
+html[data-theme="ember"] select{font-family:var(--fu);}
+html[data-theme="ember"] #vec-ta{background:var(--bg3);}
+html[data-theme="ember"] #vec-ta:focus{background:var(--bg2);}
+html[data-theme="ember"] .s-bot input[type=text]{background:var(--bg3);border-radius:var(--r);}
+html[data-theme="ember"] input[type=range]::-webkit-slider-thumb{box-shadow:0 0 6px rgba(74,222,128,.4);}
+html[data-theme="ember"] input[type=range]::-moz-range-thumb{box-shadow:0 0 6px rgba(74,222,128,.4);}
 .mak-wrap{width:100%;max-width:500px;margin:0 auto;padding:10px 9px;padding-bottom:calc(10px + var(--safe-b));display:flex;flex-direction:column;gap:6px;}
 .mak-eyebrow{font-family:var(--fu);font-size:9px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--text2);}
 .mak-heading{font-family:var(--fu);font-size:15px;font-weight:700;color:var(--text);line-height:1.2;margin-top:2px;}
@@ -168,7 +176,7 @@ select.mak-input option{background:var(--bg1);color:var(--text);}
 input.sval-inp{width:38px;height:auto;background:none !important;border:none !important;border-radius:0;padding:0;font-family:var(--fm);font-size:11px;font-weight:600;color:var(--accent);text-align:right;outline:none;cursor:default;-moz-appearance:textfield;appearance:textfield;}
 input.sval-inp::-webkit-inner-spin-button,input.sval-inp::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 input.sval-inp:focus{cursor:text;}
-input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border2);border-radius:2px;outline:none;cursor:pointer;margin:3px 0;}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:linear-gradient(to right,var(--accent) var(--fill,0%),var(--border2) var(--fill,0%));border-radius:2px;outline:none;cursor:pointer;margin:3px 0;}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg0);box-shadow:0 0 4px rgba(77,156,255,.4);}
 input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg0);}
 
@@ -398,8 +406,9 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 const $ = id => document.getElementById(id);
 const f2 = el => parseFloat(el.value).toFixed(2);
 const fv = el => parseFloat(el.value);
-function syncFromRange(valId, rangeEl){const v=parseFloat(rangeEl.value);$(valId).value=v.toFixed(2);}
-function syncFromNum(rangeId, numEl, min, max){let v=parseFloat(numEl.value);if(isNaN(v))return;v=Math.min(max,Math.max(min,v));numEl.value=v.toFixed(2);$(rangeId).value=v;}
+function updateSliderFill(el){const min=parseFloat(el.min)||0,max=parseFloat(el.max)||100;el.style.setProperty('--fill',((parseFloat(el.value)-min)/(max-min))*100+'%');}
+function syncFromRange(valId, rangeEl){const v=parseFloat(rangeEl.value);$(valId).value=v.toFixed(2);updateSliderFill(rangeEl);}
+function syncFromNum(rangeId, numEl, min, max){let v=parseFloat(numEl.value);if(isNaN(v))return;v=Math.min(max,Math.max(min,v));numEl.value=v.toFixed(2);$(rangeId).value=v;updateSliderFill($(rangeId));}
 
 const _themeColors={'Default':'#0b0c0e','Midnight':'#0c0c0f','Ember':'#150f15'};
 function applyTheme(name){
@@ -499,7 +508,7 @@ async function loadState(){
 function chk(id,v){const el=$(id);if(el)el.checked=!!v;}
 function num(id,v){const el=$(id);if(el)el.value=v;}
 function sel(id,v){const el=$(id);if(!el)return;for(const o of el.options)if(o.value===v||o.text===v){o.selected=true;break;}}
-function slid(sid,lid,v){const s=$(sid),l=$(lid);if(s)s.value=v;if(l)l.value=parseFloat(v).toFixed(2);}
+function slid(sid,lid,v){const s=$(sid),l=$(lid);if(s){s.value=v;updateSliderFill(s);}if(l)l.value=parseFloat(v).toFixed(2);}
 
 // ── Scripts ───────────────────────────────────────────────────────────────────
 let sCurrentGame = '';
