@@ -230,7 +230,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .tool-section-lbl{font-family:var(--fu);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);padding:6px 0 2px;}
 .tool-sep{border-top:1px solid var(--border);margin:6px 0;}
 .tool-empty{font-size:10px;color:var(--text3);text-align:center;padding:10px 0;}
-.val-out{font-family:var(--fm);font-size:11px;font-weight:600;color:var(--accent);}
 .burst-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px;}
 .burst-row:last-child{border-bottom:none;}
 .burst-idx{color:var(--text3);width:20px;font-family:var(--fu);}
@@ -396,12 +395,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     </div>
   </div>
 
-  <div class="card">
-    <div class="ch">Pattern Info</div>
-    <div class="cb" id="pat-info">
-      <div class="tool-empty">No script loaded</div>
-    </div>
-  </div>
 
 </div>
 </div>
@@ -533,11 +526,6 @@ function applyStatus(d){
   if(d.burst_history){
     const el=$('burst-list'),h=d.burst_history.slice().reverse();
     el.innerHTML=[0,1,2,3,4].map(i=>{const v=h[i];return`<div class="burst-row${v?' burst-click':''}"${v?` onclick="useBurst(${v})"`:''}><span class="burst-idx">${i+1}</span><span class="burst-val${v?'':' burst-empty'}">${v?v+'ms':'—'}</span></div>`;}).join('');
-  }
-  if(d.pattern_stats!==undefined){
-    const el=$('pat-info'),s=d.pattern_stats;
-    if(!s||!s.shots) el.innerHTML='<div class="tool-empty">No script loaded</div>';
-    else el.innerHTML=`<div class="crow"><span class="lbl">Total Duration</span><div class="ctl val-out">${(s.total_ms/1000).toFixed(2)}s</div></div><div class="crow"><span class="lbl">Avg Delay</span><div class="ctl val-out">${s.avg_delay_ms}ms</div></div>`;
   }
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}

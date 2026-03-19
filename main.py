@@ -389,7 +389,6 @@ async def _broadcast_loop():
                 "cycle_keybind":            state.cycle_keybind,
                 "theme":                    state.theme,
                 "burst_history":            state.get_burst_history(),
-                "pattern_stats":            state.get_pattern_stats(),
             })
             h = hashlib.md5(msg.encode()).hexdigest()
             if h != _last_broadcast_hash:

@@ -124,19 +124,6 @@ class AppState:
         with self._lock:
             return list(self.burst_history)
 
-    def get_pattern_stats(self) -> dict:
-        with self._lock:
-            if not self.vectors:
-                return {}
-            n = len(self.vectors)
-            delays_ms = [d * 1000 for _, _, d in self.vectors]
-            total = sum(delays_ms)
-            return {
-                "shots": n,
-                "total_ms": round(total),
-                "avg_delay_ms": round(total / n, 1),
-            }
-
     # ── Settings interface ────────────────────────────────────────────────────
 
     def get_game_scalar(self) -> str:
