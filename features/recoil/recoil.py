@@ -34,10 +34,10 @@ class recoil:
         burst_start       = 0.0
         DEBOUNCE = 0.3
 
-        def _log_burst(start: float, shots: int) -> None:
-            if shots > 0:
-                ms = (time.monotonic() - start) * 1000
-                print(f"[Recoil] BURST: {ms:.0f}ms, {shots} shots")
+        def _log_burst(start: float) -> None:
+            ms = (time.monotonic() - start) * 1000
+            if ms > 0:
+                print(f"[Recoil] BURST: {ms:.0f}ms")
 
         def _reset_burst(y_movement: float) -> None:
             if y_movement != 0 and state.get_return_crosshair_enabled():
@@ -80,7 +80,7 @@ class recoil:
 
                 # ── LMB released — optionally return crosshair ────────────────────
                 if not lmb_pressed and lmb_was_pressed and total_y_movement != 0:
-                    _log_burst(burst_start, shot_count)
+                    _log_burst(burst_start)
                     if state.get_return_crosshair_enabled():
                         makcu_controller.move_mouse_smoothly(0, -total_y_movement, 20, state.get_return_speed())
                     total_y_movement = 0
@@ -152,7 +152,7 @@ class recoil:
                     # Do NOT re-check LMB here — if it bounced back to True already
                     # that will be handled cleanly at the top of the next iteration.
                     if not move_completed:
-                        _log_burst(burst_start, shot_count)
+                        _log_burst(burst_start)
                         _reset_burst(total_y_movement)
                         shot_count       = 0
                         total_y_movement = 0
@@ -177,7 +177,7 @@ class recoil:
                             time.sleep(0.001)
 
                     if lmb_released:
-                        _log_burst(burst_start, shot_count)
+                        _log_burst(burst_start)
                         _reset_burst(total_y_movement)
                         shot_count       = 0
                         total_y_movement = 0
