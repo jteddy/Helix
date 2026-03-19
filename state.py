@@ -238,19 +238,28 @@ class AppState:
 
     def cycle_script(self):
         with self._lock:
-            all_scripts = [(None, s) for s in self.list_scripts()]
-            for g in self.list_games():
-                for s in self.list_scripts(g):
-                    all_scripts.append((g, s))
-            if not all_scripts:
+            # Determine which game folder the current script belongs to
+            current_game = None
+            if self.loaded_script and "/" in self.loaded_script:
+                current_game = self.loaded_script.rsplit("/", 1)[0]
+
+            # Only cycle within that game's scripts (or root if no game)
+            scripts = self.list_scripts(current_game)
+            if not scripts:
                 return
+
+            # Find current position and advance
+            current_name = self.loaded_script
+            if current_game and current_name.startswith(current_game + "/"):
+                current_name = current_name[len(current_game) + 1:]
+
             idx = 0
-            for i, (g, s) in enumerate(all_scripts):
-                if (f"{g}/{s}" if g else s) == self.loaded_script:
-                    idx = (i + 1) % len(all_scripts)
+            for i, s in enumerate(scripts):
+                if s == current_name:
+                    idx = (i + 1) % len(scripts)
                     break
-            g, s = all_scripts[idx]
-        self.load_script(s, g)
+            name = scripts[idx]
+        self.load_script(name, current_game)
 
     @staticmethod
     def _parse_vectors(text: str) -> List[Tuple[float, float, float]]:

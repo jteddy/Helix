@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 #  setup-autostart.sh
-#  Installs Cearum Web as a systemd service on Xubuntu/Ubuntu
+#  Installs Helix as a systemd service on Xubuntu/Ubuntu
 #  Also fixes USB/HID permissions for the MAKCU device.
 #  Run once:
 #    chmod +x setup-autostart.sh
@@ -15,7 +15,7 @@ CURRENT_USER="$(whoami)"
 PYTHON_BIN="$(which python3)"
 
 echo "============================================"
-echo "  Cearum Web — Autostart Setup"
+echo "  Helix — Autostart Setup"
 echo "============================================"
 echo "  Install path : $SCRIPT_DIR"
 echo "  Running as   : $CURRENT_USER"
@@ -49,13 +49,13 @@ echo "        Done."
 echo ""
 
 # ── 4. systemd service ────────────────────────────────────────
-SERVICE_NAME="cearum-web"
+SERVICE_NAME="helix"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
 echo "[ 4/5 ] Writing systemd service to $SERVICE_FILE ..."
 sudo tee "$SERVICE_FILE" > /dev/null <<EOF
 [Unit]
-Description=Cearum Web — Recoil Control Server
+Description=Helix — Recoil Control Server
 After=network.target
 
 [Service]
@@ -87,13 +87,13 @@ echo "============================================"
 STATUS=$(sudo systemctl is-active "$SERVICE_NAME" 2>/dev/null)
 if [ "$STATUS" = "active" ]; then
     IP=$(hostname -I | awk '{print $1}')
-    echo "  ✓  Service is RUNNING"
+    echo "  Service is RUNNING"
     echo ""
     echo "  Open in browser:"
     echo "    http://localhost:8000"
     echo "    http://${IP}:8000  (network / phone)"
 else
-    echo "  ✗  Service status: $STATUS"
+    echo "  Service status: $STATUS"
     echo "  Check logs: sudo journalctl -u $SERVICE_NAME -n 50"
 fi
 echo ""

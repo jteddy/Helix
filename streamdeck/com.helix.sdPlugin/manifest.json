@@ -1,0 +1,66 @@
+{
+    "SDKVersion": 2,
+    "Author": "Helix",
+    "CodePath": "plugin.html",
+    "PropertyInspectorPath": "pi.html",
+    "Description": "Control your Helix recoil system from Stream Deck with live state indicators.",
+    "Name": "Helix",
+    "Icon": "imgs/plugin",
+    "Category": "Helix",
+    "CategoryIcon": "imgs/plugin",
+    "Version": "1.0.0",
+    "OS": [
+        {
+            "Platform": "windows",
+            "MinimumVersion": "10"
+        }
+    ],
+    "Software": {
+        "MinimumVersion": "5.0"
+    },
+    "Actions": [
+        {
+            "Icon": "imgs/actions/recoil",
+            "Name": "Toggle Recoil",
+            "States": [
+                { "Image": "imgs/keys/recoil-off" },
+                { "Image": "imgs/keys/recoil-on" }
+            ],
+            "SupportedInMultiActions": true,
+            "Tooltip": "Toggle Helix recoil compensation on/off. Icon updates automatically.",
+            "UUID": "com.helix.recoil"
+        },
+        {
+            "Icon": "imgs/actions/flashlight",
+            "Name": "Toggle Flashlight",
+            "States": [
+                { "Image": "imgs/keys/flashlight-off" },
+                { "Image": "imgs/keys/flashlight-on" }
+            ],
+            "SupportedInMultiActions": true,
+            "Tooltip": "Toggle Helix flashlight trigger on/off. Icon updates automatically.",
+            "UUID": "com.helix.flashlight"
+        },
+        {
+            "Icon": "imgs/actions/cycle",
+            "Name": "Cycle Script",
+            "States": [
+                { "Image": "imgs/keys/cycle" }
+            ],
+            "SupportedInMultiActions": true,
+            "Tooltip": "Cycle to the next recoil script. Shows current script name.",
+            "UUID": "com.helix.cycle"
+        },
+        {
+            "Icon": "imgs/actions/status",
+            "Name": "MAKCU Status",
+            "States": [
+                { "Image": "imgs/keys/makcu-err" },
+                { "Image": "imgs/keys/makcu-ok" }
+            ],
+            "SupportedInMultiActions": false,
+            "Tooltip": "Displays MAKCU controller connection status (read-only).",
+            "UUID": "com.helix.status"
+        }
+    ]
+}

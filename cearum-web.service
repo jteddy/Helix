@@ -1,9 +1,9 @@
 [Unit]
-Description=Cearum Web
+Description=Helix
 After=network.target
 
 [Service]
-WorkingDirectory=/home/pi/cearum-web
+WorkingDirectory=/home/pi/helix
 ExecStart=/usr/bin/python3 main.py
 Restart=always
 User=pi

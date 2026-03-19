@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <rect width="144" height="144" rx="18" fill="#0f1012" stroke="#152a3a" stroke-width="1.5"/>
+  <g transform="translate(72,30)" fill="none" stroke="#4d9cff" stroke-width="2.5" stroke-linecap="round">
+    <path d="M0,-14 A14,14 0 0 1 12,7"/>
+    <path d="M0,14 A14,14 0 0 1 -12,-7"/>
+  </g>
+  <g transform="translate(72,30)" fill="#4d9cff">
+    <polygon points="10,3 16,10 8,10"/>
+    <polygon points="-10,-3 -16,-10 -8,-10"/>
+  </g>
+  <text x="72" y="78" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="13" fill="#4d9cff" letter-spacing="2" opacity="0.6">CYCLE</text>
+  <text x="72" y="116" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="26" fill="#4d9cff">MDR</text>
+</svg>

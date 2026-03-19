@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Helix — Settings</title>
+    <style>
+        body {
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 12px;
+            color: #ccc;
+            background: #2d2d2d;
+        }
+        .sdpi-wrapper { padding: 0 16px; }
+
+        .sdpi-item {
+            display: flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 4px 0;
+            border-bottom: 1px solid #3a3a3a;
+        }
+        .sdpi-item:last-child { border-bottom: none; }
+
+        .sdpi-item-label {
+            flex: 0 0 90px;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #9e9e9e;
+        }
+
+        .sdpi-item-value {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #ddd;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            padding: 5px 8px;
+            outline: none;
+        }
+        .sdpi-item-value:focus { border-color: #4d9cff; }
+
+        .sdpi-heading {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4d9cff;
+            padding: 12px 0 4px;
+        }
+
+        .sdpi-btn {
+            background: #4d9cff;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 14px;
+            cursor: pointer;
+        }
+        .sdpi-btn:hover { background: #3a8ae6; }
+        .sdpi-btn:active { background: #2d7ad6; }
+
+        #test-result {
+            margin-left: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .sdpi-note {
+            font-size: 10px;
+            color: #888;
+            padding: 6px 0 2px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="sdpi-wrapper">
+        <div class="sdpi-heading">Connection</div>
+
+        <div class="sdpi-item">
+            <div class="sdpi-item-label">Server URL</div>
+            <input class="sdpi-item-value" id="serverUrl" type="text"
+                   placeholder="http://192.168.1.50:8000" spellcheck="false"/>
+        </div>
+
+        <div class="sdpi-item">
+            <div class="sdpi-item-label"></div>
+            <button class="sdpi-btn" id="testBtn">Test Connection</button>
+            <span id="test-result"></span>
+        </div>
+
+        <div class="sdpi-note">
+            Enter the full URL of your Helix server including port (default 8000).
+            Find the IP in the Helix web UI under Settings &rarr; Connection, or run
+            <code>hostname -I</code> on the server.
+            This setting is shared across all Helix buttons.
+        </div>
+    </div>
+
+    <script>
+    var websocket = null;
+    var piUUID = null;
+
+    // Called by the Stream Deck software
+    function connectElgatoStreamDeckSocket(port, uuid, registerEvent, info, actionInfo) {
+        piUUID = uuid;
+
+        websocket = new WebSocket('ws://127.0.0.1:' + port);
+
+        websocket.onopen = function () {
+            websocket.send(JSON.stringify({ event: registerEvent, uuid: uuid }));
+            // Ask for global settings (shared across all buttons)
+            websocket.send(JSON.stringify({ event: 'getGlobalSettings', context: uuid }));
+        };
+
+        websocket.onmessage = function (evt) {
+            var msg = JSON.parse(evt.data);
+            if (msg.event === 'didReceiveGlobalSettings') {
+                var s = (msg.payload && msg.payload.settings) || {};
+                document.getElementById('serverUrl').value = s.serverUrl || '';
+            }
+            // Receive test result relayed back from plugin
+            if (msg.event === 'sendToPropertyInspector') {
+                var p = msg.payload || {};
+                var res = document.getElementById('test-result');
+                if (p.command === 'testResult') {
+                    if (p.success) {
+                        res.textContent = 'Connected!  MAKCU: ' + (p.makcu ? 'OK' : 'not found');
+                        res.style.color = '#44ff77';
+                    } else {
+                        res.textContent = 'Cannot reach server';
+                        res.style.color = '#ff4444';
+                    }
+                }
+            }
+        };
+    }
+
+    // Save on change / blur
+    document.getElementById('serverUrl').addEventListener('change', saveSettings);
+
+    function saveSettings() {
+        var url = document.getElementById('serverUrl').value.replace(/\/+$/, ''); // strip trailing slash
+        websocket.send(JSON.stringify({
+            event:   'setGlobalSettings',
+            context: piUUID,
+            payload: { serverUrl: url }
+        }));
+    }
+
+    // Test connection — routed through plugin process (PI's CEF sandbox blocks cross-origin fetch)
+    document.getElementById('testBtn').addEventListener('click', function () {
+        var url = document.getElementById('serverUrl').value.replace(/\/+$/, '');
+        var res = document.getElementById('test-result');
+        res.textContent = '\u2026';
+        res.style.color = '#aaa';
+
+        // Save settings first so plugin has the URL, then ask plugin to test
+        websocket.send(JSON.stringify({
+            event:   'setGlobalSettings',
+            context: piUUID,
+            payload: { serverUrl: url }
+        }));
+        websocket.send(JSON.stringify({
+            event:   'sendToPlugin',
+            context: piUUID,
+            payload: { command: 'testConnection', url: url }
+        }));
+    });
+    </script>
+</body>
+</html>

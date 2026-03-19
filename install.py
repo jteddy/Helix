@@ -1,5 +1,5 @@
 """
-Cearum-Web — First-time setup
+Helix — First-time setup
 Run once before starting the server for the first time.
 
   python install.py
@@ -95,7 +95,7 @@ def step_udev():
 def main():
     print()
     print("=" * 50)
-    print("  Cearum-Web — Setup")
+    print("  Helix — Setup")
     print("=" * 50)
     print()
 

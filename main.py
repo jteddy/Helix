@@ -1,5 +1,5 @@
 """
-Cearum Web — FastAPI backend
+Helix — FastAPI backend
 Unified directory: saved_scripts/<game>/<weapon>.txt is used for BOTH
 the recoil scripts tab and the vector editor. Flat files in saved_scripts/
 root are also supported for backward compatibility.
@@ -24,7 +24,7 @@ logging.getLogger("uvicorn.access").addFilter(_SuppressPollingLogs())
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -67,10 +67,10 @@ async def lifespan(app: FastAPI):
     # ── Shutdown ──────────────────────────────────────────────────────────────
     _shutdown_flashlight_executor()
     makcu_controller.disconnect()
-    print("[Cearum] Shutdown complete")
+    print("[Helix] Shutdown complete")
 
 
-app = FastAPI(title="Cearum Web", lifespan=lifespan)
+app = FastAPI(title="Helix", lifespan=lifespan)
 
 # CORS: open to all origins — app runs on a trusted local LAN.
 app.add_middleware(
@@ -317,12 +317,15 @@ async def delete_pattern(game: str, weapon: str):
 # ── Stream Deck ───────────────────────────────────────────────────────────────
 @app.get("/api/streamdeck")
 async def streamdeck_state():
-    return {
-        "recoil":     state.recoil_enabled,
-        "flashlight": state.flashlight_enabled and state.recoil_enabled,
-        "makcu":      makcu_controller.is_connected(),
-        "script":     state.loaded_script,
-    }
+    return JSONResponse(
+        content={
+            "recoil":     state.recoil_enabled,
+            "flashlight": state.flashlight_enabled and state.recoil_enabled,
+            "makcu":      makcu_controller.is_connected(),
+            "script":     state.loaded_script,
+        },
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+    )
 
 # ── Stream Deck docs ──────────────────────────────────────────────────────────
 @app.get("/streamdeck/setup")
@@ -419,5 +422,5 @@ if __name__ == "__main__":
         ip = socket.gethostbyname(socket.gethostname())
     except Exception:
         ip = "localhost"
-    print(f"\n{'='*40}\n  Cearum Web\n  http://localhost:8000\n  http://{ip}:8000\n{'='*40}\n")
+    print(f"\n{'='*40}\n  Helix\n  http://localhost:8000\n  http://{ip}:8000\n{'='*40}\n")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <rect width="144" height="144" rx="18" fill="#0f1012" stroke="#2a1818" stroke-width="1.5"/>
+  <g transform="translate(72,40)" opacity="0.4">
+    <polygon points="2,-26 -10,0 -1,0 -6,26 12,0 3,0" fill="#ff4444" stroke="#ff4444" stroke-width="0.5" stroke-linejoin="round"/>
+  </g>
+  <text x="72" y="100" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="19" fill="#ff4444" letter-spacing="2" opacity="0.55">FLASH</text>
+  <text x="72" y="128" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="24" fill="#ff4444" opacity="0.5">OFF</text>
+</svg>

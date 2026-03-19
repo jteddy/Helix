@@ -26,7 +26,7 @@ Any browser (phone, tablet, monitor)
 └── http://<server-ip>:8000
         │
         ▼
-Cearum Server  (Linux, any hardware)
+Helix Server  (Linux, any hardware)
 ├── Python / FastAPI  ← HTTP + WebSocket API
 ├── MAKCU connected via USB HID
 └── Recoil + Flashlight loops running continuously
@@ -40,9 +40,9 @@ The server is a Python [FastAPI](https://fastapi.tiangolo.com/) application that
 Gaming PC (Windows)
 ├── Game running
 ├── Mouse ──→ MAKCU (USB passthrough) ──→ Game input
-└── Stream Deck ──→ HTTP ──→ Cearum Server
+└── Stream Deck ──→ HTTP ──→ Helix server
 
-Cearum Server (Linux, any hardware)
+Helix Server (Linux, any hardware)
 └── http://<server-ip>:8000
 
 Any browser (phone, tablet, monitor)
@@ -59,8 +59,8 @@ Any browser (phone, tablet, monitor)
 ## Quick Start
 
 ```bash
-git clone https://github.com/jteddy/Cearum-Web/
-cd Cearum-Web
+git clone https://github.com/jteddy/Helix.git
+cd Helix
 python install.py   # first-time setup — installs deps, USB groups, udev rule
 ./start.sh          # run manually (Ctrl+C to stop)
 ```
@@ -84,9 +84,9 @@ Run once — installs dependencies, writes a systemd service, enables it, and st
 
 Useful commands after setup:
 ```bash
-sudo systemctl status cearum-web
-sudo systemctl restart cearum-web
-sudo journalctl -u cearum-web -f    # live logs
+sudo systemctl status helix
+sudo systemctl restart helix
+sudo journalctl -u helix -f    # live logs
 ```
 
 ---
@@ -171,7 +171,7 @@ Shows live status of the MAKCU device, the web server, and the WebSocket connect
 
 **Stream Deck**
 
-Displays the API endpoints needed to configure the Web Requests plugin. See the [Stream Deck setup guide](https://github.com/jteddy/Cearum-Web/blob/main/streamdeck/SETUP.md) for full button-by-button instructions.
+Displays the API endpoints needed to configure the Web Requests plugin. See the [Stream Deck setup guide](https://github.com/jteddy/Helix/blob/main/streamdeck/SETUP.md) for full button-by-button instructions.
 
 ---
 
@@ -223,22 +223,22 @@ Lines starting with `#` are comments and are ignored.
 
 ## Stream Deck
 
-See the [Stream Deck setup guide](https://github.com/jteddy/Cearum-Web/blob/main/streamdeck/SETUP.md) for full button-by-button instructions.
+A custom Stream Deck plugin is included with live state-aware icons — buttons update automatically when state changes from any source (web UI, MAKCU side button, API).
 
-Short version: install the free *Web Requests by Adrián* plugin from the Stream Deck Store, then configure buttons with:
+**Quick install:** copy `streamdeck/com.helix.sdPlugin` into your Stream Deck plugins folder, restart the software, and set your server URL:
+
 ```
-POST http://<server-ip>:8000/api/recoil/toggle
-POST http://<server-ip>:8000/api/flashlight/toggle
-POST http://<server-ip>:8000/api/scripts/cycle
-GET  http://<server-ip>:8000/api/streamdeck
+%APPDATA%\Elgato\StreamDeck\Plugins\
 ```
+
+See the [full setup guide](https://github.com/jteddy/Helix/blob/main/streamdeck/SETUP.md) for details and alternative setup options.
 
 ---
 
 ## Directory Structure
 
 ```
-cearum-web/
+helix/
 ├── main.py                       ← FastAPI backend + all API routes
 ├── state.py                      ← Shared app state (thread-safe)
 ├── config_manager.py             ← JSON save/load (atomic write)
@@ -255,7 +255,8 @@ cearum-web/
 │   └── <game>/
 │       └── <weapon>.txt
 ├── config.json                   ← Auto-saved every 30s (gitignored)
-└── streamdeck/SETUP.md           ← Stream Deck configuration guide
+├── streamdeck/SETUP.md           ← Stream Deck configuration guide
+└── streamdeck/com.helix.sdPlugin ← Stream Deck plugin (copy to Plugins folder)
 ```
 
 ---

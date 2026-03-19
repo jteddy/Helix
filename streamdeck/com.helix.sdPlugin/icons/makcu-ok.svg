@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="144" height="144" rx="18" fill="#0f1012" stroke="#1a3a20" stroke-width="1.5"/>
+  <rect x="16" y="137" width="112" height="4" rx="2" fill="#44ff77" opacity="0.35"/>
+  <g transform="translate(72,40)" filter="url(#glow)">
+    <rect x="-16" y="-14" width="32" height="28" rx="4" fill="none" stroke="#44ff77" stroke-width="2.5"/>
+    <rect x="-8" y="-24" width="16" height="14" rx="2" fill="none" stroke="#44ff77" stroke-width="2"/>
+    <line x1="-4" y1="-24" x2="-4" y2="-14" stroke="#44ff77" stroke-width="1.5"/>
+    <line x1="4" y1="-24" x2="4" y2="-14" stroke="#44ff77" stroke-width="1.5"/>
+    <circle cy="2" r="4" fill="#44ff77" opacity="0.9"/>
+  </g>
+  <text x="72" y="100" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="19" fill="#44ff77" letter-spacing="2">MAKCU</text>
+  <text x="72" y="128" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="24" fill="#44ff77" opacity="0.9">OK</text>
+</svg>
