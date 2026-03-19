@@ -105,43 +105,43 @@ select:focus,input[type=text]:focus,input[type=number]:focus{border-color:var(--
 select{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%237a8090'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;padding-right:20px;}
 input[type=number]{width:72px;text-align:right;}
 
-/* ── MAKCU-themed panels (Tools + Settings) ─────────────────────────── */
-#tab-settings{
-  --mak-bg:#0c0c0f;--mak-card:#111116;--mak-border:#232328;
-  --mak-text:#e2e2e8;--mak-text2:#55556a;
-  --mak-accent:#4d9cff;--green:#52b37a;
-  --mak-sans:'Space Grotesk',sans-serif;--mak-mono:'Space Mono',monospace;
-  background:var(--mak-bg);
+/* ── Midnight theme ──────────────────────────────────────────────── */
+html[data-theme="midnight"]{
+  --bg0:#0c0c0f;--bg1:#0f0f14;--bg2:#111116;--bg3:#161620;--bg4:#1b1b26;
+  --border:#232328;--border2:#2e2e38;
+  --text:#e2e2e8;--text2:#6a6a82;--text3:#3d3d52;
+  --green:#52b37a;--red:#e05555;--accent:#4d9cff;--hot:#e0506a;
+  --fm:'Space Mono',monospace;--fu:'Space Grotesk',sans-serif;
 }
 .mak-wrap{width:100%;max-width:500px;margin:0 auto;padding:10px 9px;padding-bottom:calc(10px + var(--safe-b));display:flex;flex-direction:column;gap:6px;}
-.mak-eyebrow{font-family:var(--mak-sans);font-size:9px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--mak-text2);}
-.mak-heading{font-family:var(--mak-sans);font-size:15px;font-weight:700;color:var(--mak-text);line-height:1.2;margin-top:2px;}
-.mak-card{background:var(--mak-card);border:1px solid var(--mak-border);border-radius:7px;padding:10px 14px;display:flex;flex-direction:column;gap:0;}
-.mak-section-head{font-family:var(--mak-sans);font-size:11px;font-weight:600;color:var(--mak-text);padding-bottom:6px;border-bottom:1px solid var(--mak-border);}
+.mak-eyebrow{font-family:var(--fu);font-size:9px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--text2);}
+.mak-heading{font-family:var(--fu);font-size:15px;font-weight:700;color:var(--text);line-height:1.2;margin-top:2px;}
+.mak-card{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;display:flex;flex-direction:column;gap:0;}
+.mak-section-head{font-family:var(--fu);font-size:11px;font-weight:600;color:var(--text);padding-bottom:6px;border-bottom:1px solid var(--border);}
 .mak-section-head+.mak-row{border-top:none;}
 .mak-section-head+.mak-field{margin-top:8px;}
 .mak-field+.mak-field{margin-top:8px;}
 .mak-card>.mak-note{margin-top:6px;}
 input[type=number].mak-input{width:100%;}
 .mak-field{display:flex;flex-direction:column;gap:4px;}
-.mak-label{font-family:var(--mak-sans);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mak-text2);}
-.mak-input{font-family:var(--mak-mono);font-size:11px;background:rgba(255,255,255,.04);border:1px solid var(--mak-border);border-radius:5px;color:var(--mak-text);padding:6px 10px;width:100%;outline:none;transition:border-color .2s;-moz-appearance:textfield;text-align:center;}
-.mak-input:focus{border-color:var(--mak-accent);}
+.mak-label{font-family:var(--fu);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);}
+.mak-input{font-family:var(--fm);font-size:11px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:6px 10px;width:100%;outline:none;transition:border-color .2s;-moz-appearance:textfield;text-align:center;}
+.mak-input:focus{border-color:var(--accent);}
 .mak-input::-webkit-inner-spin-button,.mak-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
-select.mak-input{font-family:var(--mak-sans);font-size:11px;cursor:pointer;-webkit-appearance:none;appearance:none;text-align:left;color-scheme:dark;height:30px;padding-top:0;padding-bottom:0;line-height:30px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2355556a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+select.mak-input{font-family:var(--fu);font-size:11px;cursor:pointer;-webkit-appearance:none;appearance:none;text-align:left;color-scheme:dark;height:30px;padding-top:0;padding-bottom:0;line-height:30px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%237a8090'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .mak-results{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .mak-metric{background:rgba(77,156,255,.07);border:1px solid rgba(77,156,255,.22);border-radius:7px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;}
-.mak-metric.sec{background:rgba(255,255,255,.03);border-color:var(--mak-border);}
-.mak-metric-label{font-family:var(--mak-sans);font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mak-text2);}
-.mak-metric-val{font-family:var(--mak-mono);font-size:20px;font-weight:700;color:var(--mak-accent);line-height:1.1;}
-.mak-metric.sec .mak-metric-val{font-size:17px;color:var(--mak-text);}
-.mak-note{font-family:var(--mak-sans);font-size:10px;color:var(--mak-text2);line-height:1.5;padding:0 1px;}
-.mak-note code{font-family:var(--mak-mono);color:var(--mak-text2);font-size:10px;}
-.mak-row{display:flex;align-items:center;justify-content:space-between;min-height:22px;border-bottom:1px solid var(--mak-border);padding:2px 0;}
+.mak-metric.sec{background:rgba(255,255,255,.03);border-color:var(--border);}
+.mak-metric-label{font-family:var(--fu);font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);}
+.mak-metric-val{font-family:var(--fm);font-size:20px;font-weight:700;color:var(--accent);line-height:1.1;}
+.mak-metric.sec .mak-metric-val{font-size:17px;color:var(--text);}
+.mak-note{font-family:var(--fu);font-size:10px;color:var(--text2);line-height:1.5;padding:0 1px;}
+.mak-note code{font-family:var(--fm);color:var(--text2);font-size:10px;}
+.mak-row{display:flex;align-items:center;justify-content:space-between;min-height:22px;border-bottom:1px solid var(--border);padding:2px 0;}
 .mak-row:last-child{border-bottom:none;}
-.mak-row-label{font-family:var(--mak-sans);font-size:10px;font-weight:500;color:var(--mak-text2);}
-.mak-row-val{font-family:var(--mak-mono);font-size:10px;color:var(--mak-text2);text-align:right;}
-select.mak-input option{background:var(--bg1,#111214);color:var(--mak-text);}
+.mak-row-label{font-family:var(--fu);font-size:10px;font-weight:500;color:var(--text2);}
+.mak-row-val{font-family:var(--fm);font-size:10px;color:var(--text2);text-align:right;}
+select.mak-input option{background:var(--bg1);color:var(--text);}
 
 /* ── Slider ───────────────────────────────────────────────────────── */
 .sr{display:flex;flex-direction:column;gap:1px;padding:3px 0;border-bottom:1px solid var(--border);}
@@ -327,6 +327,17 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <div class="mak-wrap">
 
     <div class="mak-card">
+      <div class="mak-section-head">Appearance</div>
+      <div class="mak-field">
+        <div class="mak-label">Theme</div>
+        <select class="mak-input" id="st-theme" onchange="applyTheme(this.value);p('/api/settings',{theme:this.value})">
+          <option>Default</option>
+          <option>Midnight</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mak-card">
       <div class="mak-section-head">Sensitivity Scaling</div>
       <div class="mak-field">
         <div class="mak-label">Game</div>
@@ -348,11 +359,11 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 
     <div class="mak-card">
       <div class="mak-section-head">Stream Deck</div>
-      <div class="mak-row"><span class="mak-row-label">Toggle Recoil</span><span class="mak-row-val" style="color:var(--mak-accent);font-size:9px">POST /api/recoil/toggle</span></div>
-      <div class="mak-row"><span class="mak-row-label">Toggle Flashlight</span><span class="mak-row-val" style="color:var(--mak-accent);font-size:9px">POST /api/flashlight/toggle</span></div>
-      <div class="mak-row"><span class="mak-row-label">StreamDeck State</span><span class="mak-row-val" style="color:var(--mak-accent);font-size:9px">GET /api/streamdeck</span></div>
-      <div class="mak-row"><span class="mak-row-label">Cycle Script</span><span class="mak-row-val" style="color:var(--mak-accent);font-size:9px">POST /api/scripts/cycle</span></div>
-      <p class="mak-note">Use the Web Requests plugin. See <a href="/streamdeck/setup" target="_blank" rel="noopener" style="color:var(--mak-text2);text-decoration:underline;text-underline-offset:2px">SETUP.md</a>.</p>
+      <div class="mak-row"><span class="mak-row-label">Toggle Recoil</span><span class="mak-row-val" style="color:var(--accent);font-size:9px">POST /api/recoil/toggle</span></div>
+      <div class="mak-row"><span class="mak-row-label">Toggle Flashlight</span><span class="mak-row-val" style="color:var(--accent);font-size:9px">POST /api/flashlight/toggle</span></div>
+      <div class="mak-row"><span class="mak-row-label">StreamDeck State</span><span class="mak-row-val" style="color:var(--accent);font-size:9px">GET /api/streamdeck</span></div>
+      <div class="mak-row"><span class="mak-row-label">Cycle Script</span><span class="mak-row-val" style="color:var(--accent);font-size:9px">POST /api/scripts/cycle</span></div>
+      <p class="mak-note">Use the Web Requests plugin. See <a href="/streamdeck/setup" target="_blank" rel="noopener" style="color:var(--text2);text-decoration:underline;text-underline-offset:2px">SETUP.md</a>.</p>
     </div>
 
   </div>
@@ -372,6 +383,14 @@ const fv = el => parseFloat(el.value);
 function syncFromRange(valId, rangeEl){const v=parseFloat(rangeEl.value);$(valId).value=v.toFixed(2);}
 function syncFromNum(rangeId, numEl, min, max){let v=parseFloat(numEl.value);if(isNaN(v))return;v=Math.min(max,Math.max(min,v));numEl.value=v.toFixed(2);$(rangeId).value=v;}
 
+function applyTheme(name){
+  const el=document.documentElement;
+  if(name==='Midnight') el.setAttribute('data-theme','midnight');
+  else el.removeAttribute('data-theme');
+  const mc=document.querySelector('meta[name="theme-color"]');
+  if(mc) mc.content=name==='Midnight'?'#0c0c0f':'#0b0c0e';
+  sel('st-theme',name);
+}
 function st(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
@@ -422,6 +441,7 @@ function applyStatus(d){
   if(d.return_crosshair!==undefined){const el=$('r-rch');if(el&&el.checked!==d.return_crosshair)el.checked=d.return_crosshair;}
   if(d.toggle_keybind!==undefined){const el=$('r-tkb');if(el)el.value=d.toggle_keybind;}
   if(d.cycle_keybind!==undefined){const el=$('r-ckb');if(el)el.value=d.cycle_keybind;}
+  if(d.theme!==undefined) applyTheme(d.theme);
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}
 
@@ -441,6 +461,7 @@ async function loadState(){
     const games=['Manual','Arena Breakout Infinite','CS2','Gray Zone Warfare','Hunt: Showdown','Marathon','Marvel Rivals','PUBG: Battlegrounds','Valorant'];
     $('st-game').innerHTML=games.map(g=>`<option>${g}</option>`).join('');
     sel('st-game',s.game_scalar||'Manual');num('st-sens',s.game_sensitivity??1);
+    applyTheme(s.theme||'Default');
     $('s-srv').textContent=location.host;
     // ── Restore game directory from loaded script ─────────────────────────
     let defaultGame = '';

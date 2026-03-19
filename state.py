@@ -44,6 +44,7 @@ class AppState:
         # ── Settings ──────────────────────────────────────────────────────────
         self.game_scalar: str = "Manual"
         self.game_sensitivity: float = 1.0
+        self.theme: str = "Default"
 
     # ── Recoil interface (matches original RecoilMenu method names) ───────────
 
@@ -284,6 +285,7 @@ class AppState:
                 "settings": {
                     "game_scalar": self.game_scalar,
                     "game_sensitivity": self.game_sensitivity,
+                    "theme": self.theme,
                 },
             }
 
@@ -328,3 +330,4 @@ class AppState:
             s = data.get("settings", {})
             self.game_scalar      = s.get("game_scalar", "Manual")
             self.game_sensitivity = float(s.get("game_sensitivity", 1.0))
+            self.theme = s.get("theme", "Default")

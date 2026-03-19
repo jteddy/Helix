@@ -267,12 +267,14 @@ async def update_flashlight(u: FlashlightUpdate):
 class SettingsUpdate(BaseModel):
     game_scalar:      Optional[str]   = None
     game_sensitivity: Optional[float] = None
+    theme:            Optional[str]   = None
 
 @app.post("/api/settings")
 async def update_settings(u: SettingsUpdate):
     with state._lock:
         if u.game_scalar      is not None: state.game_scalar      = u.game_scalar
         if u.game_sensitivity is not None: state.game_sensitivity = u.game_sensitivity
+        if u.theme            is not None: state.theme            = u.theme
     await _save_async()
     return {"ok": True}
 
@@ -385,6 +387,7 @@ async def _broadcast_loop():
                 "loop_recoil":              state.loop_recoil,
                 "toggle_keybind":           state.toggle_keybind,
                 "cycle_keybind":            state.cycle_keybind,
+                "theme":                    state.theme,
             })
             h = hashlib.md5(msg.encode()).hexdigest()
             if h != _last_broadcast_hash:
