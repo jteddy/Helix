@@ -535,7 +535,7 @@ function applyStatus(d){
   if(d.pattern_stats!==undefined){
     const el=$('pat-info'),s=d.pattern_stats;
     if(!s||!s.shots) el.innerHTML='<div class="tool-empty">No script loaded</div>';
-    else el.innerHTML=`<div class="crow"><span class="lbl">Total Shots</span><div class="ctl val-out">${s.shots}</div></div><div class="crow"><span class="lbl">Total Duration</span><div class="ctl val-out">${(s.total_ms/1000).toFixed(2)}s</div></div><div class="crow"><span class="lbl">Avg Delay</span><div class="ctl val-out">${s.avg_delay_ms}ms</div></div><div class="crow"><span class="lbl">X Range</span><div class="ctl val-out">${s.x_range[0]} → ${s.x_range[1]}</div></div><div class="crow"><span class="lbl">Y Range</span><div class="ctl val-out">${s.y_range[0]} → ${s.y_range[1]}</div></div>`;
+    else el.innerHTML=`<div class="crow"><span class="lbl">Total Shots</span><div class="ctl val-out">${s.shots}</div></div><div class="crow"><span class="lbl">Total Duration</span><div class="ctl val-out">${(s.total_ms/1000).toFixed(2)}s</div></div><div class="crow"><span class="lbl">Avg Delay</span><div class="ctl val-out">${s.avg_delay_ms}ms</div></div>`;
   }
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}

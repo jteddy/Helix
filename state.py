@@ -131,14 +131,10 @@ class AppState:
             n = len(self.vectors)
             delays_ms = [d * 1000 for _, _, d in self.vectors]
             total = sum(delays_ms)
-            xs = [x for x, _, _ in self.vectors]
-            ys = [y for _, y, _ in self.vectors]
             return {
                 "shots": n,
                 "total_ms": round(total),
                 "avg_delay_ms": round(total / n, 1),
-                "x_range": [round(min(xs), 2), round(max(xs), 2)],
-                "y_range": [round(min(ys), 2), round(max(ys), 2)],
             }
 
     # ── Settings interface ────────────────────────────────────────────────────
