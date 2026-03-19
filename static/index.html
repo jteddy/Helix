@@ -236,6 +236,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .burst-val{color:var(--accent);font-weight:600;font-family:var(--fm);}
 .burst-empty{color:var(--text3);font-weight:400;}
 .burst-click{cursor:pointer;}.burst-click:hover{background:rgba(77,156,255,.06);}
+.burst-tag{font-family:var(--fu);font-size:9px;color:var(--text3);margin-left:auto;}
 .rpm-row{display:flex;align-items:center;gap:8px;padding:4px 0;}
 .rpm-row input[type=number]{width:90px;text-align:center;padding-right:20px;}
 .rpm-unit{font-family:var(--fu);font-size:10px;color:var(--text3);white-space:nowrap;}
@@ -374,11 +375,11 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <div class="card">
     <div class="ch">Burst History</div>
     <div class="cb" id="burst-list">
-      <div class="burst-row"><span class="burst-idx">1</span><span class="burst-val burst-empty">—</span></div>
+      <div class="burst-row"><span class="burst-idx">1</span><span class="burst-val burst-empty">—</span><span class="burst-tag">latest</span></div>
       <div class="burst-row"><span class="burst-idx">2</span><span class="burst-val burst-empty">—</span></div>
       <div class="burst-row"><span class="burst-idx">3</span><span class="burst-val burst-empty">—</span></div>
       <div class="burst-row"><span class="burst-idx">4</span><span class="burst-val burst-empty">—</span></div>
-      <div class="burst-row"><span class="burst-idx">5</span><span class="burst-val burst-empty">—</span></div>
+      <div class="burst-row"><span class="burst-idx">5</span><span class="burst-val burst-empty">—</span><span class="burst-tag">oldest</span></div>
     </div>
   </div>
 
@@ -525,7 +526,8 @@ function applyStatus(d){
   // ── Tools: burst history + pattern info ───────────────────────────────
   if(d.burst_history){
     const el=$('burst-list'),h=d.burst_history.slice().reverse();
-    el.innerHTML=[0,1,2,3,4].map(i=>{const v=h[i];return`<div class="burst-row${v?' burst-click':''}"${v?` onclick="useBurst(${v})"`:''}><span class="burst-idx">${i+1}</span><span class="burst-val${v?'':' burst-empty'}">${v?v+'ms':'—'}</span></div>`;}).join('');
+    const _bt=['latest','','','','oldest'];
+    el.innerHTML=[0,1,2,3,4].map(i=>{const v=h[i];return`<div class="burst-row${v?' burst-click':''}"${v?` onclick="useBurst(${v})"`:''}><span class="burst-idx">${i+1}</span><span class="burst-val${v?'':' burst-empty'}">${v?v+'ms':'—'}</span>${_bt[i]?`<span class="burst-tag">${_bt[i]}</span>`:''}</div>`;}).join('');
   }
 }
 function card(id,state){const el=$(id);if(!el)return;el.classList.remove('on','err');if(state==='on')el.classList.add('on');if(state==='err')el.classList.add('err');}
