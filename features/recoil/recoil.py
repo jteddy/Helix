@@ -31,12 +31,14 @@ class recoil:
         last_cycle_time   = 0.0
         rand_drift_x      = 0.0
         rand_drift_y      = 0.0
+        burst_start       = 0.0
         DEBOUNCE = 0.3
 
-        # FIX: _reset_burst was previously redefined inside the while loop on
-        # every iteration (~every 5 ms in the hot path). Defining it once here
-        # as a plain function that accepts its inputs avoids the repeated closure
-        # allocation and makes the data flow explicit.
+        def _log_burst(start: float, shots: int) -> None:
+            if shots > 0:
+                ms = (time.monotonic() - start) * 1000
+                print(f"[Recoil] BURST: {ms:.0f}ms, {shots} shots")
+
         def _reset_burst(y_movement: float) -> None:
             if y_movement != 0 and state.get_return_crosshair_enabled():
                 makcu_controller.move_mouse_smoothly(
@@ -78,6 +80,7 @@ class recoil:
 
                 # ── LMB released — optionally return crosshair ────────────────────
                 if not lmb_pressed and lmb_was_pressed and total_y_movement != 0:
+                    _log_burst(burst_start, shot_count)
                     if state.get_return_crosshair_enabled():
                         makcu_controller.move_mouse_smoothly(0, -total_y_movement, 20, state.get_return_speed())
                     total_y_movement = 0
@@ -99,6 +102,7 @@ class recoil:
                     total_y_movement = 0
                     rand_drift_x     = 0.0
                     rand_drift_y     = 0.0
+                    burst_start      = time.monotonic()
                 lmb_was_pressed = True
 
                 # ── Fire recoil ───────────────────────────────────────────────────
@@ -122,16 +126,18 @@ class recoil:
 
                     if state.get_is_randomisation_enabled():
                         strength = state.get_randomisation_strength()
+                        drift_clamp = strength * 2.0
                         # Drift random-walks each burst with decay to keep it bounded.
-                        # Hard-clamp to ±strength so very long sprays can't drift
-                        # excessively (without the clamp, max drift = strength/(1-0.85)
-                        # = 6.7× strength, which is visually too large at high settings).
-                        rand_drift_x = rand_drift_x * 0.85 + random.uniform(-strength, strength)
-                        rand_drift_y = rand_drift_y * 0.85 + random.uniform(-strength, strength)
-                        rand_drift_x = max(-strength, min(strength, rand_drift_x))
-                        rand_drift_y = max(-strength, min(strength, rand_drift_y))
+                        # Decay 0.7 gives faster wander; clamp at 2× strength lets the
+                        # spray path deviate noticeably while still staying reasonable.
+                        rand_drift_x = rand_drift_x * 0.7 + random.uniform(-strength, strength)
+                        rand_drift_y = rand_drift_y * 0.7 + random.uniform(-strength, strength)
+                        rand_drift_x = max(-drift_clamp, min(drift_clamp, rand_drift_x))
+                        rand_drift_y = max(-drift_clamp, min(drift_clamp, rand_drift_y))
                         actual_x = recoil.jitter(actual_x, strength) + rand_drift_x
                         actual_y = recoil.jitter(actual_y, strength) + rand_drift_y
+                        # Per-shot delay jitter: ±10% of the script delay
+                        delay = delay * random.uniform(0.9, 1.1)
 
                     start_time     = time.perf_counter()
                     move_completed = makcu_controller.move_mouse_smoothly(
@@ -146,6 +152,7 @@ class recoil:
                     # Do NOT re-check LMB here — if it bounced back to True already
                     # that will be handled cleanly at the top of the next iteration.
                     if not move_completed:
+                        _log_burst(burst_start, shot_count)
                         _reset_burst(total_y_movement)
                         shot_count       = 0
                         total_y_movement = 0
@@ -170,6 +177,7 @@ class recoil:
                             time.sleep(0.001)
 
                     if lmb_released:
+                        _log_burst(burst_start, shot_count)
                         _reset_burst(total_y_movement)
                         shot_count       = 0
                         total_y_movement = 0
