@@ -379,7 +379,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
       <div class="burst-row"><span class="burst-idx">2</span><span class="burst-tag"></span><span class="burst-val burst-empty">—</span></div>
       <div class="burst-row"><span class="burst-idx">3</span><span class="burst-tag"></span><span class="burst-val burst-empty">—</span></div>
       <div class="burst-row"><span class="burst-idx">4</span><span class="burst-tag"></span><span class="burst-val burst-empty">—</span></div>
-      <div class="burst-row"><span class="burst-idx">5</span><span class="burst-tag">oldest</span><span class="burst-val burst-empty">—</span></div>
+      <div class="burst-row"><span class="burst-idx">5</span><span class="burst-tag"></span><span class="burst-val burst-empty">—</span></div>
     </div>
   </div>
 
@@ -526,7 +526,7 @@ function applyStatus(d){
   // ── Tools: burst history + pattern info ───────────────────────────────
   if(d.burst_history){
     const el=$('burst-list'),h=d.burst_history.slice().reverse();
-    const _bt=['latest','','','','oldest'];
+    const _bt=['latest','','','',''];
     el.innerHTML=[0,1,2,3,4].map(i=>{const v=h[i];return`<div class="burst-row${v?' burst-click':''}"${v?` onclick="useBurst(${v})"`:''}><span class="burst-idx">${i+1}</span><span class="burst-tag">${_bt[i]||''}</span><span class="burst-val${v?'':' burst-empty'}">${v?v+'ms':'—'}</span></div>`;}).join('');
   }
 }
