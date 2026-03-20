@@ -506,6 +506,16 @@ function applyStatus(d){
   if(d.flashlight_enabled!==undefined){const m=$('sc-flash-master');if(m)m.textContent=d.flashlight_enabled?'Master: ON':'Master: OFF';}
   const hs=d.loaded_script&&d.loaded_script!=='NONE';
   card('sc-script',hs?'on':'');$('sc-script-v').textContent=d.loaded_script||'NONE';
+  // Update script list highlight when loaded script changes
+  if(d.loaded_script){
+    const rows=$('s-list')?.querySelectorAll('.srow2')||[];
+    rows.forEach(r=>{
+      const name=r.querySelector('.sname')?.textContent||'';
+      const full=sCurrentGame?`${sCurrentGame}/${name}`:name;
+      const match=d.loaded_script===full||d.loaded_script===name;
+      r.classList.toggle('loaded',match);
+    });
+  }
   const cb=$('r-en');if(cb&&cb.checked!==d.recoil_enabled)cb.checked=d.recoil_enabled;
   const ms=$('s-mst');if(ms){ms.textContent=d.makcu_connected?'Connected':'Not connected';ms.style.color=d.makcu_connected?'var(--green)':'var(--red)';}
   if(hs&&!sNewScriptMode&&document.activeElement!==$('s-name-inp')){$('s-name-inp').value=d.loaded_script.split('/').pop();}
