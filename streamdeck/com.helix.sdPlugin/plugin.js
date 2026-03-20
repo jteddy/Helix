@@ -12,6 +12,7 @@ var pluginUUID   = null;
 var globalSettings = {};          // { serverUrl: "http://…:8000" }
 var contexts     = {};            // context → { action, settings }
 var pollTimer    = null;
+var pollBusy     = false;
 var lastState    = null;
 
 // ── Entry point (called by Stream Deck software) ────────────────────────
@@ -39,9 +40,7 @@ function connectElgatoStreamDeckSocket(port, uuid, registerEvent, info) {
         }
     };
 
-    websocket.onclose = function () {
-        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    };
+    websocket.onclose = function () { stopPolling(); };
 }
 
 // ── Event handlers ──────────────────────────────────────────────────────
@@ -75,15 +74,14 @@ function onWillAppear(msg) {
 
     if (!pollTimer) {
         pollState();
-        pollTimer = setInterval(pollState, 1000);
+        startPolling();
     }
 }
 
 function onWillDisappear(msg) {
     delete contexts[msg.context];
-    if (Object.keys(contexts).length === 0 && pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
+    if (Object.keys(contexts).length === 0) {
+        stopPolling();
     }
 }
 
@@ -120,8 +118,31 @@ function onSendToPlugin(msg) {
 
 // ── State polling ───────────────────────────────────────────────────────
 
-function pollState() {
-    if (Object.keys(contexts).length === 0) return;
+// Use recursive setTimeout instead of setInterval — CEF throttles
+// setInterval in background/headless contexts (can drop to ~1/min),
+// which causes the Stream Deck icons to stop updating until a key press.
+
+function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setTimeout(function tick() {
+        pollState(function () {
+            if (Object.keys(contexts).length > 0) {
+                pollTimer = setTimeout(tick, 1000);
+            } else {
+                pollTimer = null;
+            }
+        });
+    }, 1000);
+}
+
+function stopPolling() {
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+}
+
+function pollState(done) {
+    if (Object.keys(contexts).length === 0) { if (done) done(); return; }
+    if (pollBusy) { if (done) done(); return; }
+    pollBusy = true;
 
     var byUrl = {};
     Object.keys(contexts).forEach(function (ctx) {
@@ -131,7 +152,16 @@ function pollState() {
         byUrl[url].push(ctx);
     });
 
-    Object.keys(byUrl).forEach(function (url) {
+    var urls = Object.keys(byUrl);
+    if (urls.length === 0) { pollBusy = false; if (done) done(); return; }
+
+    var remaining = urls.length;
+    function finish() {
+        remaining--;
+        if (remaining <= 0) { pollBusy = false; if (done) done(); }
+    }
+
+    urls.forEach(function (url) {
         fetch(url + '/api/streamdeck?_t=' + Date.now())
             .then(function (r) { return r.json(); })
             .then(function (state) {
@@ -141,6 +171,7 @@ function pollState() {
                         setIconForContext(ctx, contexts[ctx].action, state);
                     }
                 });
+                finish();
             })
             .catch(function () {
                 byUrl[url].forEach(function (ctx) {
@@ -148,6 +179,7 @@ function pollState() {
                         setIconForContext(ctx, contexts[ctx].action, { _error: true });
                     }
                 });
+                finish();
             });
     });
 }
