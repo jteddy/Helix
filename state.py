@@ -243,22 +243,27 @@ class AppState:
             if self.loaded_script and "/" in self.loaded_script:
                 current_game = self.loaded_script.rsplit("/", 1)[0]
 
+            print(f"[cycle] loaded_script={self.loaded_script!r}  current_game={current_game!r}")
+
             # Only cycle within that game's scripts (or root if no game)
             scripts = self.list_scripts(current_game)
+            print(f"[cycle] scripts in {current_game!r}: {scripts}")
             if not scripts:
                 return
 
-            # Find current position and advance
+            # Strip game prefix to get just the script name for comparison
             current_name = self.loaded_script
             if current_game and current_name.startswith(current_game + "/"):
                 current_name = current_name[len(current_game) + 1:]
 
-            idx = 0
-            for i, s in enumerate(scripts):
-                if s == current_name:
-                    idx = (i + 1) % len(scripts)
-                    break
+            # Find current script and advance to next
+            try:
+                current_idx = scripts.index(current_name)
+                idx = (current_idx + 1) % len(scripts)
+            except ValueError:
+                idx = 0
             name = scripts[idx]
+            print(f"[cycle] current_name={current_name!r}  -> next={name!r}  game={current_game!r}")
         self.load_script(name, current_game)
 
     @staticmethod
