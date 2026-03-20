@@ -121,7 +121,8 @@
         };
 
         websocket.onmessage = function (evt) {
-            var msg = JSON.parse(evt.data);
+            var msg;
+            try { msg = JSON.parse(evt.data); } catch (e) { return; }
             if (msg.event === 'didReceiveGlobalSettings') {
                 var s = (msg.payload && msg.payload.settings) || {};
                 document.getElementById('serverUrl').value = s.serverUrl || '';

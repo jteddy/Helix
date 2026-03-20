@@ -243,11 +243,8 @@ class AppState:
             if self.loaded_script and "/" in self.loaded_script:
                 current_game = self.loaded_script.rsplit("/", 1)[0]
 
-            print(f"[cycle] loaded_script={self.loaded_script!r}  current_game={current_game!r}")
-
             # Only cycle within that game's scripts (or root if no game)
             scripts = self.list_scripts(current_game)
-            print(f"[cycle] scripts in {current_game!r}: {scripts}")
             if not scripts:
                 return
 
@@ -263,7 +260,6 @@ class AppState:
             except ValueError:
                 idx = 0
             name = scripts[idx]
-            print(f"[cycle] current_name={current_name!r}  -> next={name!r}  game={current_game!r}")
         self.load_script(name, current_game)
 
     @staticmethod

@@ -11,7 +11,7 @@ import logging
 import os
 import threading
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import Optional
 
 # Suppress uvicorn access-log noise from high-frequency polling endpoints.
 class _SuppressPollingLogs(logging.Filter):
@@ -168,7 +168,10 @@ async def list_scripts(game: Optional[str] = None):
 
 @app.get("/api/scripts/content/{game}/{name}")
 async def get_script_content_with_game(game: str, name: str):
-    path = os.path.join(state.scripts_dir, game, f"{name}.txt")
+    try:
+        path = state._resolve_path(name, game)
+    except ValueError:
+        raise HTTPException(400, "Invalid path")
     if not os.path.exists(path):
         raise HTTPException(404, "Script not found")
     with open(path) as f:
@@ -177,12 +180,18 @@ async def get_script_content_with_game(game: str, name: str):
 @app.get("/api/scripts/content/{name}")
 async def get_script_content(name: str):
     # Try flat first, then search game subfolders
-    flat = os.path.join(state.scripts_dir, f"{name}.txt")
+    try:
+        flat = state._resolve_path(name)
+    except ValueError:
+        raise HTTPException(400, "Invalid path")
     if os.path.exists(flat):
         with open(flat) as f:
             return PlainTextResponse(f.read())
     for game in state.list_games():
-        path = os.path.join(state.scripts_dir, game, f"{name}.txt")
+        try:
+            path = state._resolve_path(name, game)
+        except ValueError:
+            continue
         if os.path.exists(path):
             with open(path) as f:
                 return PlainTextResponse(f.read())
@@ -291,7 +300,10 @@ async def get_patterns():
 
 @app.get("/api/patterns/{game}/{weapon}")
 async def get_pattern(game: str, weapon: str):
-    path = os.path.join(state.scripts_dir, game, f"{weapon}.txt")
+    try:
+        path = state._resolve_path(weapon, game)
+    except ValueError:
+        raise HTTPException(400, "Invalid path")
     if not os.path.exists(path):
         raise HTTPException(404, "Pattern not found")
     with open(path) as f:

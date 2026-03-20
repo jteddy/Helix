@@ -457,7 +457,6 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
-const f2 = el => parseFloat(el.value).toFixed(2);
 const fv = el => parseFloat(el.value);
 function updateSliderFill(el){const min=parseFloat(el.min)||0,max=parseFloat(el.max)||100;el.style.setProperty('--fill',((parseFloat(el.value)-min)/(max-min))*100+'%');}
 function syncFromRange(valId, rangeEl){const v=parseFloat(rangeEl.value);$(valId).value=v.toFixed(2);updateSliderFill(rangeEl);}
@@ -590,10 +589,12 @@ function updateDirLabel(game) {
   if(el) el.textContent = sDir;
 }
 
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
 function populateGameSelector(games, current) {
   const sel = $('s-game-sel');
   sel.innerHTML = '<option value="">(root)</option>' +
-    games.map(g=>`<option value="${g}">${g}</option>`).join('');
+    games.map(g=>`<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('');
   if(current) for(const o of sel.options) if(o.value===current){o.selected=true;break;}
 }
 
@@ -622,9 +623,10 @@ function renderScripts(scripts, loaded) {
   list.innerHTML = scripts.map(s => {
     const fullName = sCurrentGame ? `${sCurrentGame}/${s}` : s;
     const isLoaded = loaded===fullName || loaded===s;
+    const esc = escHtml(s), escGame = escHtml(sCurrentGame||'');
     return `<div class="srow2 ${isLoaded?'loaded':''}">
-      <div class="sname" onclick="loadScript('${s}','${sCurrentGame}')" title="${s}">${s}</div>
-      <button class="sdel" onclick="delScript('${s}','${sCurrentGame}')">✕</button>
+      <div class="sname" onclick="loadScript('${esc}','${escGame}')" title="${esc}">${esc}</div>
+      <button class="sdel" onclick="delScript('${esc}','${escGame}')">✕</button>
     </div>`;
   }).join('');
 }

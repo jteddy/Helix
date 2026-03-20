@@ -5,9 +5,9 @@
     "PropertyInspectorPath": "pi.html",
     "Description": "Control your Helix recoil system from Stream Deck with live state indicators.",
     "Name": "Helix",
-    "Icon": "imgs/plugin",
+    "Icon": "icons/recoil-on",
     "Category": "Helix",
-    "CategoryIcon": "imgs/plugin",
+    "CategoryIcon": "icons/recoil-on",
     "Version": "1.0.0",
     "OS": [
         {
@@ -20,43 +20,43 @@
     },
     "Actions": [
         {
-            "Icon": "imgs/actions/recoil",
+            "Icon": "icons/recoil-on",
             "Name": "Toggle Recoil",
             "States": [
-                { "Image": "imgs/keys/recoil-off" },
-                { "Image": "imgs/keys/recoil-on" }
+                { "Image": "icons/recoil-off" },
+                { "Image": "icons/recoil-on" }
             ],
             "SupportedInMultiActions": true,
             "Tooltip": "Toggle Helix recoil compensation on/off. Icon updates automatically.",
             "UUID": "com.helix.recoil"
         },
         {
-            "Icon": "imgs/actions/flashlight",
+            "Icon": "icons/flashlight-on",
             "Name": "Toggle Flashlight",
             "States": [
-                { "Image": "imgs/keys/flashlight-off" },
-                { "Image": "imgs/keys/flashlight-on" }
+                { "Image": "icons/flashlight-off" },
+                { "Image": "icons/flashlight-on" }
             ],
             "SupportedInMultiActions": true,
             "Tooltip": "Toggle Helix flashlight trigger on/off. Icon updates automatically.",
             "UUID": "com.helix.flashlight"
         },
         {
-            "Icon": "imgs/actions/cycle",
+            "Icon": "icons/cycle",
             "Name": "Cycle Script",
             "States": [
-                { "Image": "imgs/keys/cycle" }
+                { "Image": "icons/cycle" }
             ],
             "SupportedInMultiActions": true,
             "Tooltip": "Cycle to the next recoil script. Shows current script name.",
             "UUID": "com.helix.cycle"
         },
         {
-            "Icon": "imgs/actions/status",
+            "Icon": "icons/makcu-ok",
             "Name": "MAKCU Status",
             "States": [
-                { "Image": "imgs/keys/makcu-err" },
-                { "Image": "imgs/keys/makcu-ok" }
+                { "Image": "icons/makcu-err" },
+                { "Image": "icons/makcu-ok" }
             ],
             "SupportedInMultiActions": false,
             "Tooltip": "Displays MAKCU controller connection status (read-only).",

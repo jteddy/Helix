@@ -27,7 +27,8 @@ function connectElgatoStreamDeckSocket(port, uuid, registerEvent, info) {
     };
 
     websocket.onmessage = function (evt) {
-        var msg = JSON.parse(evt.data);
+        var msg;
+        try { msg = JSON.parse(evt.data); } catch (e) { return; }
         switch (msg.event) {
             case 'keyDown':                  onKeyDown(msg);               break;
             case 'willAppear':               onWillAppear(msg);            break;
