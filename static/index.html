@@ -310,11 +310,11 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   <div class="card">
     <div class="ch">Scaling</div>
     <div class="cb" style="padding-top:3px;padding-bottom:3px">
-      <div class="sr"><span class="slbl">Recoil Scalar</span><input type="range" id="r-sc" min="0" max="5" step="0.01" value="1" oninput="syncFromRange('v-sc',this);pDebounced('sc','/api/recoil',{recoil_scalar:fv(this)})"><input class="sval-inp" type="number" id="v-sc" min="0" max="5" step="0.01" value="1.00" onchange="syncFromNum('r-sc',this,0,5);pDebounced('sc','/api/recoil',{recoil_scalar:fv(this)})"></div>
-      <div class="sr"><span class="slbl">X Control</span><input type="range" id="r-xc" min="0" max="1" step="0.01" value="1" oninput="syncFromRange('v-xc',this);pDebounced('xc','/api/recoil',{x_control:fv(this)})"><input class="sval-inp" type="number" id="v-xc" min="0" max="1" step="0.01" value="1.00" onchange="syncFromNum('r-xc',this,0,1);pDebounced('xc','/api/recoil',{x_control:fv(this)})"></div>
-      <div class="sr"><span class="slbl">Y Control</span><input type="range" id="r-yc" min="0" max="1" step="0.01" value="1" oninput="syncFromRange('v-yc',this);pDebounced('yc','/api/recoil',{y_control:fv(this)})"><input class="sval-inp" type="number" id="v-yc" min="0" max="1" step="0.01" value="1.00" onchange="syncFromNum('r-yc',this,0,1);pDebounced('yc','/api/recoil',{y_control:fv(this)})"></div>
-      <div class="sr"><span class="slbl">Randomisation Strength</span><input type="range" id="r-rs" min="0" max="5" step="0.01" value="0.5" oninput="syncFromRange('v-rs',this);pDebounced('rs','/api/recoil',{randomisation_strength:fv(this)})"><input class="sval-inp" type="number" id="v-rs" min="0" max="5" step="0.01" value="0.50" onchange="syncFromNum('r-rs',this,0,5);pDebounced('rs','/api/recoil',{randomisation_strength:fv(this)})"></div>
-      <div class="sr"><span class="slbl">Return Speed</span><input type="range" id="r-rspd" min="0" max="2" step="0.01" value="0.5" oninput="syncFromRange('v-rspd',this);pDebounced('rspd','/api/recoil',{return_speed:fv(this)})"><input class="sval-inp" type="number" id="v-rspd" min="0" max="2" step="0.01" value="0.50" onchange="syncFromNum('r-rspd',this,0,2);pDebounced('rspd','/api/recoil',{return_speed:fv(this)})"></div>
+      <div class="sr"><span class="slbl">Recoil Scalar</span><input type="range" id="r-sc" min="0" max="100" step="1" value="20" oninput="syncFromRange('v-sc',this);pDebounced('sc','/api/recoil',{recoil_scalar:toApi('r-sc',fv(this))})"><input class="sval-inp" type="number" id="v-sc" min="0" max="100" step="1" value="20" onchange="syncFromNum('r-sc',this,0,100);pDebounced('sc','/api/recoil',{recoil_scalar:toApi('r-sc',fv(this))})"></div>
+      <div class="sr"><span class="slbl">X Control</span><input type="range" id="r-xc" min="0" max="100" step="1" value="100" oninput="syncFromRange('v-xc',this);pDebounced('xc','/api/recoil',{x_control:toApi('r-xc',fv(this))})"><input class="sval-inp" type="number" id="v-xc" min="0" max="100" step="1" value="100" onchange="syncFromNum('r-xc',this,0,100);pDebounced('xc','/api/recoil',{x_control:toApi('r-xc',fv(this))})"></div>
+      <div class="sr"><span class="slbl">Y Control</span><input type="range" id="r-yc" min="0" max="100" step="1" value="100" oninput="syncFromRange('v-yc',this);pDebounced('yc','/api/recoil',{y_control:toApi('r-yc',fv(this))})"><input class="sval-inp" type="number" id="v-yc" min="0" max="100" step="1" value="100" onchange="syncFromNum('r-yc',this,0,100);pDebounced('yc','/api/recoil',{y_control:toApi('r-yc',fv(this))})"></div>
+      <div class="sr"><span class="slbl">Random Strength</span><input type="range" id="r-rs" min="0" max="100" step="1" value="10" oninput="syncFromRange('v-rs',this);pDebounced('rs','/api/recoil',{randomisation_strength:toApi('r-rs',fv(this))})"><input class="sval-inp" type="number" id="v-rs" min="0" max="100" step="1" value="10" onchange="syncFromNum('r-rs',this,0,100);pDebounced('rs','/api/recoil',{randomisation_strength:toApi('r-rs',fv(this))})"></div>
+      <div class="sr"><span class="slbl">Return Speed</span><input type="range" id="r-rspd" min="0" max="100" step="1" value="25" oninput="syncFromRange('v-rspd',this);pDebounced('rspd','/api/recoil',{return_speed:toApi('r-rspd',fv(this))})"><input class="sval-inp" type="number" id="v-rspd" min="0" max="100" step="1" value="25" onchange="syncFromNum('r-rspd',this,0,100);pDebounced('rspd','/api/recoil',{return_speed:toApi('r-rspd',fv(this))})"></div>
     </div>
   </div>
 
@@ -458,9 +458,12 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 'use strict';
 const $ = id => document.getElementById(id);
 const fv = el => parseFloat(el.value);
+const _SF={'r-sc':20,'r-xc':100,'r-yc':100,'r-rs':20,'r-rspd':50};
+function toApi(id,v){return v/(_SF[id]||1);}
+function toUi(id,v){return v*(_SF[id]||1);}
 function updateSliderFill(el){const min=parseFloat(el.min)||0,max=parseFloat(el.max)||100;el.style.setProperty('--fill',((parseFloat(el.value)-min)/(max-min))*100+'%');}
-function syncFromRange(valId, rangeEl){const v=parseFloat(rangeEl.value);$(valId).value=v.toFixed(2);updateSliderFill(rangeEl);}
-function syncFromNum(rangeId, numEl, min, max){let v=parseFloat(numEl.value);if(isNaN(v))return;v=Math.min(max,Math.max(min,v));numEl.value=v.toFixed(2);$(rangeId).value=v;updateSliderFill($(rangeId));}
+function syncFromRange(valId, rangeEl){const v=parseFloat(rangeEl.value);$(valId).value=v.toFixed(0);updateSliderFill(rangeEl);}
+function syncFromNum(rangeId, numEl, min, max){let v=parseFloat(numEl.value);if(isNaN(v))return;v=Math.min(max,Math.max(min,v));numEl.value=v.toFixed(0);$(rangeId).value=v;updateSliderFill($(rangeId));}
 
 const _themeColors={'Default':'#0b0c0e','Midnight':'#0c0c0f','Ember':'#150f15'};
 function applyTheme(name){
@@ -520,11 +523,11 @@ function applyStatus(d){
   if(hs&&!sNewScriptMode&&document.activeElement!==$('s-name-inp')){$('s-name-inp').value=d.loaded_script.split('/').pop();}
   // Sync sliders and controls changed by other clients (e.g. Android app) — skip if user is actively editing
   const ae=document.activeElement;
-  if(d.recoil_scalar!==undefined&&ae!==$('r-sc')&&ae!==$('v-sc'))slid('r-sc','v-sc',d.recoil_scalar);
-  if(d.x_control!==undefined&&ae!==$('r-xc')&&ae!==$('v-xc'))slid('r-xc','v-xc',d.x_control);
-  if(d.y_control!==undefined&&ae!==$('r-yc')&&ae!==$('v-yc'))slid('r-yc','v-yc',d.y_control);
-  if(d.randomisation_strength!==undefined&&ae!==$('r-rs')&&ae!==$('v-rs'))slid('r-rs','v-rs',d.randomisation_strength);
-  if(d.return_speed!==undefined&&ae!==$('r-rspd')&&ae!==$('v-rspd'))slid('r-rspd','v-rspd',d.return_speed);
+  if(d.recoil_scalar!==undefined&&ae!==$('r-sc')&&ae!==$('v-sc'))slid('r-sc','v-sc',toUi('r-sc',d.recoil_scalar));
+  if(d.x_control!==undefined&&ae!==$('r-xc')&&ae!==$('v-xc'))slid('r-xc','v-xc',toUi('r-xc',d.x_control));
+  if(d.y_control!==undefined&&ae!==$('r-yc')&&ae!==$('v-yc'))slid('r-yc','v-yc',toUi('r-yc',d.y_control));
+  if(d.randomisation_strength!==undefined&&ae!==$('r-rs')&&ae!==$('v-rs'))slid('r-rs','v-rs',toUi('r-rs',d.randomisation_strength));
+  if(d.return_speed!==undefined&&ae!==$('r-rspd')&&ae!==$('v-rspd'))slid('r-rspd','v-rspd',toUi('r-rspd',d.return_speed));
   if(d.require_aim!==undefined){const el=$('r-aim');if(el&&el.checked!==d.require_aim)el.checked=d.require_aim;}
   if(d.loop_recoil!==undefined){const el=$('r-loop');if(el&&el.checked!==d.loop_recoil)el.checked=d.loop_recoil;}
   if(d.randomisation!==undefined){const el=$('r-rand');if(el&&el.checked!==d.randomisation)el.checked=d.randomisation;}
@@ -548,9 +551,9 @@ async function loadState(){
     const r=d.recoil||{},fl=d.flashlight||{},s=d.settings||{};
     chk('r-en',r.enabled);sel('r-tkb',r.toggle_keybind||'NONE');sel('r-ckb',r.cycle_keybind||'NONE');
     chk('r-aim',r.require_aim);chk('r-loop',r.loop_recoil);chk('r-rand',r.randomisation);chk('r-rch',r.return_crosshair);
-    slid('r-sc','v-sc',r.recoil_scalar??1);slid('r-xc','v-xc',r.x_control??1);
-    slid('r-yc','v-yc',r.y_control??1);slid('r-rs','v-rs',r.randomisation_strength??0.5);
-    slid('r-rspd','v-rspd',r.return_speed??0.5);
+    slid('r-sc','v-sc',toUi('r-sc',r.recoil_scalar??1));slid('r-xc','v-xc',toUi('r-xc',r.x_control??1));
+    slid('r-yc','v-yc',toUi('r-yc',r.y_control??1));slid('r-rs','v-rs',toUi('r-rs',r.randomisation_strength??0.5));
+    slid('r-rspd','v-rspd',toUi('r-rspd',r.return_speed??0.5));
     chk('fl-en',fl.enabled);sel('fl-kb',fl.keybind||'NONE');
     num('fl-ht',fl.hold_threshold_ms??50);num('fl-cd',fl.cooldown_ms??500);
     num('fl-pfmin',fl.pre_fire_min_ms??15);num('fl-pfmax',fl.pre_fire_max_ms??15);
@@ -576,7 +579,7 @@ async function loadState(){
 function chk(id,v){const el=$(id);if(el)el.checked=!!v;}
 function num(id,v){const el=$(id);if(el)el.value=v;}
 function sel(id,v){const el=$(id);if(!el)return;for(const o of el.options)if(o.value===v||o.text===v){o.selected=true;break;}}
-function slid(sid,lid,v){const s=$(sid),l=$(lid);if(s){s.value=v;updateSliderFill(s);}if(l)l.value=parseFloat(v).toFixed(2);}
+function slid(sid,lid,v){const s=$(sid),l=$(lid);if(s){s.value=v;updateSliderFill(s);}if(l)l.value=parseFloat(v).toFixed(0);}
 
 // ── Scripts ───────────────────────────────────────────────────────────────────
 let sCurrentGame = '';
