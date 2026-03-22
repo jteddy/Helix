@@ -28,10 +28,7 @@ class makcu_controller:
     command_lock      = threading.Lock()
     is_connected_flag = False
     _watchdog_thread  = None
-
-    # ── _spray_active removed — no longer needed now that command_lock has a
-    # timeout.  The watchdog simply waits for the lock (up to COMMAND_TIMEOUT)
-    # rather than skipping the ping entirely.
+    _spray_active     = threading.Event()
 
     @staticmethod
     def _clear_button_states():
@@ -75,11 +72,11 @@ class makcu_controller:
         """Ping the device every WATCHDOG_INTERVAL seconds to detect silent
         USB drops.
 
-        The watchdog no longer skips pings during sprays — it simply competes
-        for command_lock like any other caller.  If the device is hung the
-        _acquire_command_lock timeout will fire within COMMAND_TIMEOUT seconds,
-        mark the device disconnected, and return False, so the watchdog loop
-        continues cleanly rather than blocking forever.
+        Skips pings while a spray is active to avoid competing for
+        command_lock mid-burst (which could clear button states and
+        break burst history tracking).  The timeout-based lock
+        acquisition still protects against truly hung devices in all
+        other callers.
         """
         while True:
             time.sleep(WATCHDOG_INTERVAL)
@@ -92,6 +89,9 @@ class makcu_controller:
                 ctrl = makcu_controller.controller if connected else None
 
             if not connected:
+                continue
+
+            if makcu_controller._spray_active.is_set():
                 continue
 
             if not makcu_controller._acquire_command_lock():
@@ -257,6 +257,7 @@ class makcu_controller:
             return False
 
         step_delay = duration / steps
+        makcu_controller._spray_active.set()
 
         try:
             acc_x = 0.0
@@ -306,6 +307,8 @@ class makcu_controller:
                 makcu_controller.controller = None
             makcu_controller._clear_button_states()
             return False
+        finally:
+            makcu_controller._spray_active.clear()
 
     # ── Button state query ────────────────────────────────────────────────────
 
