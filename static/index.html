@@ -293,7 +293,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 <div id="hdr">
   <div id="hdr-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="18" height="18" style="vertical-align:middle;margin-right:6px;margin-top:-2px;flex-shrink:0"><defs><linearGradient id="hg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4d9cff"/><stop offset="100%" stop-color="#7eb8ff"/></linearGradient></defs><!-- strand 1 --><path d="M2,10 C2,4 6,4 10,10 C14,16 18,16 18,10" fill="none" stroke="url(#hg1)" stroke-width="1.8" stroke-linecap="round"/><!-- strand 2 --><path d="M2,10 C2,16 6,16 10,10 C14,4 18,4 18,10" fill="none" stroke="#4d9cff" stroke-width="1.8" stroke-linecap="round" opacity=".4"/><!-- rungs --><line x1="4.5" y1="8.3" x2="4.5" y2="11.7" stroke="#4d9cff" stroke-width="1.1" stroke-linecap="round" opacity=".55"/><line x1="8" y1="10" x2="8" y2="10" stroke="#4d9cff" stroke-width="1.1" stroke-linecap="round" opacity=".55"/><line x1="10" y1="10" x2="10" y2="10" stroke="#4d9cff" stroke-width="1.1" stroke-linecap="round" opacity=".55"/><line x1="12" y1="11.7" x2="12" y2="8.3" stroke="#4d9cff" stroke-width="1.1" stroke-linecap="round" opacity=".55"/><line x1="15.5" y1="13.2" x2="15.5" y2="6.8" stroke="#4d9cff" stroke-width="1.1" stroke-linecap="round" opacity=".55"/><line x1="6.8" y1="9.1" x2="6.8" y2="10.9" stroke="#4d9cff" stroke-width="1.1" stroke-linecap="round" opacity=".55"/></svg>Heli<span>x</span></div>
   <div id="hdr-sep"></div>
-  <div id="hdr-ver">v0.9.7</div>
+  <div id="hdr-ver">v0.9.8</div>
   <div id="ws-dot" title="MAKCU Status"></div>
 </div>
 
@@ -423,6 +423,32 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
     </div>
   </div>
 
+
+  <div class="card">
+    <div class="ch">Pattern Visualiser</div>
+    <div class="cb" style="padding:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="display:flex;gap:12px;font-size:10px;color:var(--text2)">
+          <span><span id="vis-steps">0</span> steps</span>
+          <span>x: <span id="vis-totx">0</span></span>
+          <span>y: <span id="vis-toty">0</span></span>
+          <span><span id="vis-dur">0ms</span></span>
+        </div>
+        <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3);cursor:pointer">
+          <input type="checkbox" id="vis-show-nums"> steps
+        </label>
+      </div>
+      <div style="position:relative;background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;height:260px">
+        <canvas id="vis-canvas" style="display:block;width:100%;height:100%"></canvas>
+        <div id="vis-tooltip" style="display:none;position:absolute;pointer-events:none;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:10px;color:var(--text2);line-height:1.6;z-index:10"></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:6px;font-size:10px;color:var(--text3)">
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#38bdf8;vertical-align:middle"></span> Origin</span>
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#34d399;vertical-align:middle"></span> Step</span>
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#fbbf24;vertical-align:middle"></span> Hovered</span>
+      </div>
+    </div>
+  </div>
 
 </div>
 </div>
@@ -672,7 +698,7 @@ async function loadScriptContent(fullName) {
     if(r.ok){
       const txt=await r.text();
       $('vec-ta').value=txt;
-      updateGutter();
+      updateGutter();if(window.visRefresh)window.visRefresh();
       $('s-name-inp').value=parts[parts.length-1];
     }
   }catch(e){}
@@ -698,7 +724,7 @@ async function delScript(name, game) {
   await fetch(url,{method:'DELETE'});
   const fullName=game?`${game}/${name}`:name;
   const currentName=$('s-name-inp').value.trim();
-  if(currentName===name||currentName===fullName){$('vec-ta').value='';$('s-name-inp').value='';updateGutter();}
+  if(currentName===name||currentName===fullName){$('vec-ta').value='';$('s-name-inp').value='';updateGutter();if(window.visRefresh)window.visRefresh();}
   await refreshScripts(sCurrentGame);
   notify(`Deleted: ${name}`);
 }
@@ -717,7 +743,7 @@ async function saveScript() {
   notify(`Saved: ${name}`);
 }
 
-function newScript(){sNewScriptMode=true;$('vec-ta').value='';$('s-name-inp').value='';updateGutter();setTimeout(()=>$('s-name-inp').focus(),50);}
+function newScript(){sNewScriptMode=true;$('vec-ta').value='';$('s-name-inp').value='';updateGutter();if(window.visRefresh)window.visRefresh();setTimeout(()=>$('s-name-inp').focus(),50);}
 
 function updateGutter(){
   const ta=$('vec-ta'),gut=$('vec-gut');if(!ta||!gut)return;
@@ -735,6 +761,148 @@ function updateGutter(){
   const ta=$('vec-ta');if(!ta)return;
   ta.addEventListener('input',updateGutter);
   ta.addEventListener('scroll',()=>{$('vec-gut').scrollTop=ta.scrollTop;});
+})();
+
+// ── Pattern Visualiser ────────────────────────────────────────────────────────
+(function(){
+  const canvas=$('vis-canvas'),tooltip=$('vis-tooltip');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const elSteps=$('vis-steps'),elTotX=$('vis-totx'),elTotY=$('vis-toty'),elDur=$('vis-dur'),elNums=$('vis-show-nums');
+  const C={grid:'rgba(255,255,255,0.05)',axis:'rgba(255,255,255,0.12)',path:'#34d399',dot:'#34d399',dotHov:'#fbbf24',dotOrig:'#38bdf8',num:'rgba(255,255,255,0.35)',empty:'rgba(255,255,255,0.15)'};
+  let steps=[],hoveredIdx=-1,rafPending=false;
+
+  function parseSteps(){
+    const ta=$('vec-ta');if(!ta)return[];
+    const out=[];
+    for(const raw of ta.value.split('\n')){
+      const line=raw.trim();
+      if(!line||line.startsWith('#'))continue;
+      const p=line.split(',');if(p.length<2)continue;
+      const x=parseFloat(p[0]),y=parseFloat(p[1]),d=p.length>=3?parseFloat(p[2]):100;
+      if(isNaN(x)||isNaN(y))continue;
+      out.push({x,y,d:isNaN(d)?100:d});
+    }
+    return out;
+  }
+
+  function updateStats(s){
+    elSteps.textContent=s.length;
+    elTotX.textContent=s.reduce((a,v)=>a+v.x,0).toFixed(1);
+    elTotY.textContent=s.reduce((a,v)=>a+v.y,0).toFixed(1);
+    elDur.textContent=s.reduce((a,v)=>a+v.d,0)+'ms';
+  }
+
+  function syncSize(){
+    const dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
+    const w=Math.floor(rect.width*dpr),h=Math.floor(rect.height*dpr);
+    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+    return{W:rect.width,H:rect.height};
+  }
+
+  function draw(){
+    rafPending=false;
+    const{W,H}=syncSize();const dpr=window.devicePixelRatio||1;
+    ctx.save();ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
+    if(!steps.length){
+      ctx.fillStyle=C.empty;ctx.font='12px ui-monospace,monospace';ctx.textAlign='center';
+      ctx.fillText('Load a script to visualise',W/2,H/2);ctx.restore();return;
+    }
+    const PAD=32,showNums=elNums&&elNums.checked;
+    const pts=[{px:0,py:0}];let cx=0,cy=0;
+    for(const s of steps){cx+=s.x;cy+=s.y;pts.push({px:cx,py:cy});}
+    const allX=pts.map(p=>p.px),allY=pts.map(p=>p.py);
+    let minX=Math.min(...allX,0),maxX=Math.max(...allX,0);
+    let minY=Math.min(...allY,0),maxY=Math.max(...allY,0);
+    const spanX=maxX-minX||1,spanY=maxY-minY||1;
+    const scale=Math.min((W-2*PAD)/spanX,(H-2*PAD)/spanY)*0.86;
+    const offX=W/2-((minX+maxX)/2)*scale,offY=H/2-((minY+maxY)/2)*scale;
+    function sx(px){return offX+px*scale;}
+    function sy(py){return offY+py*scale;}
+
+    // Grid
+    const gridStep=Math.ceil(Math.max(spanX,spanY)/5)||1;
+    ctx.strokeStyle=C.grid;ctx.lineWidth=0.5;
+    for(let g=Math.floor(minX/gridStep)*gridStep;g<=maxX+gridStep;g+=gridStep){ctx.beginPath();ctx.moveTo(sx(g),PAD);ctx.lineTo(sx(g),H-PAD);ctx.stroke();}
+    for(let g=Math.floor(minY/gridStep)*gridStep;g<=maxY+gridStep;g+=gridStep){ctx.beginPath();ctx.moveTo(PAD,sy(g));ctx.lineTo(W-PAD,sy(g));ctx.stroke();}
+
+    // Axes
+    const ox=sx(0),oy=sy(0);
+    ctx.strokeStyle=C.axis;ctx.lineWidth=0.75;
+    if(ox>PAD&&ox<W-PAD){ctx.beginPath();ctx.moveTo(ox,PAD);ctx.lineTo(ox,H-PAD);ctx.stroke();}
+    if(oy>PAD&&oy<H-PAD){ctx.beginPath();ctx.moveTo(PAD,oy);ctx.lineTo(W-PAD,oy);ctx.stroke();}
+
+    // Path
+    if(pts.length>1){
+      for(let i=1;i<pts.length;i++){
+        const t=pts.length>2?i/(pts.length-1):1;
+        ctx.strokeStyle=C.path;ctx.globalAlpha=0.25+0.75*t;ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(sx(pts[i-1].px),sy(pts[i-1].py));ctx.lineTo(sx(pts[i].px),sy(pts[i].py));ctx.stroke();
+        const every=Math.max(1,Math.floor(pts.length/10));
+        if(i%every===0&&pts.length>2){
+          const mx2=(sx(pts[i-1].px)+sx(pts[i].px))/2,my2=(sy(pts[i-1].py)+sy(pts[i].py))/2;
+          const angle=Math.atan2(sy(pts[i].py)-sy(pts[i-1].py),sx(pts[i].px)-sx(pts[i-1].px));
+          ctx.save();ctx.translate(mx2,my2);ctx.rotate(angle);ctx.globalAlpha=0.3+0.4*t;
+          ctx.strokeStyle=C.path;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-4,-3);ctx.lineTo(0,0);ctx.lineTo(-4,3);ctx.stroke();ctx.restore();
+        }
+      }
+      ctx.globalAlpha=1;
+    }
+
+    // Dots
+    for(let i=0;i<pts.length;i++){
+      const px=sx(pts[i].px),py=sy(pts[i].py);
+      const isOrigin=i===0,isHovered=i===hoveredIdx+1;
+      const r=isOrigin?5:isHovered?5:3.5;
+      ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);
+      ctx.fillStyle=isOrigin?C.dotOrig:isHovered?C.dotHov:C.dot;
+      ctx.globalAlpha=(isHovered||isOrigin)?1:0.7;ctx.fill();ctx.globalAlpha=1;
+      if(showNums&&i>0){ctx.fillStyle=C.num;ctx.font='9px ui-monospace,monospace';ctx.textAlign='center';ctx.fillText(i,px,py-8);}
+    }
+
+    // Origin crosshair
+    ctx.strokeStyle=C.dotOrig;ctx.lineWidth=1;ctx.globalAlpha=0.5;
+    ctx.beginPath();ctx.moveTo(ox-6,oy);ctx.lineTo(ox+6,oy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(ox,oy-6);ctx.lineTo(ox,oy+6);ctx.stroke();
+    ctx.globalAlpha=1;ctx.restore();
+  }
+
+  function scheduleDraw(){if(!rafPending){rafPending=true;requestAnimationFrame(draw);}}
+
+  function getTransform(W,H){
+    const PAD=32,pts=[{px:0,py:0}];let cx=0,cy=0;
+    for(const s of steps){cx+=s.x;cy+=s.y;pts.push({px:cx,py:cy});}
+    const allX=pts.map(p=>p.px),allY=pts.map(p=>p.py);
+    const minX=Math.min(...allX,0),maxX=Math.max(...allX,0),minY=Math.min(...allY,0),maxY=Math.max(...allY,0);
+    const spanX=maxX-minX||1,spanY=maxY-minY||1;
+    const scale=Math.min((W-2*PAD)/spanX,(H-2*PAD)/spanY)*0.86;
+    const offX=W/2-((minX+maxX)/2)*scale,offY=H/2-((minY+maxY)/2)*scale;
+    return{pts,scale,offX,offY};
+  }
+
+  canvas.addEventListener('mousemove',function(e){
+    if(!steps.length)return;
+    const rect=canvas.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    const{pts,scale,offX,offY}=getTransform(rect.width,rect.height);
+    let best=-1,bestD=Infinity;
+    for(let i=1;i<pts.length;i++){const px=offX+pts[i].px*scale,py=offY+pts[i].py*scale,d=Math.hypot(mx-px,my-py);if(d<bestD){bestD=d;best=i-1;}}
+    if(bestD<20){
+      hoveredIdx=best;const s=steps[best];
+      tooltip.innerHTML=`<span style="color:var(--text);font-weight:500">Step ${best+1}</span><br>x: <span style="color:var(--text)">${s.x}</span>&nbsp;&nbsp;y: <span style="color:var(--text)">${s.y}</span>&nbsp;&nbsp;delay: <span style="color:var(--text)">${s.d}ms</span>`;
+      tooltip.style.left=Math.min(mx+12,rect.width-160)+'px';tooltip.style.top=Math.max(my-10,0)+'px';tooltip.style.display='block';
+    }else{hoveredIdx=-1;tooltip.style.display='none';}
+    scheduleDraw();
+  });
+  canvas.addEventListener('mouseleave',function(){hoveredIdx=-1;tooltip.style.display='none';scheduleDraw();});
+
+  if(elNums)elNums.addEventListener('change',scheduleDraw);
+  const ro=new ResizeObserver(function(){const dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr);scheduleDraw();});
+  ro.observe(canvas.parentElement);
+
+  // Public refresh — called after script load/edit/clear
+  window.visRefresh=function(){steps=parseSteps();updateStats(steps);scheduleDraw();};
+  const ta=$('vec-ta');if(ta)ta.addEventListener('input',window.visRefresh);
+  window.visRefresh();
 })();
 
 async function newGame() {
