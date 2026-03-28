@@ -76,7 +76,7 @@ class recoil:
                     time.sleep(0.05)
                     continue
 
-                recoil_pattern = state.get_vectors()
+                recoil_pattern = state.get_active_vectors()
                 lmb_pressed    = makcu_controller.get_button_state("LMB")
 
                 # ── LMB released — optionally return crosshair ────────────────────

@@ -91,6 +91,55 @@ sudo journalctl -u helix -f    # live logs
 
 ---
 
+## Desktop Launcher (Xubuntu / Desktop Linux)
+
+If you run Helix on the same machine you game on, the launcher gives you a GUI control panel instead of typing systemctl commands. It auto-detects whether Helix is managed by systemd or run manually.
+
+**Install once:**
+```bash
+./install-launcher.sh
+```
+
+This installs PyQt6, copies the Helix icon into your icon theme, and adds a **Helix Launcher** entry to your applications menu with a desktop shortcut.
+
+**Or run directly any time:**
+```bash
+python3 launcher.py
+```
+
+### What the launcher does
+
+| Feature | Detail |
+|---------|--------|
+| **Status indicator** | Green dot = running, grey = stopped, red = failed. Refreshes every 10 s. |
+| **Start / Stop / Restart** | Calls `systemctl --user` (no sudo) or `pkexec systemctl` for system-level services. Manual mode spawns `python main.py` directly. |
+| **Live log terminal** | Streams `journalctl -f` output continuously — no polling. Errors highlighted red, warnings yellow, key events green. |
+| **Open in Browser** | One click to open `http://localhost:8000`. |
+| **System tray** | Closing the window hides to tray. Left-click to show/hide; right-click for quick actions. |
+
+### Systemd mode notes
+
+`setup-autostart.sh` installs a **system-level** service (`/etc/systemd/system/helix.service`). Start/Stop/Restart from the launcher will trigger a polkit password dialog (like any other graphical privilege escalation on Xubuntu).
+
+To avoid the password prompt entirely, convert to a **user-level** service (runs as your user, no sudo ever needed):
+
+```bash
+# One-time migration — run in a terminal:
+sudo systemctl stop helix
+sudo systemctl disable helix
+mkdir -p ~/.config/systemd/user
+sudo cp /etc/systemd/system/helix.service ~/.config/systemd/user/helix.service
+# Remove the User= line (service is already running as you)
+sed -i '/^User=/d' ~/.config/systemd/user/helix.service
+systemctl --user daemon-reload
+systemctl --user enable helix
+systemctl --user start helix
+```
+
+After this the launcher will detect `systemd-user` mode and all controls work without any password prompt.
+
+---
+
 ## Status Panel
 
 The top of the UI shows four live cards — readable at a glance on a phone:
@@ -239,18 +288,31 @@ See the [full setup guide](https://github.com/jteddy/Helix/blob/main/streamdeck/
 
 ```
 helix/
-├── main.py                       ← FastAPI backend + all API routes
+├── main.py                       ← FastAPI app, WebSocket, lifespan, health
+├── shared.py                     ← Shared singletons (state, save_async)
 ├── state.py                      ← Shared app state (thread-safe)
 ├── config_manager.py             ← JSON save/load (atomic write)
 ├── install.py                    ← First-time setup (deps, USB groups, udev)
 ├── start.sh                      ← Run the server manually
 ├── setup-autostart.sh            ← One-shot systemd installer
 ├── requirements.txt
+├── routers/
+│   ├── recoil.py                 ← POST /api/recoil, /api/recoil/toggle
+│   ├── scripts.py                ← /api/scripts/*, /api/patterns/*
+│   ├── flashlight.py             ← /api/flashlight, /api/flashlight/toggle
+│   ├── settings.py               ← POST /api/settings
+│   ├── cs2.py                    ← GET /api/cs2/weapons, POST /api/cs2/weapon
+│   └── streamdeck.py             ← /api/streamdeck, /streamdeck/setup
 ├── mouse/makcu.py                ← MAKCU USB HID controller
 ├── menu/games.py                 ← Game sensitivity table
-├── features/recoil/recoil.py     ← Recoil loop
-├── features/flashlight/          ← Flashlight loop
+├── features/
+│   ├── recoil/recoil.py          ← Recoil loop
+│   ├── flashlight/               ← Flashlight loop
+│   └── cs2/weapon_data.py        ← Built-in CS2 recoil patterns (AK-47, M4A1-S)
 ├── static/index.html             ← Entire frontend (4 tabs, self-contained)
+├── launcher.py                   ← PyQt6 desktop launcher (optional, desktop Linux only)
+├── install-launcher.sh           ← Installs launcher to app menu + desktop shortcut
+├── icons/helix.svg               ← App icon (used by launcher + .desktop file)
 ├── saved_scripts/                ← Recoil scripts + Vector Editor patterns
 │   └── <game>/
 │       └── <weapon>.txt
@@ -258,6 +320,14 @@ helix/
 ├── streamdeck/SETUP.md           ← Stream Deck configuration guide
 └── streamdeck/com.helix.sdPlugin ← Stream Deck plugin (copy to Plugins folder)
 ```
+
+---
+
+## Future Enhancements
+
+### JSON-Wrapped Script Metadata
+
+Scripts are currently stored as plain `.txt` files. A future enhancement could wrap them in a thin JSON envelope to attach metadata — name, description, creation date, tags, weapon type — without breaking the existing `x,y,delay_ms` line format stored inside. This would make the script library searchable and self-describing without relying on folder/file naming alone.
 
 ---
 
@@ -316,6 +386,15 @@ Patterns share the same backend as scripts (`saved_scripts/<game>/<weapon>.txt`)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/settings` | Update game scalar and sensitivity |
+
+### CS2 Built-in Patterns
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/cs2/weapons` | List available built-in CS2 weapon patterns |
+| POST | `/api/cs2/weapon` | Select a weapon (`{"weapon": "ak47"}`) or clear (`{"weapon": "none"}`) |
+
+When a CS2 weapon is selected it overrides the loaded script for the recoil loop. The scaling still uses your in-game sensitivity from Settings (`base 1.25 / your_sens`).
 
 ### Stream Deck
 

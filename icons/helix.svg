@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1012"/>
+      <stop offset="100%" stop-color="#0a0a0f"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="256" height="256" rx="40" fill="url(#bg)"/>
+  <rect x="1" y="1" width="254" height="254" rx="39" fill="none" stroke="#1a3a20" stroke-width="1.5"/>
+  <!-- Bottom accent bar -->
+  <rect x="28" y="243" width="200" height="6" rx="3" fill="#44ff77" opacity="0.4"/>
+  <!-- Crosshair group -->
+  <g transform="translate(128,108)" filter="url(#glow)">
+    <!-- Outer ring (dim) -->
+    <circle r="52" fill="none" stroke="#44ff77" stroke-width="1.5" opacity="0.15"/>
+    <!-- Inner ring -->
+    <circle r="32" fill="none" stroke="#44ff77" stroke-width="3"/>
+    <!-- Top arm -->
+    <line x1="0" y1="-60" x2="0" y2="-40" stroke="#44ff77" stroke-width="3" stroke-linecap="round"/>
+    <!-- Bottom arm -->
+    <line x1="0" y1="40" x2="0" y2="60" stroke="#44ff77" stroke-width="3" stroke-linecap="round"/>
+    <!-- Left arm -->
+    <line x1="-60" y1="0" x2="-40" y2="0" stroke="#44ff77" stroke-width="3" stroke-linecap="round"/>
+    <!-- Right arm -->
+    <line x1="40" y1="0" x2="60" y2="0" stroke="#44ff77" stroke-width="3" stroke-linecap="round"/>
+    <!-- Center dot -->
+    <circle r="6" fill="#44ff77"/>
+  </g>
+  <!-- HELIX text -->
+  <text x="128" y="196" text-anchor="middle"
+        font-family="Arial,Helvetica,sans-serif" font-weight="700"
+        font-size="34" fill="#44ff77" letter-spacing="8">HELIX</text>
+</svg>

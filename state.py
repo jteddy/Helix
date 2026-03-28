@@ -47,6 +47,11 @@ class AppState:
         self.game_sensitivity: float = 1.0
         self.theme: str = "Default"
 
+        # ── CS2 built-in weapon override ──────────────────────────────────────
+        # "none" means use the loaded script; any other value is a key from
+        # features.cs2.weapon_data.CS2_WEAPONS (e.g. "ak47", "m4a1s").
+        self.cs2_weapon: str = "none"
+
     # ── Recoil interface (matches original RecoilMenu method names) ───────────
 
     def get_is_enabled(self) -> bool:
@@ -111,6 +116,33 @@ class AppState:
         so a concurrent script load can never mutate the list mid-spray."""
         with self._lock:
             return list(self.vectors)
+
+    def get_active_vectors(self) -> List[Tuple[float, float, float]]:
+        """Return the active recoil pattern.
+        If a CS2 built-in weapon is selected it takes priority over the loaded
+        script; otherwise falls back to the parsed script vectors."""
+        with self._lock:
+            weapon = self.cs2_weapon
+        if weapon and weapon != "none":
+            from features.cs2.weapon_data import CS2_WEAPONS
+            pattern = CS2_WEAPONS.get(weapon)
+            if pattern:
+                return list(pattern)
+        with self._lock:
+            return list(self.vectors)
+
+    # ── CS2 weapon ────────────────────────────────────────────────────────────
+
+    def get_cs2_weapon(self) -> str:
+        with self._lock:
+            return self.cs2_weapon
+
+    def set_cs2_weapon(self, weapon: str):
+        from features.cs2.weapon_data import CS2_WEAPONS
+        if weapon != "none" and weapon not in CS2_WEAPONS:
+            raise ValueError(f"Unknown CS2 weapon: {weapon!r}")
+        with self._lock:
+            self.cs2_weapon = weapon
 
     # ── Burst history (runtime-only, not persisted) ─────────────────────────
 
@@ -309,6 +341,7 @@ class AppState:
                     "game_scalar": self.game_scalar,
                     "game_sensitivity": self.game_sensitivity,
                     "theme": self.theme,
+                    "cs2_weapon": self.cs2_weapon,
                 },
             }
 
@@ -353,4 +386,5 @@ class AppState:
             s = data.get("settings", {})
             self.game_scalar      = s.get("game_scalar", "Manual")
             self.game_sensitivity = float(s.get("game_sensitivity", 1.0))
-            self.theme = s.get("theme", "Default")
+            self.theme            = s.get("theme", "Default")
+            self.cs2_weapon       = s.get("cs2_weapon", "none")

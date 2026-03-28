@@ -135,9 +135,9 @@ html[data-theme="ember"] input[type=range]::-webkit-slider-thumb{box-shadow:0 0 
 html[data-theme="ember"] input[type=range]::-moz-range-thumb{box-shadow:0 0 6px rgba(74,222,128,.4);}
 /* ── Cearum theme ──────────────────────────────────────────────── */
 html[data-theme="cearum"]{
-  --bg0:#0a0a0a;--bg1:#1a1a1a;--bg2:#1a1a1a;--bg3:#2d2d2d;--bg4:#3a3a3a;
-  --border:rgba(255,255,255,.1);--border2:rgba(255,255,255,.1);
-  --text:#ffffff;--text2:rgba(255,255,255,.7);--text3:rgba(255,255,255,.4);
+  --bg0:#0a0a0a;--bg1:#111111;--bg2:#171717;--bg3:#222222;--bg4:#262626;
+  --border:rgba(255,255,255,.10);--border2:rgba(255,255,255,.20);
+  --text:#ffffff;--text2:rgba(255,255,255,.70);--text3:rgba(255,255,255,.40);
   --green:#34d399;--red:#f87171;--accent:#34d399;--hot:#f87171;
   --fm:'JetBrains Mono',monospace;--fu:'Inter',sans-serif;
   --r:12px;--rs:8px;
@@ -145,8 +145,8 @@ html[data-theme="cearum"]{
 html[data-theme="cearum"],html[data-theme="cearum"] body{font-family:var(--fu);}
 html[data-theme="cearum"] .btn{font-family:var(--fu);border-radius:var(--r);}
 html[data-theme="cearum"] select,html[data-theme="cearum"] input[type=text],html[data-theme="cearum"] input[type=number]{font-family:var(--fu);}
-html[data-theme="cearum"] #vec-ta{background:var(--bg3);}
-html[data-theme="cearum"] #vec-ta:focus{background:var(--bg1);}
+html[data-theme="cearum"] #vec-ta{background:var(--bg4);}
+html[data-theme="cearum"] #vec-ta:focus{background:var(--bg3);}
 html[data-theme="cearum"] .s-bot input[type=text]{background:var(--bg3);border-radius:var(--r);}
 html[data-theme="cearum"] input[type=range]::-webkit-slider-thumb{box-shadow:0 0 6px rgba(52,211,153,.4);}
 html[data-theme="cearum"] input[type=range]::-moz-range-thumb{box-shadow:0 0 6px rgba(52,211,153,.4);}
@@ -267,6 +267,117 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .rpm-result{font-family:var(--fm);font-size:12px;font-weight:600;color:var(--accent);padding:2px 0 6px;}
 .rpm-dot{color:var(--text3);margin:0 6px;}
 
+/* ── Pattern Visualiser ─────────────────────────────────────────── */
+.vis-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;position:relative;}
+.vis-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.vis-header-left{display:flex;align-items:center;gap:10px;}
+.vis-icon-wrap{width:30px;height:30px;background:var(--bg4);border:1px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--text3);flex-shrink:0;}
+.vis-title{font-size:12px;font-weight:500;color:var(--text);margin:0;}
+.vis-subtitle{font-size:10px;color:var(--text3);margin:2px 0 0;}
+.vis-header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.vis-stats{display:flex;align-items:center;gap:8px;}
+.vis-stat{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.vis-stat-val{font-size:11px;font-weight:500;color:var(--text);font-variant-numeric:tabular-nums;min-width:22px;text-align:center;transition:color .2s;}
+.vis-stat-label{font-size:9px;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;}
+.vis-divider{width:1px;height:18px;background:var(--border);}
+.vis-mode-btn{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;font-family:var(--fu);color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 9px;cursor:pointer;transition:all .15s;letter-spacing:.05em;text-transform:uppercase;}
+.vis-mode-btn:hover{color:var(--accent);border-color:var(--accent);}
+.vis-mode-btn.adv{color:var(--accent);border-color:var(--accent);background:rgba(77,156,255,.06);}
+html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(--green);background:rgba(52,211,153,.06);}
+.vis-toolbar{display:flex;align-items:center;gap:6px;padding:7px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.vis-tool-btn{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:500;font-family:var(--fm);color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:4px 9px;cursor:pointer;transition:color .15s,background .15s,border-color .15s,opacity .15s;}
+.vis-tool-btn:hover:not(:disabled){color:var(--text);background:var(--bg4);border-color:var(--border2);}
+.vis-tool-btn:active:not(:disabled){transform:scale(0.97);}
+.vis-tool-btn:disabled{opacity:.3;cursor:not-allowed;}
+.vis-tool-btn.vis-btn-add{color:rgba(52,211,153,.7);border-color:rgba(52,211,153,.20);}
+.vis-tool-btn.vis-btn-add:hover{color:#34d399;border-color:rgba(52,211,153,.40);background:rgba(52,211,153,.06);}
+.vis-toolbar-sep{width:1px;height:15px;background:var(--border);margin:0 2px;}
+.vis-tool-label{display:flex;align-items:center;gap:4px;font-size:10px;font-family:var(--fm);color:var(--text3);user-select:none;}
+.vis-select{font-size:10px;font-family:var(--fm);color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:3px 6px;outline:none;cursor:pointer;transition:border-color .15s;}
+.vis-select:hover,.vis-select:focus{border-color:var(--border2);}
+.vis-toggle-label{display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--fm);color:var(--text3);cursor:pointer;user-select:none;transition:color .15s;}
+.vis-toggle-label:hover{color:var(--text2);}
+.vis-toggle-cb{position:absolute;opacity:0;width:0;height:0;}
+.vis-toggle-track{position:relative;display:inline-block;width:26px;height:14px;background:var(--bg4);border-radius:999px;border:1px solid var(--border2);transition:background .2s,border-color .2s;flex-shrink:0;}
+.vis-toggle-track::after{content:'';position:absolute;top:2px;left:2px;width:8px;height:8px;border-radius:50%;background:var(--text3);transition:transform .2s cubic-bezier(.34,1.56,.64,1),background .2s;}
+.vis-toggle-cb:checked+.vis-toggle-track{background:rgba(52,211,153,.25);border-color:rgba(52,211,153,.35);}
+.vis-toggle-cb:checked+.vis-toggle-track::after{transform:translateX(12px);background:#34d399;}
+.vis-body{display:flex;height:380px;}
+.vis-canvas-wrap{position:relative;flex:1;min-width:0;background:var(--bg0);}
+#vis-canvas{display:block;width:100%;height:100%;}
+.vis-step-panel{width:210px;flex-shrink:0;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--bg1);}
+.vis-step-panel-header{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.vis-step-panel-title{font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;}
+.vis-step-panel-add{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:rgba(52,211,153,.65);background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.15);border-radius:5px;padding:2px 7px;cursor:pointer;transition:color .15s,border-color .15s,background .15s;}
+.vis-step-panel-add:hover{color:#34d399;border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.10);}
+.vis-sl-cols{display:flex;align-items:center;padding:4px 9px 3px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.vis-sl-col{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;text-align:center;}
+.vis-sl-col-num{width:18px;flex-shrink:0;}
+.vis-sl-col-x,.vis-sl-col-y,.vis-sl-col-d{flex:1;}
+.vis-sl-col-del{width:20px;flex-shrink:0;}
+#vis-step-list{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;}
+#vis-step-list::-webkit-scrollbar{width:4px;}
+#vis-step-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+.vis-sl-row{display:flex;align-items:center;padding:2px 7px 2px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;user-select:none;}
+.vis-sl-row:hover{background:rgba(255,255,255,.03);}
+.vis-sl-row.vis-sl-selected{background:rgba(167,139,250,.07);border-left:2px solid rgba(167,139,250,.5);padding-left:8px;}
+.vis-sl-row.vis-sl-dragging{opacity:.4;}
+.vis-sl-row.vis-sl-drag-over{border-top:2px solid rgba(52,211,153,.5);}
+.vis-sl-num{width:18px;flex-shrink:0;font-size:9px;color:var(--text3);font-variant-numeric:tabular-nums;font-family:var(--fm);text-align:right;padding-right:3px;}
+.vis-sl-input{flex:1;font-size:10px;font-family:var(--fm);color:var(--text2);background:transparent;border:none;outline:none;padding:2px 3px;border-radius:3px;width:0;min-width:0;text-align:center;-moz-appearance:textfield;transition:background .1s,color .1s;}
+.vis-sl-input::-webkit-inner-spin-button,.vis-sl-input::-webkit-outer-spin-button{display:none;}
+.vis-sl-input:hover{background:rgba(255,255,255,.05);}
+.vis-sl-input:focus{background:rgba(255,255,255,.08);color:var(--text);}
+.vis-sl-ms{color:var(--text2);}
+.vis-sl-ms-label{font-size:9px;color:var(--text3);padding:0 2px 0 0;flex-shrink:0;}
+.vis-sl-del{width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:var(--text3);background:none;border:none;border-radius:4px;cursor:pointer;padding:0;transition:color .15s,background .15s;flex-shrink:0;}
+.vis-sl-del:hover{color:#f87171;background:rgba(248,113,113,.10);}
+.vis-tooltip{position:absolute;pointer-events:none;display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-family:var(--fm);font-size:10px;z-index:10;animation:vis-tt-in .12s ease;}
+@keyframes vis-tt-in{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:translateY(0);}}
+.vis-tt-step{color:var(--text);font-weight:600;padding-right:7px;border-right:1px solid var(--border);}
+.vis-tt-val{display:flex;align-items:center;gap:3px;color:#34d399;}
+.vis-tt-label{color:var(--text3);font-size:9px;letter-spacing:.06em;}
+.vis-inspector{position:absolute;top:10px;right:10px;width:158px;background:var(--bg3);border:1px solid rgba(167,139,250,.30);border-radius:8px;padding:10px;z-index:20;animation:vis-insp-in .18s cubic-bezier(.34,1.56,.64,1);}
+@keyframes vis-insp-in{from{opacity:0;transform:scale(0.92) translateY(-6px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.vis-insp-hidden{display:none!important;}
+.vis-insp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:4px;}
+.vis-insp-nav{display:flex;align-items:center;gap:2px;}
+.vis-insp-nav-btn{width:18px;height:18px;display:flex;align-items:center;justify-content:center;color:var(--text3);background:none;border:none;border-radius:4px;cursor:pointer;transition:color .15s,background .15s;padding:0;}
+.vis-insp-nav-btn:hover:not(:disabled){color:var(--text2);background:rgba(255,255,255,.07);}
+.vis-insp-nav-btn:disabled{opacity:.25;cursor:not-allowed;}
+.vis-insp-title{font-size:10px;font-weight:600;color:#a78bfa;letter-spacing:.06em;text-transform:uppercase;flex:1;}
+.vis-insp-close{width:18px;height:18px;display:flex;align-items:center;justify-content:center;color:var(--text3);background:none;border:none;border-radius:4px;cursor:pointer;transition:color .15s,background .15s;padding:0;}
+.vis-insp-close:hover{color:var(--text2);background:rgba(255,255,255,.07);}
+.vis-insp-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.vis-insp-label{font-size:10px;color:var(--text3);font-family:var(--fm);width:16px;flex-shrink:0;}
+.vis-insp-input{flex:1;font-size:11px;font-family:var(--fm);color:var(--text);background:var(--bg4);border:1px solid var(--border);border-radius:5px;padding:3px 6px;outline:none;transition:border-color .15s,background .15s;-moz-appearance:textfield;width:100%;}
+.vis-insp-input::-webkit-inner-spin-button,.vis-insp-input::-webkit-outer-spin-button{opacity:.4;}
+.vis-insp-input:focus{border-color:rgba(167,139,250,.50);background:rgba(167,139,250,.06);}
+.vis-insp-dist{font-size:9px;color:var(--text3);font-family:var(--fm);text-align:center;margin:4px 0 3px;}
+.vis-insp-hint{font-size:9px;color:var(--text3);line-height:1.4;text-align:center;margin:5px 0 0;}
+.vis-insp-del{width:100%;margin-top:7px;display:flex;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:500;color:rgba(248,113,113,.6);background:rgba(248,113,113,.05);border:1px solid rgba(248,113,113,.15);border-radius:5px;padding:4px 7px;cursor:pointer;transition:color .15s,border-color .15s,background .15s;}
+.vis-insp-del:hover{color:#f87171;border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.10);}
+.vis-ctx-menu{position:fixed;z-index:9999;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:4px;min-width:155px;box-shadow:0 8px 32px rgba(0,0,0,.6);animation:vis-ctx-in .1s ease;}
+@keyframes vis-ctx-in{from{opacity:0;transform:scale(0.95) translateY(-4px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.vis-ctx-hidden{display:none!important;}
+.vis-ctx-sep{height:1px;background:var(--border);margin:3px 0;}
+.vis-ctx-item{display:flex;align-items:center;gap:7px;width:100%;font-size:11px;font-family:var(--fm);color:var(--text2);background:none;border:none;border-radius:5px;padding:6px 9px;cursor:pointer;transition:background .1s,color .1s;text-align:left;white-space:nowrap;}
+.vis-ctx-item:hover{background:rgba(255,255,255,.07);color:var(--text);}
+.vis-ctx-item.vis-ctx-danger{color:rgba(248,113,113,.7);}
+.vis-ctx-item.vis-ctx-danger:hover{background:rgba(248,113,113,.08);color:#f87171;}
+.vis-ctx-item.vis-ctx-green{color:rgba(52,211,153,.8);}
+.vis-ctx-item.vis-ctx-green:hover{background:rgba(52,211,153,.08);color:#34d399;}
+.vis-ctx-icon{width:13px;flex-shrink:0;opacity:.6;}
+.vis-legend{display:flex;align-items:center;gap:12px;padding:7px 14px;border-top:1px solid var(--border);flex-wrap:wrap;}
+.vis-leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3);}
+.vis-leg-dot{width:6px;height:6px;border-radius:50%;opacity:.8;flex-shrink:0;}
+.vis-leg-hint{margin-left:auto;font-style:italic;opacity:.6;}
+/* Simple mode hides editing UI */
+.vis-card[data-vis-mode="simple"] .vis-toolbar{display:none;}
+.vis-card[data-vis-mode="simple"] .vis-step-panel{display:none;}
+.vis-card[data-vis-mode="simple"] .vis-legend .vis-leg-hint{display:none;}
+@media(max-width:600px){.vis-step-panel{display:none!important;}.vis-body{height:300px;}.vis-leg-hint{display:none;}}
+
 /* ── Notification ────────────────────────────────────────────────── */
 #notif{position:fixed;bottom:calc(14px + var(--safe-b));left:50%;transform:translateX(-50%);z-index:999;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:6px 16px;font-size:12px;color:var(--text);white-space:nowrap;opacity:0;transition:opacity .25s;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.6);}
 #notif.show{opacity:1;}
@@ -339,6 +450,22 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
       <div class="sr"><span class="slbl">Y Control</span><input type="range" id="r-yc" min="0" max="100" step="1" value="100" oninput="syncFromRange('v-yc',this);pDebounced('yc','/api/recoil',{y_control:toApi('r-yc',fv(this))})"><input class="sval-inp" type="number" id="v-yc" min="0" max="100" step="1" value="100" onchange="syncFromNum('r-yc',this,0,100);pDebounced('yc','/api/recoil',{y_control:toApi('r-yc',fv(this))})"></div>
       <div class="sr"><span class="slbl">Random Strength</span><input type="range" id="r-rs" min="0" max="100" step="1" value="10" oninput="syncFromRange('v-rs',this);pDebounced('rs','/api/recoil',{randomisation_strength:toApi('r-rs',fv(this))})"><input class="sval-inp" type="number" id="v-rs" min="0" max="100" step="1" value="10" onchange="syncFromNum('r-rs',this,0,100);pDebounced('rs','/api/recoil',{randomisation_strength:toApi('r-rs',fv(this))})"></div>
       <div class="sr"><span class="slbl">Return Speed</span><input type="range" id="r-rspd" min="0" max="100" step="1" value="25" oninput="syncFromRange('v-rspd',this);pDebounced('rspd','/api/recoil',{return_speed:toApi('r-rspd',fv(this))})"><input class="sval-inp" type="number" id="v-rspd" min="0" max="100" step="1" value="25" onchange="syncFromNum('r-rspd',this,0,100);pDebounced('rspd','/api/recoil',{return_speed:toApi('r-rspd',fv(this))})"></div>
+    </div>
+  </div>
+
+  <!-- ── CS2 Built-in Weapons ──────────────────────────────────────────── -->
+  <div class="card" id="cs2-card" style="display:none">
+    <div class="ch">CS2 Built-in Patterns</div>
+    <div class="cb">
+      <div class="crow">
+        <span class="lbl">Weapon</span>
+        <div class="ctl">
+          <select id="cs2-weapon-sel" onchange="selectCs2Weapon(this.value)">
+            <option value="none">None (use loaded script)</option>
+          </select>
+        </div>
+      </div>
+      <p class="mak-note">Overrides the loaded script with a built-in CS2 recoil pattern scaled to your in-game sensitivity. Set your game to <strong>CS2</strong> and enter your sensitivity in Settings.</p>
     </div>
   </div>
 
@@ -424,29 +551,114 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
   </div>
 
 
-  <div class="card">
-    <div class="ch">Pattern Visualiser</div>
-    <div class="cb" style="padding:8px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div style="display:flex;gap:12px;font-size:10px;color:var(--text2)">
-          <span><span id="vis-steps">0</span> steps</span>
-          <span>x: <span id="vis-totx">0</span></span>
-          <span>y: <span id="vis-toty">0</span></span>
-          <span><span id="vis-dur">0ms</span></span>
+  <div id="pattern-visualiser-card" class="vis-card" data-vis-mode="simple">
+    <div class="vis-header">
+      <div class="vis-header-left">
+        <div class="vis-icon-wrap">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"><path d="M3 3l18 18M3 21l7-7m4-4l7-7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="16" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg>
         </div>
-        <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3);cursor:pointer">
-          <input type="checkbox" id="vis-show-nums"> steps
-        </label>
+        <div>
+          <p class="vis-title">Pattern Visualiser</p>
+          <p class="vis-subtitle">live recoil path preview &amp; editor</p>
+        </div>
       </div>
-      <div style="position:relative;background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;height:260px">
-        <canvas id="vis-canvas" style="display:block;width:100%;height:100%"></canvas>
-        <div id="vis-tooltip" style="display:none;position:absolute;pointer-events:none;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:10px;color:var(--text2);line-height:1.6;z-index:10"></div>
+      <div class="vis-header-right">
+        <div class="vis-stats">
+          <div class="vis-stat"><span class="vis-stat-val" id="vis-steps">0</span><span class="vis-stat-label">steps</span></div>
+          <div class="vis-divider"></div>
+          <div class="vis-stat"><span class="vis-stat-val" id="vis-totx">0</span><span class="vis-stat-label">total x</span></div>
+          <div class="vis-divider"></div>
+          <div class="vis-stat"><span class="vis-stat-val" id="vis-toty">0</span><span class="vis-stat-label">total y</span></div>
+          <div class="vis-divider"></div>
+          <div class="vis-stat"><span class="vis-stat-val" id="vis-dur">0ms</span><span class="vis-stat-label">duration</span></div>
+        </div>
+        <button class="vis-mode-btn" id="vis-mode-toggle" onclick="toggleVisMode()">Advanced</button>
       </div>
-      <div style="display:flex;gap:12px;margin-top:6px;font-size:10px;color:var(--text3)">
-        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#38bdf8;vertical-align:middle"></span> Origin</span>
-        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#34d399;vertical-align:middle"></span> Step</span>
-        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#fbbf24;vertical-align:middle"></span> Hovered</span>
+    </div>
+
+    <div class="vis-toolbar">
+      <button id="vis-undo" class="vis-tool-btn" title="Undo (Ctrl+Z)" disabled>
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" stroke-linecap="round"/></svg>Undo
+      </button>
+      <button id="vis-redo" class="vis-tool-btn" title="Redo (Ctrl+Y)" disabled>
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" stroke-linecap="round"/></svg>Redo
+      </button>
+      <button id="vis-play-btn" class="vis-tool-btn" title="Simulate" onclick="visPlay()">
+        <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4l15 8-15 8V4z"/></svg>play
+      </button>
+      <div class="vis-toolbar-sep"></div>
+      <button class="vis-tool-btn vis-btn-add" title="Append step" onclick="visAddStep()">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>Add step
+      </button>
+      <div class="vis-toolbar-sep"></div>
+      <div style="position:relative;display:inline-block;">
+        <button class="vis-tool-btn" onclick="this.nextElementSibling.classList.toggle('vis-ctx-hidden')" title="Bulk operations">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg>Bulk<svg width="8" height="8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke-linecap="round"/></svg>
+        </button>
+        <div class="vis-ctx-menu vis-ctx-hidden" style="position:absolute;top:calc(100% + 4px);left:0;z-index:200;" onclick="this.classList.add('vis-ctx-hidden')">
+          <button class="vis-ctx-item" onclick="visBulk('reverse')"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 12H3M9 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>Reverse</button>
+          <button class="vis-ctx-item" onclick="visBulk('mirror-x')"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3v18M5 7l7-4 7 4" stroke-linecap="round" stroke-linejoin="round"/></svg>Mirror X</button>
+          <button class="vis-ctx-item" onclick="visBulk('mirror-y')"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 12h18M7 5l-4 7 4 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Mirror Y</button>
+          <button class="vis-ctx-item" onclick="visBulk('smooth')"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 17c3-8 6-8 9 0s6 8 9 0" stroke-linecap="round"/></svg>Smooth</button>
+          <div class="vis-ctx-sep"></div>
+          <button class="vis-ctx-item" onclick="visBulk('scale-x')"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3" stroke-linecap="round"/></svg>Scale X…</button>
+          <button class="vis-ctx-item" onclick="visBulk('scale-y')"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3" stroke-linecap="round"/></svg>Scale Y…</button>
+          <button class="vis-ctx-item" onclick="visBulk('scale-delay')"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" stroke-linecap="round" stroke-linejoin="round"/></svg>Scale delays…</button>
+          <button class="vis-ctx-item" onclick="visBulk('set-delay')"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01" stroke-linecap="round"/></svg>Set all delays…</button>
+        </div>
       </div>
+      <div class="vis-toolbar-sep"></div>
+      <label class="vis-tool-label"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke-linecap="round"/><circle cx="12" cy="12" r="3"/></svg>snap</label>
+      <select id="vis-snap" class="vis-select"><option value="0">off</option><option value="1">1</option><option value="5">5</option><option value="10">10</option><option value="25">25</option></select>
+      <div class="vis-toolbar-sep"></div>
+      <label class="vis-toggle-label" title="Toggle grid"><input type="checkbox" id="vis-grid" checked class="vis-toggle-cb"><span class="vis-toggle-track"></span>grid</label>
+      <label class="vis-toggle-label" title="Show step numbers"><input type="checkbox" id="vis-show-nums" class="vis-toggle-cb"><span class="vis-toggle-track"></span>numbers</label>
+    </div>
+
+    <div class="vis-body">
+      <div class="vis-canvas-wrap">
+        <canvas id="vis-canvas"></canvas>
+        <div id="vis-tooltip" class="vis-tooltip" style="display:none;"></div>
+        <div id="vis-inspector" class="vis-inspector vis-insp-hidden">
+          <div class="vis-insp-header">
+            <span id="vis-insp-step" class="vis-insp-title">step 1</span>
+            <div class="vis-insp-nav">
+              <button id="vis-insp-prev" class="vis-insp-nav-btn" title="Previous"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <button id="vis-insp-next" class="vis-insp-nav-btn" title="Next"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+            <button id="vis-insp-close" class="vis-insp-close" title="Close"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>
+          </div>
+          <div class="vis-insp-row"><label class="vis-insp-label">x</label><input id="vis-insp-x" type="number" step="1" class="vis-insp-input"></div>
+          <div class="vis-insp-row"><label class="vis-insp-label">y</label><input id="vis-insp-y" type="number" step="1" class="vis-insp-input"></div>
+          <div class="vis-insp-row"><label class="vis-insp-label">ms</label><input id="vis-insp-d" type="number" step="1" min="1" class="vis-insp-input"></div>
+          <div id="vis-insp-dist" class="vis-insp-dist"></div>
+          <p class="vis-insp-hint">arrows nudge · shift×5 · del removes</p>
+          <button id="vis-insp-del" class="vis-insp-del"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>Delete step</button>
+        </div>
+      </div>
+      <div class="vis-step-panel">
+        <div class="vis-step-panel-header">
+          <span class="vis-step-panel-title">Steps</span>
+          <button class="vis-step-panel-add" onclick="visAddStep()"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>Add</button>
+        </div>
+        <div class="vis-sl-cols">
+          <span class="vis-sl-col vis-sl-col-num">#</span>
+          <span class="vis-sl-col vis-sl-col-x">X</span>
+          <span class="vis-sl-col vis-sl-col-y">Y</span>
+          <span class="vis-sl-col vis-sl-col-d">ms</span>
+          <span class="vis-sl-col vis-sl-col-del"></span>
+        </div>
+        <div id="vis-step-list"></div>
+      </div>
+    </div>
+
+    <div class="vis-legend">
+      <span class="vis-leg-item"><span class="vis-leg-dot" style="background:#38bdf8"></span>origin</span>
+      <span class="vis-leg-item"><span class="vis-leg-dot" style="background:#34d399"></span>step</span>
+      <span class="vis-leg-item"><span class="vis-leg-dot" style="background:#fbbf24"></span>hovered</span>
+      <span class="vis-leg-item"><span class="vis-leg-dot" style="background:#a78bfa"></span>selected</span>
+      <span class="vis-leg-item"><span style="display:inline-flex;gap:2px;align-items:center"><span class="vis-leg-dot" style="background:#34d399"></span><span class="vis-leg-dot" style="background:#fbbf24"></span><span class="vis-leg-dot" style="background:#f87171"></span></span>slow→fast</span>
+      <span class="vis-leg-item vis-leg-hint">dbl-click canvas to add · right-click for options · drag to reorder</span>
     </div>
   </div>
 
@@ -474,7 +686,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
       <div class="mak-section-head">Sensitivity Scaling</div>
       <div class="mak-field">
         <div class="mak-label">Game</div>
-        <select class="mak-input" id="st-game" onchange="p('/api/settings',{game_scalar:this.value})"><option>Manual</option></select>
+        <select class="mak-input" id="st-game" onchange="p('/api/settings',{game_scalar:this.value});updateCs2CardVisibility(this.value)"><option>Manual</option></select>
       </div>
       <div class="mak-field">
         <div class="mak-label">In-Game Sensitivity</div>
@@ -505,6 +717,19 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 
 
 </div><!-- /content -->
+
+<!-- Pattern Visualiser context menu (fixed) -->
+<div id="vis-ctx-menu" class="vis-ctx-menu vis-ctx-hidden">
+  <button class="vis-ctx-item vis-ctx-green" data-action="add-here"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>Add step here</button>
+  <button class="vis-ctx-item vis-ctx-green" data-action="add-end"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>Append step</button>
+  <div class="vis-ctx-sep"></div>
+  <button class="vis-ctx-item" data-action="insert-before"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>Insert before</button>
+  <button class="vis-ctx-item" data-action="insert-after"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>Insert after</button>
+  <button class="vis-ctx-item" data-action="inspect"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01" stroke-linecap="round"/></svg>Inspect</button>
+  <div class="vis-ctx-sep"></div>
+  <button class="vis-ctx-item vis-ctx-danger" data-action="delete"><svg class="vis-ctx-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>Delete step</button>
+</div>
+
 </div><!-- /root -->
 <div id="notif"></div>
 
@@ -589,6 +814,14 @@ function applyStatus(d){
   if(d.toggle_keybind!==undefined){const el=$('r-tkb');if(el)el.value=d.toggle_keybind;}
   if(d.cycle_keybind!==undefined){const el=$('r-ckb');if(el)el.value=d.cycle_keybind;}
   if(d.theme!==undefined) applyTheme(d.theme);
+  // ── CS2 weapon sync ───────────────────────────────────────────────────
+  if(d.cs2_weapon!==undefined){
+    const sel=$('cs2-weapon-sel');if(sel&&sel.value!==d.cs2_weapon)sel.value=d.cs2_weapon;
+    // Show status card label as "CS2: AK-47" when a weapon is active
+    if(d.cs2_weapon&&d.cs2_weapon!=='none'){
+      const lbl=$('sc-script-v');if(lbl)lbl.textContent='CS2: '+($('cs2-weapon-sel')?.selectedOptions[0]?.text||d.cs2_weapon);
+    }
+  }
   // ── Tools: burst history + pattern info ───────────────────────────────
   if(d.burst_history){
     const el=$('burst-list'),h=d.burst_history.slice().reverse();
@@ -615,6 +848,8 @@ async function loadState(){
     $('st-game').innerHTML=games.map(g=>`<option>${g}</option>`).join('');
     sel('st-game',s.game_scalar||'Manual');num('st-sens',s.game_sensitivity??1);
     applyTheme(s.theme||'Default');
+    await loadCs2Weapons(s.cs2_weapon||'none');
+    updateCs2CardVisibility(s.game_scalar||'Manual');
     $('s-srv').textContent=location.host;
     // ── Restore game directory from loaded script ─────────────────────────
     let defaultGame = '';
@@ -634,6 +869,27 @@ function chk(id,v){const el=$(id);if(el)el.checked=!!v;}
 function num(id,v){const el=$(id);if(el)el.value=v;}
 function sel(id,v){const el=$(id);if(!el)return;for(const o of el.options)if(o.value===v||o.text===v){o.selected=true;break;}}
 function slid(sid,lid,v){const s=$(sid),l=$(lid);if(s){s.value=v;updateSliderFill(s);}if(l)l.value=parseFloat(v).toFixed(0);}
+
+// ── CS2 Built-in Weapons ──────────────────────────────────────────────────────
+function updateCs2CardVisibility(game){
+  const card=$('cs2-card');if(!card)return;
+  card.style.display=(game==='CS2')?'':'none';
+}
+
+async function loadCs2Weapons(selectedKey){
+  try{
+    const d=await api('/api/cs2/weapons');
+    const sel=$('cs2-weapon-sel');if(!sel)return;
+    sel.innerHTML='<option value="none">None (use loaded script)</option>'+
+      (d.weapons||[]).map(w=>`<option value="${w.key}">${w.label} (${w.steps} steps)</option>`).join('');
+    if(selectedKey)sel.value=selectedKey;
+  }catch(e){console.warn('CS2 weapons load failed:',e);}
+}
+
+async function selectCs2Weapon(weapon){
+  await api('/api/cs2/weapon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({weapon})});
+  notify(weapon==='none'?'CS2 pattern cleared':'CS2: '+($('cs2-weapon-sel')?.selectedOptions[0]?.text||weapon));
+}
 
 // ── Scripts ───────────────────────────────────────────────────────────────────
 let sCurrentGame = '';
@@ -765,143 +1021,485 @@ function updateGutter(){
 
 // ── Pattern Visualiser ────────────────────────────────────────────────────────
 (function(){
-  const canvas=$('vis-canvas'),tooltip=$('vis-tooltip');
+  const canvas=document.getElementById('vis-canvas');
   if(!canvas)return;
   const ctx=canvas.getContext('2d');
-  const elSteps=$('vis-steps'),elTotX=$('vis-totx'),elTotY=$('vis-toty'),elDur=$('vis-dur'),elNums=$('vis-show-nums');
-  const C={grid:'rgba(255,255,255,0.05)',axis:'rgba(255,255,255,0.12)',path:'#34d399',dot:'#34d399',dotHov:'#fbbf24',dotOrig:'#38bdf8',num:'rgba(255,255,255,0.35)',empty:'rgba(255,255,255,0.15)'};
-  let steps=[],hoveredIdx=-1,rafPending=false;
+  const tooltip=document.getElementById('vis-tooltip');
+  const elSteps=document.getElementById('vis-steps'),elTotX=document.getElementById('vis-totx'),elTotY=document.getElementById('vis-toty'),elDur=document.getElementById('vis-dur');
+  const elNums=document.getElementById('vis-show-nums'),elSnap=document.getElementById('vis-snap'),elGrid=document.getElementById('vis-grid');
+  const elInspector=document.getElementById('vis-inspector'),elUndoBtn=document.getElementById('vis-undo'),elRedoBtn=document.getElementById('vis-redo');
+  const elInspX=document.getElementById('vis-insp-x'),elInspY=document.getElementById('vis-insp-y'),elInspD=document.getElementById('vis-insp-d');
+  const elInspStep=document.getElementById('vis-insp-step'),elInspClose=document.getElementById('vis-insp-close');
+  const elInspPrev=document.getElementById('vis-insp-prev'),elInspNext=document.getElementById('vis-insp-next');
+  const elInspDist=document.getElementById('vis-insp-dist'),elInspDel=document.getElementById('vis-insp-del');
+  const elStepList=document.getElementById('vis-step-list'),elCtxMenu=document.getElementById('vis-ctx-menu');
 
-  function parseSteps(){
-    const ta=$('vec-ta');if(!ta)return[];
+  const C={bg:'#0a0a0a',grid:'rgba(255,255,255,0.04)',gridSub:'rgba(255,255,255,0.02)',axis:'rgba(255,255,255,0.08)',path:'#34d399',dot:'#34d399',dotHov:'#fbbf24',dotDrag:'#f87171',dotOrig:'#38bdf8',num:'rgba(255,255,255,0.25)',empty:'rgba(255,255,255,0.12)',select:'#a78bfa',add:'#34d399'};
+
+  let steps=[],hoveredIdx=-1,dragIdx=-1,selectedIdx=-1,dragStart=null,dragSnap=null,currentMode='simple';
+  let addGhost=null,pathProgress=1,dotScales=[],gridAlpha=1,animRaf=null,pulseT=0;
+
+  // ── Playback ──────────────────────────────────────────────────────────────
+  const PB={active:false,startTime:0,segIdx:0,raf:null,timeline:[],tail:[],TAIL_MAX:28};
+
+  function buildTimeline(){
+    const{xCtrl,yCtrl}=getControlMultipliers(),STEPS=20,tl=[];
+    let cx=0,cy=0;
+    for(const s of steps){
+      const ax=s.x*xCtrl,ay=s.y*yCtrl;let ax2=0,ay2=0;
+      const subPts=[{x:cx,y:cy}];
+      for(let k=0;k<STEPS;k++){const e=easeOutQuad((k+1)/STEPS);const mx2=Math.round(ax*e-ax2),my2=Math.round(ay*e-ay2);ax2+=mx2;ay2+=my2;subPts.push({x:cx+ax2,y:cy+ay2});}
+      tl.push({dur:s.d,x1:cx,y1:cy,x2:cx+ax2,y2:cy+ay2,subPts});cx+=ax2;cy+=ay2;
+    }
+    return tl;
+  }
+  function syncPlayBtn(){const btn=document.getElementById('vis-play-btn');if(!btn)return;btn.innerHTML=PB.active?`<svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><rect x="5" y="4" width="4" height="16" rx="1"/><rect x="15" y="4" width="4" height="16" rx="1"/></svg> stop`:`<svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4l15 8-15 8V4z"/></svg> play`;btn.style.color=PB.active?'#f87171':'';btn.style.borderColor=PB.active?'rgba(248,113,113,0.3)':'';}
+  function startPlayback(){if(!steps.length)return;if(PB.raf)cancelAnimationFrame(PB.raf);PB.timeline=buildTimeline();PB.segIdx=0;PB.startTime=performance.now();PB.active=true;PB.tail=[];PB.raf=requestAnimationFrame(tickPlayback);syncPlayBtn();}
+  function stopPlayback(){PB.active=false;if(PB.raf){cancelAnimationFrame(PB.raf);PB.raf=null;}PB.tail=[];syncPlayBtn();scheduleDraw();}
+  function tickPlayback(){
+    if(!PB.active||!PB.timeline.length){stopPlayback();return;}
+    const now=performance.now(),seg=PB.timeline[PB.segIdx],elapsed=now-PB.startTime;
+    if(elapsed>=seg.dur){PB.segIdx++;if(PB.segIdx>=PB.timeline.length){setTimeout(stopPlayback,400);return;}PB.startTime+=seg.dur;PB.raf=requestAnimationFrame(tickPlayback);return;}
+    const STEPS=seg.subPts.length-1,subF=(elapsed/seg.dur)*STEPS,subLo=Math.floor(subF),subHi=Math.min(subLo+1,STEPS),blend=subF-subLo;
+    const lo=seg.subPts[subLo],hi=seg.subPts[subHi];
+    PB.currentX=lo.x+(hi.x-lo.x)*blend;PB.currentY=lo.y+(hi.y-lo.y)*blend;
+    const subDur=seg.dur/STEPS;PB.speed=Math.hypot(hi.x-lo.x,hi.y-lo.y)/Math.max(subDur,1);
+    PB.tail.push({x:PB.currentX,y:PB.currentY,speed:PB.speed});if(PB.tail.length>PB.TAIL_MAX)PB.tail.shift();
+    scheduleDraw();PB.raf=requestAnimationFrame(tickPlayback);
+  }
+  window.visPlay=function(){PB.active?stopPlayback():startPlayback();};
+  function stopPlaybackIfActive(){if(PB.active)stopPlayback();}
+
+  // ── Undo/Redo ─────────────────────────────────────────────────────────────
+  const undoStack=[],redoStack=[],MAX_UNDO=40;
+  function pushUndo(){undoStack.push(steps.map(s=>({...s})));if(undoStack.length>MAX_UNDO)undoStack.shift();redoStack.length=0;syncUndoButtons();}
+  function undo(){if(!undoStack.length)return;redoStack.push(steps.map(s=>({...s})));steps=undoStack.pop();syncUndoButtons();writeStepsToTextarea();renderStepList();startEntrance();}
+  function redo(){if(!redoStack.length)return;undoStack.push(steps.map(s=>({...s})));steps=redoStack.pop();syncUndoButtons();writeStepsToTextarea();renderStepList();startEntrance();}
+  function syncUndoButtons(){if(elUndoBtn)elUndoBtn.disabled=undoStack.length===0;if(elRedoBtn)elRedoBtn.disabled=redoStack.length===0;}
+
+  // ── Entrance animation ────────────────────────────────────────────────────
+  function startEntrance(){stopPlaybackIfActive();pathProgress=0;gridAlpha=0;dotScales=steps.map(()=>0);if(animRaf)cancelAnimationFrame(animRaf);animRaf=requestAnimationFrame(animStep);}
+  function animStep(){
+    pathProgress=Math.min(1,pathProgress+0.04);gridAlpha=Math.min(1,gridAlpha+0.025);pulseT+=0.05;
+    const n=dotScales.length;
+    dotScales=dotScales.map((s,i)=>{const thr=0.08+(i/Math.max(n,1))*0.5;return pathProgress>=thr?Math.min(1,s+0.13):s;});
+    draw();
+    const done=pathProgress>=1&&gridAlpha>=1&&dotScales.every(v=>v>=1);
+    animRaf=done?null:requestAnimationFrame(animStep);
+  }
+
+  // ── Source reader ─────────────────────────────────────────────────────────
+  function stepsFromTextarea(){
+    const ta=document.getElementById('vec-ta');if(!ta)return[];
     const out=[];
     for(const raw of ta.value.split('\n')){
-      const line=raw.trim();
-      if(!line||line.startsWith('#'))continue;
-      const p=line.split(',');if(p.length<2)continue;
-      const x=parseFloat(p[0]),y=parseFloat(p[1]),d=p.length>=3?parseFloat(p[2]):100;
+      const line=raw.trim();if(!line||line.startsWith('#'))continue;
+      const parts=line.split(',');if(parts.length<2)continue;
+      const x=parseFloat(parts[0]),y=parseFloat(parts[1]);
+      const d=parts.length>=3?parseFloat(parts[2]):100;
       if(isNaN(x)||isNaN(y))continue;
       out.push({x,y,d:isNaN(d)?100:d});
     }
     return out;
   }
 
+  // ── Public API ────────────────────────────────────────────────────────────
+  window.visRefresh=function(mode){
+    if(mode!==undefined)currentMode=mode;
+    hoveredIdx=-1;dragIdx=-1;if(tooltip)tooltip.style.display='none';
+    steps=stepsFromTextarea();
+    if(selectedIdx>=steps.length)selectedIdx=-1;
+    updateStats(steps);renderStepList();startEntrance();
+  };
+
+  // ── Mode toggle ───────────────────────────────────────────────────────────
+  window.toggleVisMode=function(){
+    const card=document.getElementById('pattern-visualiser-card');if(!card)return;
+    const isAdv=card.dataset.visMode==='advanced';
+    currentMode=isAdv?'simple':'advanced';
+    card.dataset.visMode=currentMode;
+    const btn=document.getElementById('vis-mode-toggle');
+    if(btn){btn.textContent=currentMode==='advanced'?'Simple':'Advanced';btn.classList.toggle('adv',currentMode==='advanced');}
+    if(currentMode==='simple'){closeInspector();}else{renderStepList();}
+    scheduleDraw();
+  };
+
+  // ── Stats (animated) ──────────────────────────────────────────────────────
+  let statT={steps:0,x:0,y:0,dur:0},statC={steps:0,x:0,y:0,dur:0},statRaf=null;
   function updateStats(s){
-    elSteps.textContent=s.length;
-    elTotX.textContent=s.reduce((a,v)=>a+v.x,0).toFixed(1);
-    elTotY.textContent=s.reduce((a,v)=>a+v.y,0).toFixed(1);
-    elDur.textContent=s.reduce((a,v)=>a+v.d,0)+'ms';
+    const{xCtrl,yCtrl}=getControlMultipliers();
+    statT.steps=s.length;statT.x=s.reduce((a,v)=>a+v.x*xCtrl,0);statT.y=s.reduce((a,v)=>a+v.y*yCtrl,0);statT.dur=s.reduce((a,v)=>a+v.d,0);
+    if(statRaf)cancelAnimationFrame(statRaf);statRaf=requestAnimationFrame(tickStats);
+  }
+  function tickStats(){
+    const L=0.16;
+    statC.steps+=(statT.steps-statC.steps)*L;statC.x+=(statT.x-statC.x)*L;statC.y+=(statT.y-statC.y)*L;statC.dur+=(statT.dur-statC.dur)*L;
+    if(elSteps)elSteps.textContent=Math.round(statC.steps);if(elTotX)elTotX.textContent=statC.x.toFixed(1);if(elTotY)elTotY.textContent=statC.y.toFixed(1);if(elDur)elDur.textContent=Math.round(statC.dur)+'ms';
+    const done=Math.abs(statC.steps-statT.steps)<0.4&&Math.abs(statC.dur-statT.dur)<0.8;
+    if(done){if(elSteps)elSteps.textContent=statT.steps;if(elTotX)elTotX.textContent=statT.x.toFixed(1);if(elTotY)elTotY.textContent=statT.y.toFixed(1);if(elDur)elDur.textContent=statT.dur+'ms';}
+    else statRaf=requestAnimationFrame(tickStats);
   }
 
-  function syncSize(){
-    const dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
-    const w=Math.floor(rect.width*dpr),h=Math.floor(rect.height*dpr);
-    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
-    return{W:rect.width,H:rect.height};
+  // ── Canvas helpers ────────────────────────────────────────────────────────
+  function syncSize(){const dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();const w=Math.floor(rect.width*dpr),h=Math.floor(rect.height*dpr);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}return{W:rect.width,H:rect.height};}
+  function easeOutQuad(t){return t*(2-t);}
+  function r1(n){return Math.round(n);}
+  function getControlMultipliers(){
+    const xCtrl=(parseFloat(document.getElementById('v-xc')?.value)||100)/100;
+    const yCtrl=(parseFloat(document.getElementById('v-yc')?.value)||100)/100;
+    return{xCtrl,yCtrl};
   }
-
-  function draw(){
-    rafPending=false;
-    const{W,H}=syncSize();const dpr=window.devicePixelRatio||1;
-    ctx.save();ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
-    if(!steps.length){
-      ctx.fillStyle=C.empty;ctx.font='12px ui-monospace,monospace';ctx.textAlign='center';
-      ctx.fillText('Load a script to visualise',W/2,H/2);ctx.restore();return;
-    }
-    const PAD=32,showNums=elNums&&elNums.checked;
-    const pts=[{px:0,py:0}];let cx=0,cy=0;
-    for(const s of steps){cx+=s.x;cy+=s.y;pts.push({px:cx,py:cy});}
-    const allX=pts.map(p=>p.px),allY=pts.map(p=>p.py);
-    let minX=Math.min(...allX,0),maxX=Math.max(...allX,0);
-    let minY=Math.min(...allY,0),maxY=Math.max(...allY,0);
-    const spanX=maxX-minX||1,spanY=maxY-minY||1;
-    const scale=Math.min((W-2*PAD)/spanX,(H-2*PAD)/spanY)*0.86;
-    const offX=W/2-((minX+maxX)/2)*scale,offY=H/2-((minY+maxY)/2)*scale;
-    function sx(px){return offX+px*scale;}
-    function sy(py){return offY+py*scale;}
-
-    // Grid
-    const gridStep=Math.ceil(Math.max(spanX,spanY)/5)||1;
-    ctx.strokeStyle=C.grid;ctx.lineWidth=0.5;
-    for(let g=Math.floor(minX/gridStep)*gridStep;g<=maxX+gridStep;g+=gridStep){ctx.beginPath();ctx.moveTo(sx(g),PAD);ctx.lineTo(sx(g),H-PAD);ctx.stroke();}
-    for(let g=Math.floor(minY/gridStep)*gridStep;g<=maxY+gridStep;g+=gridStep){ctx.beginPath();ctx.moveTo(PAD,sy(g));ctx.lineTo(W-PAD,sy(g));ctx.stroke();}
-
-    // Axes
-    const ox=sx(0),oy=sy(0);
-    ctx.strokeStyle=C.axis;ctx.lineWidth=0.75;
-    if(ox>PAD&&ox<W-PAD){ctx.beginPath();ctx.moveTo(ox,PAD);ctx.lineTo(ox,H-PAD);ctx.stroke();}
-    if(oy>PAD&&oy<H-PAD){ctx.beginPath();ctx.moveTo(PAD,oy);ctx.lineTo(W-PAD,oy);ctx.stroke();}
-
-    // Path
-    if(pts.length>1){
-      for(let i=1;i<pts.length;i++){
-        const t=pts.length>2?i/(pts.length-1):1;
-        ctx.strokeStyle=C.path;ctx.globalAlpha=0.25+0.75*t;ctx.lineWidth=1.5;
-        ctx.beginPath();ctx.moveTo(sx(pts[i-1].px),sy(pts[i-1].py));ctx.lineTo(sx(pts[i].px),sy(pts[i].py));ctx.stroke();
-        const every=Math.max(1,Math.floor(pts.length/10));
-        if(i%every===0&&pts.length>2){
-          const mx2=(sx(pts[i-1].px)+sx(pts[i].px))/2,my2=(sy(pts[i-1].py)+sy(pts[i].py))/2;
-          const angle=Math.atan2(sy(pts[i].py)-sy(pts[i-1].py),sx(pts[i].px)-sx(pts[i-1].px));
-          ctx.save();ctx.translate(mx2,my2);ctx.rotate(angle);ctx.globalAlpha=0.3+0.4*t;
-          ctx.strokeStyle=C.path;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-4,-3);ctx.lineTo(0,0);ctx.lineTo(-4,3);ctx.stroke();ctx.restore();
-        }
-      }
-      ctx.globalAlpha=1;
-    }
-
-    // Dots
-    for(let i=0;i<pts.length;i++){
-      const px=sx(pts[i].px),py=sy(pts[i].py);
-      const isOrigin=i===0,isHovered=i===hoveredIdx+1;
-      const r=isOrigin?5:isHovered?5:3.5;
-      ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);
-      ctx.fillStyle=isOrigin?C.dotOrig:isHovered?C.dotHov:C.dot;
-      ctx.globalAlpha=(isHovered||isOrigin)?1:0.7;ctx.fill();ctx.globalAlpha=1;
-      if(showNums&&i>0){ctx.fillStyle=C.num;ctx.font='9px ui-monospace,monospace';ctx.textAlign='center';ctx.fillText(i,px,py-8);}
-    }
-
-    // Origin crosshair
-    ctx.strokeStyle=C.dotOrig;ctx.lineWidth=1;ctx.globalAlpha=0.5;
-    ctx.beginPath();ctx.moveTo(ox-6,oy);ctx.lineTo(ox+6,oy);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(ox,oy-6);ctx.lineTo(ox,oy+6);ctx.stroke();
-    ctx.globalAlpha=1;ctx.restore();
+  function getSnapSize(){return parseFloat(elSnap?.value)||0;}
+  function snapVal(v,snapSize){return snapSize?Math.round(v/snapSize)*snapSize:v;}
+  function speedColor(t){
+    t=Math.max(0,Math.min(1,t));
+    if(t<0.5){const f=t*2;return`rgb(${r1(52+(251-52)*f)},${r1(211+(191-211)*f)},${r1(153+(36-153)*f)})`;}
+    else{const f=(t-0.5)*2;return`rgb(${r1(251+(248-251)*f)},${r1(191+(113-191)*f)},${r1(36+(113-36)*f)})`;}
   }
-
-  function scheduleDraw(){if(!rafPending){rafPending=true;requestAnimationFrame(draw);}}
-
   function getTransform(W,H){
-    const PAD=32,pts=[{px:0,py:0}];let cx=0,cy=0;
-    for(const s of steps){cx+=s.x;cy+=s.y;pts.push({px:cx,py:cy});}
+    const PAD=40,{xCtrl,yCtrl}=getControlMultipliers(),STEPS=20;
+    const pts=[{px:0,py:0}];let cx=0,cy=0;
+    for(const s of steps){let ax=0,ay=0;for(let k=0;k<STEPS;k++){const e=easeOutQuad((k+1)/STEPS);ax+=Math.round(s.x*xCtrl*e-ax);ay+=Math.round(s.y*yCtrl*e-ay);}cx+=ax;cy+=ay;pts.push({px:cx,py:cy});}
     const allX=pts.map(p=>p.px),allY=pts.map(p=>p.py);
     const minX=Math.min(...allX,0),maxX=Math.max(...allX,0),minY=Math.min(...allY,0),maxY=Math.max(...allY,0);
     const spanX=maxX-minX||1,spanY=maxY-minY||1;
-    const scale=Math.min((W-2*PAD)/spanX,(H-2*PAD)/spanY)*0.86;
+    const scale=Math.min((W-2*PAD)/spanX,(H-2*PAD)/spanY)*0.80;
     const offX=W/2-((minX+maxX)/2)*scale,offY=H/2-((minY+maxY)/2)*scale;
-    return{pts,scale,offX,offY};
+    return{pts,scale,offX,offY,minX,maxX,minY,maxY,spanX,spanY,xCtrl,yCtrl};
+  }
+  function canvasToPatternDelta(dx,dy,tf){return{rx:dx/tf.scale/tf.xCtrl,ry:dy/tf.scale/tf.yCtrl};}
+  function canvasToPatternAbs(mx,my,tf){return{px:(mx-tf.offX)/tf.scale,py:(my-tf.offY)/tf.scale};}
+  function nearestStepIdx(mx,my,W,H){
+    if(!steps.length)return{idx:-1,dist:Infinity};
+    const{pts,scale,offX,offY}=getTransform(W,H);let best=-1,bestD=Infinity;
+    for(let i=1;i<pts.length;i++){const d=Math.hypot(mx-(offX+pts[i].px*scale),my-(offY+pts[i].py*scale));if(d<bestD){bestD=d;best=i-1;}}
+    return{idx:best,dist:bestD};
   }
 
-  canvas.addEventListener('mousemove',function(e){
-    if(!steps.length)return;
+  // Write changes back to vec-ta (auto-saves, updates gutter)
+  function writeStepsToTextarea(){
+    const ta=document.getElementById('vec-ta');if(!ta)return;
+    ta.value=steps.map(s=>`${r1(s.x)},${r1(s.y)},${s.d}`).join('\n');
+    if(typeof updateGutter==='function')updateGutter();
+    updateStats(steps);
+  }
+
+  // ── Step operations ───────────────────────────────────────────────────────
+  function addStepAt(idx,step){pushUndo();steps.splice(idx,0,step);dotScales.splice(idx,0,0);writeStepsToTextarea();renderStepList();updateStats(steps);scheduleDraw();}
+  function deleteStep(idx){
+    if(idx<0||idx>=steps.length)return;pushUndo();steps.splice(idx,1);dotScales.splice(idx,1);
+    if(selectedIdx===idx){selectedIdx=-1;closeInspector();}else if(selectedIdx>idx)selectedIdx--;
+    writeStepsToTextarea();renderStepList();updateStats(steps);scheduleDraw();
+  }
+  function moveStep(fromIdx,toIdx){
+    if(fromIdx===toIdx)return;pushUndo();const[step]=steps.splice(fromIdx,1);steps.splice(toIdx,0,step);
+    if(selectedIdx===fromIdx)selectedIdx=toIdx;writeStepsToTextarea();renderStepList();updateStats(steps);startEntrance();
+  }
+
+  // ── Bulk operations ───────────────────────────────────────────────────────
+  window.visBulk=function(op){
+    if(!steps.length)return;pushUndo();
+    switch(op){
+      case'reverse':steps.reverse();break;
+      case'mirror-x':steps=steps.map(s=>({...s,x:-s.x}));break;
+      case'mirror-y':steps=steps.map(s=>({...s,y:-s.y}));break;
+      case'smooth':{const orig=steps.map(s=>({...s}));steps=steps.map((s,i)=>{if(i===0||i===steps.length-1)return{...s};const p=orig[i-1],n=orig[i+1];return{...s,x:r1((p.x+s.x+n.x)/3),y:r1((p.y+s.y+n.y)/3)};});break;}
+      case'scale-x':{const v=parseFloat(prompt('Scale X by factor (e.g. 1.5):','1.0'));if(!isNaN(v))steps=steps.map(s=>({...s,x:r1(s.x*v)}));break;}
+      case'scale-y':{const v=parseFloat(prompt('Scale Y by factor (e.g. 1.5):','1.0'));if(!isNaN(v))steps=steps.map(s=>({...s,y:r1(s.y*v)}));break;}
+      case'scale-delay':{const v=parseFloat(prompt('Scale all delays by factor (e.g. 0.8):','1.0'));if(!isNaN(v))steps=steps.map(s=>({...s,d:Math.max(1,r1(s.d*v))}));break;}
+      case'set-delay':{const v=parseInt(prompt('Set all delays to (ms):','100'));if(!isNaN(v)&&v>0)steps=steps.map(s=>({...s,d:v}));break;}
+    }
+    writeStepsToTextarea();renderStepList();updateStats(steps);startEntrance();
+  };
+  window.visAddStep=function(){const defaultD=steps.length?steps[steps.length-1].d:100;addStepAt(steps.length,{x:0,y:5,d:defaultD});openInspector(steps.length-1);renderStepList();if(elStepList)elStepList.scrollTop=elStepList.scrollHeight;};
+
+  // ── Inspector ─────────────────────────────────────────────────────────────
+  function openInspector(idx){
+    selectedIdx=idx;if(!elInspector){scheduleDraw();return;}
+    const s=steps[idx];
+    if(elInspStep)elInspStep.textContent=`step ${idx+1} / ${steps.length}`;
+    if(elInspX)elInspX.value=s.x;if(elInspY)elInspY.value=s.y;if(elInspD)elInspD.value=s.d;
+    if(elInspDist){const{xCtrl,yCtrl}=getControlMultipliers();let cx=0,cy=0;for(let i=0;i<=idx;i++){cx+=steps[i].x*xCtrl;cy+=steps[i].y*yCtrl;}elInspDist.textContent=`Σ (${cx.toFixed(1)}, ${cy.toFixed(1)})`;}
+    if(elInspPrev)elInspPrev.disabled=idx<=0;if(elInspNext)elInspNext.disabled=idx>=steps.length-1;
+    elInspector.classList.remove('vis-insp-hidden');highlightStepListRow(idx);scheduleDraw();
+  }
+  function closeInspector(){selectedIdx=-1;if(elInspector)elInspector.classList.add('vis-insp-hidden');scheduleDraw();}
+  function commitInspector(){
+    if(selectedIdx<0||selectedIdx>=steps.length)return;
+    const x=parseFloat(elInspX?.value),y=parseFloat(elInspY?.value),d=parseFloat(elInspD?.value);
+    if(isNaN(x)||isNaN(y)||isNaN(d))return;
+    pushUndo();steps[selectedIdx]={x:r1(x),y:r1(y),d:Math.max(1,r1(d))};
+    updateStats(steps);writeStepsToTextarea();renderStepList();scheduleDraw();
+  }
+  if(elInspClose)elInspClose.addEventListener('click',closeInspector);
+  if(elInspX)elInspX.addEventListener('change',commitInspector);
+  if(elInspY)elInspY.addEventListener('change',commitInspector);
+  if(elInspD)elInspD.addEventListener('change',commitInspector);
+  if(elInspPrev)elInspPrev.addEventListener('click',()=>{if(selectedIdx>0)openInspector(selectedIdx-1);});
+  if(elInspNext)elInspNext.addEventListener('click',()=>{if(selectedIdx<steps.length-1)openInspector(selectedIdx+1);});
+  if(elInspDel)elInspDel.addEventListener('click',()=>{const idx=selectedIdx;closeInspector();deleteStep(idx);});
+  if(elUndoBtn)elUndoBtn.addEventListener('click',undo);
+  if(elRedoBtn)elRedoBtn.addEventListener('click',redo);
+
+  // ── Step list ─────────────────────────────────────────────────────────────
+  let dragListIdx=null,dragListOver=null;
+  function renderStepList(){
+    if(!elStepList)return;const scrollTop=elStepList.scrollTop;elStepList.innerHTML='';
+    steps.forEach((s,i)=>{
+      const row=document.createElement('div');row.className='vis-sl-row'+(i===selectedIdx?' vis-sl-selected':'');row.dataset.idx=i;row.draggable=true;
+      row.innerHTML=`<span class="vis-sl-num">${i+1}</span><input class="vis-sl-input" type="number" step="1" value="${r1(s.x)}" data-field="x" title="X"><input class="vis-sl-input" type="number" step="1" value="${r1(s.y)}" data-field="y" title="Y"><input class="vis-sl-input vis-sl-ms" type="number" step="1" min="1" value="${s.d}" data-field="d" title="ms"><span class="vis-sl-ms-label">ms</span><button class="vis-sl-del" data-idx="${i}" title="Delete"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>`;
+      row.querySelectorAll('.vis-sl-input').forEach(inp=>{
+        inp.addEventListener('change',()=>{const field=inp.dataset.field,val=parseFloat(inp.value);if(isNaN(val))return;pushUndo();if(field==='x')steps[i].x=r1(val);else if(field==='y')steps[i].y=r1(val);else if(field==='d')steps[i].d=Math.max(1,r1(val));writeStepsToTextarea();updateStats(steps);if(selectedIdx===i)openInspector(i);scheduleDraw();});
+        inp.addEventListener('focus',()=>{selectedIdx=i;openInspector(i);});
+      });
+      row.querySelector('.vis-sl-del').addEventListener('click',e=>{e.stopPropagation();deleteStep(i);});
+      row.addEventListener('click',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON'||e.target.closest('button'))return;openInspector(i);scheduleDraw();});
+      row.addEventListener('dragstart',e=>{dragListIdx=i;e.dataTransfer.effectAllowed='move';row.classList.add('vis-sl-dragging');});
+      row.addEventListener('dragend',()=>{row.classList.remove('vis-sl-dragging');if(dragListIdx!==null&&dragListOver!==null&&dragListIdx!==dragListOver)moveStep(dragListIdx,dragListOver);dragListIdx=null;dragListOver=null;elStepList.querySelectorAll('.vis-sl-row').forEach(r=>r.classList.remove('vis-sl-drag-over'));});
+      row.addEventListener('dragover',e=>{e.preventDefault();dragListOver=i;elStepList.querySelectorAll('.vis-sl-row').forEach(r=>r.classList.remove('vis-sl-drag-over'));row.classList.add('vis-sl-drag-over');});
+      elStepList.appendChild(row);
+    });
+    elStepList.scrollTop=scrollTop;
+  }
+  function highlightStepListRow(idx){
+    if(!elStepList)return;
+    elStepList.querySelectorAll('.vis-sl-row').forEach((r,i)=>r.classList.toggle('vis-sl-selected',i===idx));
+    const row=elStepList.children[idx];if(row)row.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+
+  // ── Context menu ──────────────────────────────────────────────────────────
+  let ctxTargetIdx=-1,ctxCanvasPos=null;
+  function showCtxMenu(x,y,nearIdx){
+    if(!elCtxMenu)return;ctxTargetIdx=nearIdx;elCtxMenu.style.left=x+'px';elCtxMenu.style.top=y+'px';elCtxMenu.classList.remove('vis-ctx-hidden');
+    elCtxMenu.querySelector('[data-action="insert-before"]').style.display=nearIdx>=0?'':'none';
+    elCtxMenu.querySelector('[data-action="insert-after"]').style.display=nearIdx>=0?'':'none';
+    elCtxMenu.querySelector('[data-action="delete"]').style.display=nearIdx>=0?'':'none';
+    elCtxMenu.querySelector('[data-action="inspect"]').style.display=nearIdx>=0?'':'none';
+  }
+  function hideCtxMenu(){if(elCtxMenu)elCtxMenu.classList.add('vis-ctx-hidden');}
+  document.addEventListener('click',hideCtxMenu);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')hideCtxMenu();});
+  if(elCtxMenu){
+    elCtxMenu.addEventListener('click',e=>{
+      const btn=e.target.closest('[data-action]');if(!btn)return;
+      const action=btn.dataset.action;hideCtxMenu();
+      const defaultD=steps.length?(steps[ctxTargetIdx]?.d??steps[steps.length-1].d):100;
+      if(action==='add-end'){addStepAt(steps.length,{x:0,y:5,d:defaultD});openInspector(steps.length-1);}
+      else if(action==='insert-before'&&ctxTargetIdx>=0){addStepAt(ctxTargetIdx,{x:0,y:5,d:defaultD});openInspector(ctxTargetIdx);}
+      else if(action==='insert-after'&&ctxTargetIdx>=0){addStepAt(ctxTargetIdx+1,{x:0,y:5,d:defaultD});openInspector(ctxTargetIdx+1);}
+      else if(action==='delete'&&ctxTargetIdx>=0){deleteStep(ctxTargetIdx);}
+      else if(action==='inspect'&&ctxTargetIdx>=0){openInspector(ctxTargetIdx);}
+      else if(action==='add-here'&&ctxCanvasPos){
+        const rect=canvas.getBoundingClientRect(),tf=getTransform(rect.width,rect.height);
+        const abs=canvasToPatternAbs(ctxCanvasPos.x,ctxCanvasPos.y,tf);
+        let cx=0,cy=0;for(const s of steps){cx+=s.x*tf.xCtrl;cy+=s.y*tf.yCtrl;}
+        addStepAt(steps.length,{x:r1((abs.px-cx)/tf.xCtrl),y:r1((abs.py-cy)/tf.yCtrl),d:defaultD});
+        openInspector(steps.length-1);
+      }
+    });
+  }
+
+  // ── Draw ──────────────────────────────────────────────────────────────────
+  function draw(){
+    const{W,H}=syncSize(),dpr=window.devicePixelRatio||1;
+    ctx.save();ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
+    if(!steps.length){drawEmpty(W,H);ctx.restore();return;}
+    const PAD=40,showNums=elNums&&elNums.checked,showGrid=!elGrid||elGrid.checked;
+    const tf=getTransform(W,H);
+    const{pts,scale,offX,offY,minX,maxX,minY,maxY,spanX,spanY}=tf;
+    function sx(px){return offX+px*scale;}function sy(py){return offY+py*scale;}
+
+    // scanlines
+    ctx.globalAlpha=0.018*gridAlpha;ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=0.5;
+    for(let row=0;row<H;row+=3){ctx.beginPath();ctx.moveTo(0,row);ctx.lineTo(W,row);ctx.stroke();}
+    ctx.globalAlpha=1;
+
+    // grid
+    if(showGrid){
+      const gs=Math.ceil(Math.max(spanX,spanY)/6)||1,sub=gs/4;
+      ctx.strokeStyle=C.gridSub;ctx.lineWidth=0.4;ctx.globalAlpha=gridAlpha*0.6;
+      for(let g=Math.floor(minX/sub)*sub;g<=maxX+sub;g+=sub){ctx.beginPath();ctx.moveTo(sx(g),PAD);ctx.lineTo(sx(g),H-PAD);ctx.stroke();}
+      for(let g=Math.floor(minY/sub)*sub;g<=maxY+sub;g+=sub){ctx.beginPath();ctx.moveTo(PAD,sy(g));ctx.lineTo(W-PAD,sy(g));ctx.stroke();}
+      ctx.strokeStyle=C.grid;ctx.lineWidth=0.5;ctx.globalAlpha=gridAlpha;
+      for(let g=Math.floor(minX/gs)*gs;g<=maxX+gs;g+=gs){ctx.beginPath();ctx.moveTo(sx(g),PAD);ctx.lineTo(sx(g),H-PAD);ctx.stroke();}
+      for(let g=Math.floor(minY/gs)*gs;g<=maxY+gs;g+=gs){ctx.beginPath();ctx.moveTo(PAD,sy(g));ctx.lineTo(W-PAD,sy(g));ctx.stroke();}
+    }
+
+    // axes
+    const ox=sx(0),oy=sy(0);ctx.strokeStyle=C.axis;ctx.lineWidth=0.75;ctx.globalAlpha=gridAlpha;
+    if(ox>PAD&&ox<W-PAD){ctx.beginPath();ctx.moveTo(ox,PAD);ctx.lineTo(ox,H-PAD);ctx.stroke();}
+    if(oy>PAD&&oy<H-PAD){ctx.beginPath();ctx.moveTo(PAD,oy);ctx.lineTo(W-PAD,oy);ctx.stroke();}
+    ctx.globalAlpha=1;
+
+    // path
+    if(pts.length>1){
+      let totalLen=0;const segLens=[];
+      for(let i=1;i<pts.length;i++){const l=Math.hypot(sx(pts[i].px)-sx(pts[i-1].px),sy(pts[i].py)-sy(pts[i-1].py));segLens.push(l);totalLen+=l;}
+      const drawLen=pathProgress*totalLen;let travelled=0;ctx.lineCap='round';const N_EASE=12;
+      for(let i=1;i<pts.length;i++){
+        if(travelled>=drawLen)break;const segLen=segLens[i-1],segFrac=Math.min(1,(drawLen-travelled)/segLen);
+        const t=pts.length>2?i/(pts.length-1):1;
+        const x1=sx(pts[i-1].px),y1=sy(pts[i-1].py),x2=sx(pts[i].px),y2=sy(pts[i].py);
+        const subPts=[],subCount=Math.max(2,Math.round(N_EASE*segFrac));
+        for(let k=0;k<=subCount;k++){const raw=(k/subCount)*segFrac,eased=easeOutQuad(raw);subPts.push({x:x1+(x2-x1)*eased,y:y1+(y2-y1)*eased});}
+        const drawLine=(lw,alpha)=>{ctx.lineWidth=lw;ctx.globalAlpha=alpha;ctx.beginPath();ctx.moveTo(subPts[0].x,subPts[0].y);for(let k=1;k<subPts.length;k++)ctx.lineTo(subPts[k].x,subPts[k].y);ctx.stroke();};
+        ctx.strokeStyle=C.path;drawLine(8,0.04+0.06*t);drawLine(3,0.08+0.10*t);drawLine(1.5,0.20+0.80*t);
+        if(segFrac>=1&&pts.length>2){const every=Math.max(1,Math.floor(pts.length/8));if(i%every===0){const mid=Math.floor(subPts.length/2),nx=subPts[Math.min(mid+1,subPts.length-1)],angle=Math.atan2(nx.y-subPts[mid].y,nx.x-subPts[mid].x);ctx.save();ctx.translate(subPts[mid].x,subPts[mid].y);ctx.rotate(angle);ctx.globalAlpha=0.25+0.4*t;ctx.lineWidth=1;ctx.strokeStyle=C.path;ctx.beginPath();ctx.moveTo(-5,-3.5);ctx.lineTo(0,0);ctx.lineTo(-5,3.5);ctx.stroke();ctx.restore();}}
+        travelled+=segLen;
+      }
+      if(pathProgress<1){
+        let tip={x:sx(pts[0].px),y:sy(pts[0].py)},walked=0;
+        for(let i=1;i<pts.length;i++){const sl=segLens[i-1];if(walked+sl>=drawLen){const f=(drawLen-walked)/sl,e=easeOutQuad(f);tip={x:sx(pts[i-1].px)+(sx(pts[i].px)-sx(pts[i-1].px))*e,y:sy(pts[i-1].py)+(sy(pts[i].py)-sy(pts[i-1].py))*e};break;}walked+=sl;}
+        ctx.globalAlpha=0.9;ctx.beginPath();ctx.arc(tip.x,tip.y,3.5,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+        ctx.globalAlpha=0.3;ctx.beginPath();ctx.arc(tip.x,tip.y,8,0,Math.PI*2);ctx.fillStyle=C.path;ctx.fill();
+      }
+      ctx.globalAlpha=1;ctx.lineCap='butt';
+    }
+
+    // dots
+    for(let i=0;i<pts.length;i++){
+      const px=sx(pts[i].px),py=sy(pts[i].py),isOrigin=i===0,sIdx=i-1;
+      const isDrag=sIdx===dragIdx,isHov=sIdx===hoveredIdx&&!isDrag,isSel=sIdx===selectedIdx&&!isDrag;
+      const sc_dot=isOrigin?1:(dotScales[sIdx]??1);if(sc_dot<=0.01)continue;
+      const baseR=isOrigin?6:isDrag?7:isHov?6:isSel?6:4,r=baseR*sc_dot;
+      ctx.save();ctx.translate(px,py);
+      if(isDrag){for(let ring=0;ring<2;ring++){const p=0.5+0.5*Math.sin(pulseT*3.5+ring*Math.PI);ctx.beginPath();ctx.arc(0,0,r+6+p*5+ring*4,0,Math.PI*2);ctx.strokeStyle=C.dotDrag;ctx.lineWidth=1;ctx.globalAlpha=(0.15+0.15*p)/(ring+1);ctx.stroke();}}
+      if(isSel){const p=0.5+0.5*Math.sin(pulseT*2);ctx.beginPath();ctx.arc(0,0,r+5+p*2,0,Math.PI*2);ctx.strokeStyle=C.select;ctx.lineWidth=1.5;ctx.globalAlpha=0.4+0.2*p;ctx.stroke();}
+      if(isHov||isDrag||isOrigin||isSel){ctx.beginPath();ctx.arc(0,0,r+6,0,Math.PI*2);ctx.fillStyle=isOrigin?'rgba(56,189,248,0.10)':isDrag?'rgba(248,113,113,0.14)':isSel?'rgba(167,139,250,0.12)':'rgba(251,191,36,0.12)';ctx.globalAlpha=1;ctx.fill();}
+      ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fillStyle=isOrigin?C.dotOrig:isDrag?C.dotDrag:isSel?C.select:isHov?C.dotHov:C.dot;ctx.globalAlpha=(isHov||isOrigin||isDrag||isSel)?1:0.8;ctx.fill();
+      ctx.beginPath();ctx.arc(0,-r*0.25,r*0.3,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.25)';ctx.globalAlpha=sc_dot*0.6;ctx.fill();
+      ctx.globalAlpha=1;ctx.restore();
+      if(showNums&&i>0&&sc_dot>0.5){ctx.fillStyle=isSel?C.select:C.num;ctx.font='9px ui-monospace,monospace';ctx.textAlign='center';ctx.globalAlpha=sc_dot*(isSel?1:0.7);ctx.fillText(i,px,py-r-5);ctx.globalAlpha=1;}
+    }
+
+    // origin crosshair
+    ctx.strokeStyle=C.dotOrig;ctx.lineWidth=1;ctx.globalAlpha=0.35*gridAlpha;ctx.lineCap='round';ctx.setLineDash([2,3]);
+    ctx.beginPath();ctx.moveTo(ox-9,oy);ctx.lineTo(ox+9,oy);ctx.stroke();ctx.beginPath();ctx.moveTo(ox,oy-9);ctx.lineTo(ox,oy+9);ctx.stroke();
+    ctx.setLineDash([]);ctx.globalAlpha=1;ctx.lineCap='butt';
+
+    // snap ghost
+    if(dragSnap&&dragIdx!==-1){ctx.strokeStyle=C.dotDrag;ctx.lineWidth=0.75;ctx.globalAlpha=0.3;ctx.setLineDash([3,3]);ctx.beginPath();ctx.arc(sx(dragSnap.px),sy(dragSnap.py),6,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;}
+
+    // add ghost (advanced mode only)
+    if(addGhost&&currentMode==='advanced'){
+      ctx.save();ctx.strokeStyle=C.add;ctx.lineWidth=1.5;ctx.globalAlpha=0.5;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.arc(addGhost.cx,addGhost.cy,7,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+      if(pts.length>0){const lastPt=pts[pts.length-1];ctx.beginPath();ctx.moveTo(sx(lastPt.px),sy(lastPt.py));ctx.lineTo(addGhost.cx,addGhost.cy);ctx.globalAlpha=0.2;ctx.stroke();}
+      ctx.globalAlpha=0.7;ctx.fillStyle=C.add;ctx.font='9px ui-monospace,monospace';ctx.textAlign='center';ctx.fillText('+',addGhost.cx,addGhost.cy+3.5);ctx.restore();
+    }
+
+    // playback trail
+    if(PB.active&&PB.currentX!==undefined){
+      const maxSpeed=PB.timeline.reduce((m,seg)=>Math.max(m,Math.hypot(seg.x2-seg.x1,seg.y2-seg.y1)/Math.max(seg.dur,1)),0.001);
+      for(let i=0;i<PB.tail.length;i++){const pt=PB.tail[i],age=(i+1)/PB.tail.length,col=speedColor(Math.min(1,pt.speed/maxSpeed));ctx.beginPath();ctx.arc(sx(pt.x),sy(pt.y),2.5*age,0,Math.PI*2);ctx.fillStyle=col;ctx.globalAlpha=age*0.55;ctx.fill();}
+      const normSpeed=Math.min(1,PB.speed/maxSpeed),dotCol=speedColor(normSpeed);
+      const cx_dot=sx(PB.currentX),cy_dot=sy(PB.currentY),pulse=0.5+0.5*Math.sin(pulseT*5);
+      ctx.beginPath();ctx.arc(cx_dot,cy_dot,10+pulse*3,0,Math.PI*2);ctx.strokeStyle=dotCol;ctx.lineWidth=1;ctx.globalAlpha=0.2+0.15*pulse;ctx.stroke();
+      ctx.beginPath();ctx.arc(cx_dot,cy_dot,7,0,Math.PI*2);ctx.fillStyle=dotCol;ctx.globalAlpha=0.18;ctx.fill();
+      ctx.beginPath();ctx.arc(cx_dot,cy_dot,4.5,0,Math.PI*2);ctx.fillStyle=dotCol;ctx.globalAlpha=1;ctx.fill();
+      ctx.beginPath();ctx.arc(cx_dot,cy_dot,1.8,0,Math.PI*2);ctx.fillStyle='#fff';ctx.globalAlpha=0.85;ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    ctx.restore();
+  }
+
+  function drawEmpty(W,H){
+    ctx.fillStyle='rgba(255,255,255,0.04)';const ds=24;
+    for(let x=ds;x<W;x+=ds)for(let y=ds;y<H;y+=ds){ctx.beginPath();ctx.arc(x,y,0.75,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle=C.empty;ctx.font='13px ui-monospace,monospace';ctx.textAlign='center';ctx.globalAlpha=1;
+    ctx.fillText(currentMode==='advanced'?'no steps — right-click or use + below':'load a script to visualise',W/2,H/2);
+    ctx.font='11px ui-monospace,monospace';ctx.fillStyle='rgba(255,255,255,0.07)';ctx.fillText('pattern visualiser',W/2,H/2+22);
+  }
+
+  // ── Schedule draw ─────────────────────────────────────────────────────────
+  let _pending=false;
+  function scheduleDraw(){if(_pending)return;_pending=true;requestAnimationFrame(()=>{_pending=false;pulseT+=0.04;draw();if(dragIdx!==-1||selectedIdx!==-1||PB.active)scheduleDraw();});}
+
+  // ── Mouse ─────────────────────────────────────────────────────────────────
+  let dragStartSteps=null,hasDragged=false;
+  canvas.addEventListener('mousedown',function(e){
+    if(e.button!==0||currentMode!=='advanced'||!steps.length)return;
+    hideCtxMenu();const rect=canvas.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    const{idx,dist}=nearestStepIdx(mx,my,rect.width,rect.height);
+    if(dist>22){closeInspector();return;}
+    pushUndo();dragIdx=idx;dragStart={x:mx,y:my};dragStartSteps=steps.map(s=>({...s}));hasDragged=false;
+    canvas.style.cursor='grabbing';tooltip.style.display='none';e.preventDefault();scheduleDraw();
+  });
+  canvas.addEventListener('dblclick',function(e){
+    if(currentMode!=='advanced')return;const rect=canvas.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    const{dist}=nearestStepIdx(mx,my,rect.width,rect.height);if(dist<=22)return;
+    const tf=getTransform(rect.width,rect.height),abs=canvasToPatternAbs(mx,my,tf);
+    let cx=0,cy=0;for(const s of steps){cx+=s.x*tf.xCtrl;cy+=s.y*tf.yCtrl;}
+    const defaultD=steps.length?steps[steps.length-1].d:100;
+    addStepAt(steps.length,{x:r1((abs.px-cx)/tf.xCtrl),y:r1((abs.py-cy)/tf.yCtrl),d:defaultD});openInspector(steps.length-1);
+  });
+  canvas.addEventListener('contextmenu',function(e){
+    e.preventDefault();if(currentMode!=='advanced')return;
     const rect=canvas.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
-    const{pts,scale,offX,offY}=getTransform(rect.width,rect.height);
-    let best=-1,bestD=Infinity;
-    for(let i=1;i<pts.length;i++){const px=offX+pts[i].px*scale,py=offY+pts[i].py*scale,d=Math.hypot(mx-px,my-py);if(d<bestD){bestD=d;best=i-1;}}
-    if(bestD<20){
-      hoveredIdx=best;const s=steps[best];
-      tooltip.innerHTML=`<span style="color:var(--text);font-weight:500">Step ${best+1}</span><br>x: <span style="color:var(--text)">${s.x}</span>&nbsp;&nbsp;y: <span style="color:var(--text)">${s.y}</span>&nbsp;&nbsp;delay: <span style="color:var(--text)">${s.d}ms</span>`;
-      tooltip.style.left=Math.min(mx+12,rect.width-160)+'px';tooltip.style.top=Math.max(my-10,0)+'px';tooltip.style.display='block';
-    }else{hoveredIdx=-1;tooltip.style.display='none';}
+    const{idx,dist}=nearestStepIdx(mx,my,rect.width,rect.height);ctxCanvasPos={x:mx,y:my};
+    showCtxMenu(Math.min(e.clientX,window.innerWidth-180),Math.min(e.clientY,window.innerHeight-220),dist<=22?idx:-1);
+  });
+  canvas.addEventListener('mousemove',function(e){
+    const rect=canvas.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    if(dragIdx!==-1&&dragStart){
+      hasDragged=true;const tf=getTransform(rect.width,rect.height);
+      const{rx,ry}=canvasToPatternDelta(mx-dragStart.x,my-dragStart.y,tf);const snap=getSnapSize();
+      steps=dragStartSteps.map((s,i)=>{if(i!==dragIdx)return{...s};return{...s,x:snapVal(r1(s.x+rx),snap),y:snapVal(r1(s.y+ry),snap)};});
+      if(snap){let cx=0,cy=0;for(let j=0;j<=dragIdx;j++){cx+=steps[j].x;cy+=steps[j].y;}dragSnap={px:cx,py:cy};}else dragSnap=null;
+      updateStats(steps);const ta=document.getElementById('vec-ta');if(ta){ta.value=steps.map(s=>`${r1(s.x)},${r1(s.y)},${s.d}`).join('\n');if(typeof updateGutter==='function')updateGutter();}
+      if(selectedIdx===dragIdx&&elInspX){elInspX.value=steps[dragIdx].x;elInspY.value=steps[dragIdx].y;}
+      if(elStepList){const row=elStepList.children[dragIdx];if(row){const ins=row.querySelectorAll('.vis-sl-input');if(ins[0])ins[0].value=steps[dragIdx].x;if(ins[1])ins[1].value=steps[dragIdx].y;}}
+      scheduleDraw();return;
+    }
+    if(currentMode==='simple'){addGhost=null;return;}
+    const{idx,dist}=nearestStepIdx(mx,my,rect.width,rect.height);
+    if(dist<22){
+      hoveredIdx=idx;addGhost=null;const s=steps[idx];
+      tooltip.innerHTML=`<span class="vis-tt-step">step ${idx+1}</span><span class="vis-tt-val"><span class="vis-tt-label">x</span>${s.x}</span><span class="vis-tt-val"><span class="vis-tt-label">y</span>${s.y}</span><span class="vis-tt-val"><span class="vis-tt-label">ms</span>${s.d}</span>`;
+      tooltip.style.left=Math.min(mx+14,rect.width-190)+'px';tooltip.style.top=Math.max(my-14,4)+'px';tooltip.style.display='flex';
+      canvas.style.cursor='grab';
+    }else{
+      hoveredIdx=-1;tooltip.style.display='none';canvas.style.cursor='crosshair';
+      if(steps.length>0)addGhost={cx:mx,cy:my};else addGhost=null;
+    }
     scheduleDraw();
   });
-  canvas.addEventListener('mouseleave',function(){hoveredIdx=-1;tooltip.style.display='none';scheduleDraw();});
+  canvas.addEventListener('mouseup',function(){
+    if(dragIdx===-1)return;const wasDrag=hasDragged,idx=dragIdx;
+    dragIdx=-1;dragStart=null;dragStartSteps=null;dragSnap=null;hasDragged=false;canvas.style.cursor='default';
+    if(!wasDrag)openInspector(idx);else writeStepsToTextarea();scheduleDraw();
+  });
+  canvas.addEventListener('mouseleave',function(){
+    hoveredIdx=-1;tooltip.style.display='none';addGhost=null;
+    if(dragIdx!==-1){dragIdx=-1;dragStart=null;dragStartSteps=null;dragSnap=null;hasDragged=false;canvas.style.cursor='default';writeStepsToTextarea();}
+    scheduleDraw();
+  });
 
+  // ── Keyboard ──────────────────────────────────────────────────────────────
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();undo();return;}
+    if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();redo();return;}
+    if(selectedIdx<0||selectedIdx>=steps.length)return;
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+    if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();const idx=selectedIdx;closeInspector();deleteStep(idx);return;}
+    const nudge=e.shiftKey?5:1;let dx=0,dy=0;
+    if(e.key==='ArrowLeft')dx=-nudge;if(e.key==='ArrowRight')dx=nudge;if(e.key==='ArrowUp')dy=-nudge;if(e.key==='ArrowDown')dy=nudge;
+    if(!dx&&!dy)return;e.preventDefault();pushUndo();
+    steps[selectedIdx]={...steps[selectedIdx],x:r1(steps[selectedIdx].x+dx),y:r1(steps[selectedIdx].y+dy)};
+    openInspector(selectedIdx);writeStepsToTextarea();scheduleDraw();
+  });
+
+  // ── Live inputs ───────────────────────────────────────────────────────────
+  const ta=document.getElementById('vec-ta');
+  if(ta)ta.addEventListener('input',()=>{steps=stepsFromTextarea();if(selectedIdx>=steps.length)selectedIdx=-1;updateStats(steps);renderStepList();startEntrance();});
   if(elNums)elNums.addEventListener('change',scheduleDraw);
-  const ro=new ResizeObserver(function(){const dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr);scheduleDraw();});
-  ro.observe(canvas.parentElement);
+  if(elGrid)elGrid.addEventListener('change',scheduleDraw);
+  if(elSnap)elSnap.addEventListener('change',scheduleDraw);
 
-  // Public refresh — called after script load/edit/clear
-  window.visRefresh=function(){steps=parseSteps();updateStats(steps);scheduleDraw();};
-  const ta=$('vec-ta');if(ta)ta.addEventListener('input',window.visRefresh);
+  // Resize
+  new ResizeObserver(()=>{const dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr);scheduleDraw();}).observe(canvas.parentElement);
+
+  syncUndoButtons();
   window.visRefresh();
 })();
 
