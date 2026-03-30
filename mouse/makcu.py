@@ -12,6 +12,9 @@ COMMAND_TIMEOUT = 3.0
 # devices far faster than a watchdog ping ever could.
 WATCHDOG_INTERVAL = 30
 
+# How long to wait between reconnect attempts when the device is absent.
+RECONNECT_INTERVAL = 5
+
 
 class makcu_controller:
     controller = None
@@ -69,18 +72,39 @@ class makcu_controller:
 
     @staticmethod
     def _watchdog():
-        """Ping the device every WATCHDOG_INTERVAL seconds to detect silent
-        USB drops.
+        """Background thread: reconnects when the device is absent, and pings
+        every WATCHDOG_INTERVAL seconds when connected to detect silent USB
+        drops.
+
+        When disconnected, retries _do_connect() every RECONNECT_INTERVAL
+        seconds so that the device recovers automatically after a USB event
+        (e.g. game PC power cycle) without requiring a server restart.
 
         Skips pings while a spray is active to avoid competing for
-        command_lock mid-burst (which could clear button states and
-        break burst history tracking).  The timeout-based lock
-        acquisition still protects against truly hung devices in all
-        other callers.
+        command_lock mid-burst.  The lock-timeout mechanism still protects
+        against truly hung devices in all other callers.
         """
         while True:
+            with makcu_controller.connection_lock:
+                connected = (
+                    makcu_controller.is_connected_flag
+                    and makcu_controller.controller is not None
+                )
+
+            if not connected:
+                time.sleep(RECONNECT_INTERVAL)
+                # Guard: another code path may have reconnected while we slept.
+                with makcu_controller.connection_lock:
+                    if makcu_controller.controller is not None:
+                        continue
+                if makcu_controller._do_connect() is not None:
+                    print("[MAKCU] Reconnected")
+                continue
+
+            # ── Connected: periodic health ping ──────────────────────────────
             time.sleep(WATCHDOG_INTERVAL)
 
+            # Re-read — state may have changed while sleeping.
             with makcu_controller.connection_lock:
                 connected = (
                     makcu_controller.is_connected_flag
@@ -99,6 +123,7 @@ class makcu_controller:
                 continue
             try:
                 ctrl.move(0, 0)
+                ctrl.enable_button_monitoring(True)
             except Exception as e:
                 print(f"[MAKCU] Watchdog ping failed: {e}")
                 with makcu_controller.connection_lock:
@@ -113,7 +138,7 @@ class makcu_controller:
     @staticmethod
     def _do_connect():
         try:
-            controller = create_controller(debug=False, auto_reconnect=True)
+            controller = create_controller(debug=False, auto_reconnect=False)
 
             def on_button_event(button, pressed):
                 if button == MouseButton.LEFT:
@@ -194,13 +219,11 @@ class makcu_controller:
         try:
             # v3.7 firmware intercepts programmatic button presses when button
             # monitoring is active — pause monitoring for the click duration.
-            mck.transport.enable_button_monitoring(False)
+            mck.enable_button_monitoring(False)
             mck.press(button)
             time.sleep(0.03)
             mck.release(button)
-            mck.transport.enable_button_monitoring(True)
-            mck.transport._last_button_mask = 0
-            mck.transport._button_states = 0
+            mck.enable_button_monitoring(True)
             return True
         except Exception as e:
             print(f"[MAKCU] Click error: {e}")

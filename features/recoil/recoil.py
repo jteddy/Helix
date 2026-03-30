@@ -32,6 +32,7 @@ class recoil:
         rand_drift_x      = 0.0
         rand_drift_y      = 0.0
         burst_start       = 0.0
+        shot_deadline     = 0.0
         DEBOUNCE = 0.3
 
         def _log_burst(start: float) -> None:
@@ -104,6 +105,7 @@ class recoil:
                     rand_drift_x     = 0.0
                     rand_drift_y     = 0.0
                     burst_start      = time.monotonic()
+                    shot_deadline    = time.perf_counter()
                 lmb_was_pressed = True
 
                 # ── Fire recoil ───────────────────────────────────────────────────
@@ -140,7 +142,6 @@ class recoil:
                         # Per-shot delay jitter: ±10% of the script delay
                         delay = delay * random.uniform(0.9, 1.1)
 
-                    start_time     = time.perf_counter()
                     move_completed = makcu_controller.move_mouse_smoothly(
                         actual_x, actual_y, interrupt_on_lmb_release=True
                     )
@@ -149,9 +150,6 @@ class recoil:
                         total_y_movement += actual_y
 
                     # ── Case 1: move was interrupted — LMB released during move ───
-                    # Reset immediately, skip the inter-shot delay entirely.
-                    # Do NOT re-check LMB here — if it bounced back to True already
-                    # that will be handled cleanly at the top of the next iteration.
                     if not move_completed:
                         _log_burst(burst_start)
                         _reset_burst(total_y_movement)
@@ -160,18 +158,15 @@ class recoil:
                         lmb_was_pressed  = False
                         continue
 
-                    # ── Case 2: move completed — poll LMB during inter-shot delay ─
-                    # Check LMB immediately (catches release in the tiny gap between
-                    # move completing and the poll starting), then keep polling every
-                    # 1 ms for the remainder of the inter-shot delay.
-                    elapsed   = time.perf_counter() - start_time
-                    remaining = delay - elapsed
-
+                    # ── Case 2: move completed — wait until absolute shot deadline ─
+                    # Advance the deadline by exactly one shot period. Any time the
+                    # move consumed beyond its share is recovered in the next shot's
+                    # wait — drift does not compound across shots.
+                    shot_deadline += delay
                     lmb_released = not makcu_controller.get_button_state("LMB")
 
-                    if not lmb_released and remaining > 0:
-                        deadline = time.perf_counter() + remaining
-                        while time.perf_counter() < deadline:
+                    if not lmb_released:
+                        while time.perf_counter() < shot_deadline:
                             if not makcu_controller.get_button_state("LMB"):
                                 lmb_released = True
                                 break

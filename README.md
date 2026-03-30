@@ -2,7 +2,7 @@
 
 **Fork of [dev-boog/Cearum-Recoil](https://github.com/dev-boog/Cearum-Recoil/)** — reworked with a web UI front-end so the controls are accessible from any browser on your network.
 
-Recoil control system with a web UI. Runs as a FastAPI server on Linux connected to a MAKCU via USB.
+Recoil control system with a web UI. Runs as a FastAPI server on **Linux or Windows** connected to a MAKCU via USB.
 
 ---
 
@@ -26,13 +26,13 @@ Any browser (phone, tablet, monitor)
 └── http://<server-ip>:8000
         │
         ▼
-Helix Server  (Linux, any hardware)
+Helix Server  (Linux or Windows, any hardware)
 ├── Python / FastAPI  ← HTTP + WebSocket API
 ├── MAKCU connected via USB HID
 └── Recoil + Flashlight loops running continuously
 ```
 
-The server is a Python [FastAPI](https://fastapi.tiangolo.com/) application that runs on any Linux machine. It exposes an HTTP API and a WebSocket endpoint that the browser UI connects to. State is pushed to all connected clients every 200 ms over WebSocket, so every open browser tab stays in sync automatically.
+The server is a Python [FastAPI](https://fastapi.tiangolo.com/) application that runs on Linux or Windows. It exposes an HTTP API and a WebSocket endpoint that the browser UI connects to. State is pushed to all connected clients every 200 ms over WebSocket, so every open browser tab stays in sync automatically.
 
 ### How It Fits Into Your Setup
 
@@ -58,6 +58,8 @@ Any browser (phone, tablet, monitor)
 
 ## Quick Start
 
+### Linux
+
 ```bash
 git clone https://github.com/jteddy/Helix.git
 cd Helix
@@ -71,6 +73,24 @@ Open `http://<server-ip>:8000` from any browser. Find your server's IP with:
 ```bash
 hostname -I
 ```
+
+### Windows
+
+1. Install [Python 3.10+](https://www.python.org/downloads/) — check **"Add python.exe to PATH"** during setup
+2. Open **Command Prompt** or **PowerShell** in the Helix folder:
+```cmd
+git clone https://github.com/jteddy/Helix.git
+cd Helix
+python install.py
+```
+3. Select your MAKCU firmware version when prompted. No USB group or udev steps are needed on Windows — the installer skips them automatically.
+4. Start the server:
+```cmd
+python main.py
+```
+5. Open `http://localhost:8000` in any browser.
+
+> **Note:** `start.sh` and the systemd autostart are Linux-only. On Windows just run `python main.py` directly. To find your machine's IP for accessing from another device (phone etc.), run `ipconfig` and look for your LAN address.
 
 ---
 
@@ -91,9 +111,11 @@ sudo journalctl -u helix -f    # live logs
 
 ---
 
-## Desktop Launcher (Xubuntu / Desktop Linux)
+## Desktop Launcher
 
-If you run Helix on the same machine you game on, the launcher gives you a GUI control panel instead of typing systemctl commands. It auto-detects whether Helix is managed by systemd or run manually.
+If you run Helix on the same machine you game on, the launcher gives you a GUI popup to Start / Stop / Restart the server with a live log terminal and a system tray icon.
+
+### Linux
 
 **Install once:**
 ```bash
@@ -107,7 +129,17 @@ This installs PyQt6, copies the Helix icon into your icon theme, and adds a **He
 python3 launcher.py
 ```
 
-### What the launcher does
+### Windows
+
+Install PyQt6, then run the launcher directly — no shell script needed:
+```cmd
+pip install PyQt6
+python launcher.py
+```
+
+On Windows the launcher runs in **manual mode** automatically (systemd is not available). Start / Stop / Restart control `main.py` as a subprocess and the log terminal streams its output live. The system tray icon works natively.
+
+### Launcher features
 
 | Feature | Detail |
 |---------|--------|
