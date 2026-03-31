@@ -450,9 +450,23 @@ class HelixLauncher(QMainWindow):
             self._log_line("[launcher] restart requested", color=None)
             QTimer.singleShot(2500, self._reconnect_tail)
         else:
-            self._on_stop()
-            QTimer.singleShot(1000, self._on_start)
+            if self._proc and self._proc.poll() is None:
+                self._proc.terminate()
+                self._kill_thread()
+                self._log_line("[launcher] stopping for restart…", color=None)
+                self._wait_and_start()
+            else:
+                self._proc = None
+                self._on_start()
         QTimer.singleShot(2500, self._refresh_status)
+
+    def _wait_and_start(self):
+        """Poll until the old process exits, then start a new one."""
+        if self._proc and self._proc.poll() is None:
+            QTimer.singleShot(500, self._wait_and_start)
+            return
+        self._proc = None
+        self._on_start()
 
     # ── Log tail ───────────────────────────────────────────────────────────────
 

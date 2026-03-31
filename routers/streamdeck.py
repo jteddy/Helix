@@ -38,6 +38,7 @@ async def streamdeck_setup_docs():
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stream Deck Setup — Helix</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <style>
   *{{box-sizing:border-box;margin:0;padding:0}}
   body{{font-family:'Segoe UI',system-ui,sans-serif;background:#0c0c0f;color:#e2e2e8;
@@ -59,5 +60,5 @@ async def streamdeck_setup_docs():
 </style>
 </head><body>
 <div id="md"></div>
-<script>document.getElementById('md').innerHTML=marked.parse({escaped});</script>
+<script>document.getElementById('md').innerHTML=DOMPurify.sanitize(marked.parse({escaped}));</script>
 </body></html>""")

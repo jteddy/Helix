@@ -1,13 +1,49 @@
+import json as _json
 import os
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from shared import state, save_async
 
 router = APIRouter(tags=["scripts"])
+
+
+def _read_script(name: str, game: Optional[str] = None) -> dict:
+    """Read a script file (.json preferred, .txt fallback).
+    Returns {"content": csv_text, "sensitivity": float, "game": str, "author": str}.
+    Raises HTTPException(404) if neither format exists.
+    """
+    try:
+        json_path = state._resolve_path(name, game, ext=".json")
+        txt_path = state._resolve_path(name, game, ext=".txt")
+    except ValueError:
+        raise HTTPException(400, "Invalid path")
+
+    if os.path.exists(json_path):
+        with open(json_path) as f:
+            data = _json.load(f)
+        sensitivity = float(data.get("sensitivity", 1.0))
+        steps = data.get("steps", [])
+        lines = []
+        for item in steps:
+            try:
+                x, y, d = item[0], item[1], item[2]
+                lines.append(f"{x},{y},{int(d)}" if d == int(d) else f"{x},{y},{d}")
+            except Exception:
+                pass
+        return {
+            "content": "\n".join(lines),
+            "sensitivity": sensitivity,
+            "game": data.get("game", ""),
+            "author": data.get("author", ""),
+        }
+    elif os.path.exists(txt_path):
+        with open(txt_path) as f:
+            return {"content": f.read(), "sensitivity": 1.0, "game": "", "author": ""}
+    else:
+        raise HTTPException(404, "Script not found")
 
 
 # ── Scripts ────────────────────────────────────────────────────────────────────
@@ -24,33 +60,22 @@ async def list_scripts(game: Optional[str] = None):
 
 @router.get("/api/scripts/content/{game}/{name}")
 async def get_script_content_with_game(game: str, name: str):
-    try:
-        path = state._resolve_path(name, game)
-    except ValueError:
-        raise HTTPException(400, "Invalid path")
-    if not os.path.exists(path):
-        raise HTTPException(404, "Script not found")
-    with open(path) as f:
-        return PlainTextResponse(f.read())
+    return _read_script(name, game)
 
 
 @router.get("/api/scripts/content/{name}")
 async def get_script_content(name: str):
+    # Try flat (no game) first
     try:
-        flat = state._resolve_path(name)
-    except ValueError:
-        raise HTTPException(400, "Invalid path")
-    if os.path.exists(flat):
-        with open(flat) as f:
-            return PlainTextResponse(f.read())
+        return _read_script(name)
+    except HTTPException:
+        pass
+    # Search game folders
     for game in state.list_games():
         try:
-            path = state._resolve_path(name, game)
-        except ValueError:
+            return _read_script(name, game)
+        except HTTPException:
             continue
-        if os.path.exists(path):
-            with open(path) as f:
-                return PlainTextResponse(f.read())
     raise HTTPException(404, "Script not found")
 
 
@@ -82,11 +107,13 @@ class ScriptSave(BaseModel):
     name: str
     content: str
     game: Optional[str] = None
+    sensitivity: float = 1.0
 
 
 @router.post("/api/scripts/save")
 async def save_script(s: ScriptSave):
-    state.save_script(s.name, s.content, s.game)
+    if not state.save_script(s.name, s.content, s.game, s.sensitivity):
+        raise HTTPException(500, "Failed to save script")
     full_name = f"{s.game}/{s.name}" if s.game else s.name
     if state.loaded_script in (full_name, s.name):
         state.load_script(s.name, s.game)
@@ -96,14 +123,16 @@ async def save_script(s: ScriptSave):
 
 @router.delete("/api/scripts/{game}/{name}")
 async def delete_script_with_game(game: str, name: str):
-    state.delete_script(name, game)
+    if not state.delete_script(name, game):
+        raise HTTPException(404, "Script not found")
     await save_async()
     return {"ok": True}
 
 
 @router.delete("/api/scripts/{name}")
 async def delete_script(name: str):
-    state.delete_script(name)
+    if not state.delete_script(name):
+        raise HTTPException(404, "Script not found")
     await save_async()
     return {"ok": True}
 
@@ -122,21 +151,22 @@ async def get_patterns():
 
 @router.get("/api/patterns/{game}/{weapon}")
 async def get_pattern(game: str, weapon: str):
-    try:
-        path = state._resolve_path(weapon, game)
-    except ValueError:
-        raise HTTPException(400, "Invalid path")
-    if not os.path.exists(path):
-        raise HTTPException(404, "Pattern not found")
-    with open(path) as f:
-        return PlainTextResponse(f.read())
+    return _read_script(weapon, game)
 
 
 @router.post("/api/patterns/{game}/{weapon}")
 async def save_pattern(game: str, weapon: str, request: Request):
     body = await request.body()
-    content = body.decode()
-    state.save_script(weapon, content, game)
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        data = _json.loads(body)
+        content = data.get("content", "")
+        sensitivity = float(data.get("sensitivity", 1.0))
+    else:
+        content = body.decode()
+        sensitivity = 1.0
+    if not state.save_script(weapon, content, game, sensitivity):
+        raise HTTPException(500, "Failed to save pattern")
     full_name = f"{game}/{weapon}"
     if state.loaded_script in (full_name, weapon):
         state.load_script(weapon, game)
@@ -146,6 +176,7 @@ async def save_pattern(game: str, weapon: str, request: Request):
 
 @router.delete("/api/patterns/{game}/{weapon}")
 async def delete_pattern(game: str, weapon: str):
-    state.delete_script(weapon, game)
+    if not state.delete_script(weapon, game):
+        raise HTTPException(404, "Pattern not found")
     await save_async()
     return {"deleted": True}

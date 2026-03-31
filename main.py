@@ -38,6 +38,20 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 ws_clients: set[WebSocket] = set()
 _last_broadcast_hash: str = ""
+_bg_tasks: list = []
+
+
+def _on_task_done(task: asyncio.Task):
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc:
+        name = task.get_name()
+        print(f"[Helix] Background task {name!r} crashed: {exc}")
+        coro = _broadcast_loop() if "broadcast" in name else _autosave_loop()
+        new_task = asyncio.get_event_loop().create_task(coro, name=name)
+        new_task.add_done_callback(_on_task_done)
+        _bg_tasks.append(new_task)
 
 
 # ── Lifespan ───────────────────────────────────────────────────────────────────
@@ -56,8 +70,11 @@ async def lifespan(app: FastAPI):
     threading.Thread(target=recoil_feature.run_recoil,     args=(state,),         daemon=True).start()
     threading.Thread(target=flashlight_feature.run_flashlight, args=(state,),     daemon=True).start()
 
-    asyncio.create_task(_broadcast_loop())
-    asyncio.create_task(_autosave_loop())
+    t1 = asyncio.create_task(_broadcast_loop(), name="broadcast")
+    t2 = asyncio.create_task(_autosave_loop(), name="autosave")
+    t1.add_done_callback(_on_task_done)
+    t2.add_done_callback(_on_task_done)
+    _bg_tasks.extend([t1, t2])
 
     yield
 
@@ -74,6 +91,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "connect-src 'self' ws: wss:; "
+        "img-src 'self' data:;"
+    )
+    return response
 
 # ── Static / root ──────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
@@ -120,27 +151,32 @@ async def _broadcast_loop():
     global _last_broadcast_hash
     while True:
         if ws_clients:
+            snapshot = state.to_dict()
+            r = snapshot["recoil"]
+            fl = snapshot["flashlight"]
+            s = snapshot["settings"]
             msg = json.dumps({
                 "makcu_connected":          makcu_controller.is_connected(),
-                "recoil_enabled":           state.recoil_enabled,
-                "flashlight_enabled":       state.flashlight_enabled,
-                "flashlight_active":        state.flashlight_enabled and state.recoil_enabled,
-                "loaded_script":            state.loaded_script,
+                "recoil_enabled":           r["enabled"],
+                "flashlight_enabled":       fl["enabled"],
+                "flashlight_active":        fl["enabled"] and r["enabled"],
+                "loaded_script":            r["loaded_script"],
                 "lmb_pressed":              makcu_controller.get_button_state("LMB"),
-                "recoil_scalar":            state.recoil_scalar,
-                "x_control":                state.x_control,
-                "y_control":                state.y_control,
-                "randomisation_strength":   state.randomisation_strength,
-                "return_speed":             state.return_speed,
-                "randomisation":            state.randomisation,
-                "return_crosshair":         state.return_crosshair,
-                "require_aim":              state.require_aim,
-                "loop_recoil":              state.loop_recoil,
-                "toggle_keybind":           state.toggle_keybind,
-                "cycle_keybind":            state.cycle_keybind,
-                "theme":                    state.theme,
+                "recoil_scalar":            r["recoil_scalar"],
+                "x_control":                r["x_control"],
+                "y_control":                r["y_control"],
+                "randomisation_strength":   r["randomisation_strength"],
+                "return_speed":             r["return_speed"],
+                "randomisation":            r["randomisation"],
+                "return_crosshair":         r["return_crosshair"],
+                "require_aim":              r["require_aim"],
+                "loop_recoil":              r["loop_recoil"],
+                "toggle_keybind":           r["toggle_keybind"],
+                "cycle_keybind":            r["cycle_keybind"],
+                "theme":                    s["theme"],
                 "burst_history":            state.get_burst_history(),
-                "cs2_weapon":               state.cs2_weapon,
+                "cs2_weapon":               s["cs2_weapon"],
+                "script_sensitivity":       r.get("script_sensitivity", 1.0),
             })
             h = hashlib.md5(msg.encode()).hexdigest()
             if h != _last_broadcast_hash:

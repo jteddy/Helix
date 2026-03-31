@@ -3,6 +3,7 @@ AppState — single source of truth for all runtime settings.
 Replaces the tkinter RecoilMenu / FlashlightMenu / SettingsMenu classes.
 Thread-safe: all loops and the HTTP layer share this one object.
 """
+import json
 import os
 import pathlib
 import random
@@ -31,6 +32,7 @@ class AppState:
             os.path.dirname(os.path.abspath(__file__)), "saved_scripts"
         )
         self.loaded_script: str = "NONE"
+        self.script_sensitivity: float = 1.0
         self.vectors: List[Tuple[float, float, float]] = []
         self.burst_history: List[float] = []
 
@@ -203,25 +205,31 @@ class AppState:
 
     def list_scripts(self, game: Optional[str] = None) -> List[str]:
         with self._lock:
-            folder = os.path.join(self.scripts_dir, game) if game else self.scripts_dir
-            if not os.path.isdir(folder):
+            base = pathlib.Path(self.scripts_dir).resolve()
+            if game:
+                folder = (base / game).resolve()
+                if not str(folder).startswith(str(base) + os.sep):
+                    return []
+            else:
+                folder = base
+            if not folder.is_dir():
                 return []
-            return sorted(f[:-4] for f in os.listdir(folder) if f.endswith(".txt"))
+            json_names = {f[:-5] for f in os.listdir(str(folder)) if f.endswith(".json")}
+            txt_names = {f[:-4] for f in os.listdir(str(folder)) if f.endswith(".txt")}
+            return sorted(json_names | txt_names)
 
-    def _resolve_path(self, name: str, game: Optional[str] = None) -> str:
+    def _resolve_path(self, name: str, game: Optional[str] = None, ext: str = ".json") -> str:
         """Return the absolute path for a script file.
 
-        FIX: Validates that the resolved path stays within scripts_dir to
-        prevent path traversal attacks via crafted game/name URL parameters
-        (e.g. game='..', name='../../etc/passwd').
+        Validates that the resolved path stays within scripts_dir to
+        prevent path traversal attacks via crafted game/name URL parameters.
         """
         base = pathlib.Path(self.scripts_dir).resolve()
         if game:
-            target = (base / game / f"{name}.txt").resolve()
+            target = (base / game / f"{name}{ext}").resolve()
         else:
-            target = (base / f"{name}.txt").resolve()
+            target = (base / f"{name}{ext}").resolve()
 
-        # Ensure the resolved path is still inside the scripts directory
         if not str(target).startswith(str(base) + os.sep) and str(target) != str(base):
             raise ValueError(f"Path traversal attempt blocked: {target}")
 
@@ -229,44 +237,77 @@ class AppState:
 
     def load_script(self, name: str, game: Optional[str] = None) -> bool:
         try:
-            path = self._resolve_path(name, game)
+            json_path = self._resolve_path(name, game, ext=".json")
+            txt_path = self._resolve_path(name, game, ext=".txt")
         except ValueError:
             return False
-        if not os.path.exists(path):
+
+        if os.path.exists(json_path):
+            with open(json_path, "r") as f:
+                data = json.load(f)
+            sensitivity = float(data.get("sensitivity", 1.0))
+            vectors = self._parse_vectors_json(data.get("steps", []))
+        elif os.path.exists(txt_path):
+            with open(txt_path, "r") as f:
+                text = f.read()
+            sensitivity = 1.0
+            vectors = self._parse_vectors(text)
+        else:
             return False
-        with open(path, "r") as f:
-            text = f.read()
+
         with self._lock:
             self.loaded_script = f"{game}/{name}" if game else name
-            self.vectors = self._parse_vectors(text)
+            self.script_sensitivity = sensitivity
+            self.vectors = vectors
         return True
 
-    def save_script(self, name: str, content: str, game: Optional[str] = None) -> bool:
+    def save_script(self, name: str, content: str, game: Optional[str] = None,
+                    sensitivity: float = 1.0) -> bool:
         try:
-            path = self._resolve_path(name, game)
+            path = self._resolve_path(name, game, ext=".json")
         except ValueError:
             return False
+        steps = []
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            try:
+                x, y, d = map(str.strip, line.split(","))
+                steps.append([float(x), float(y), float(d)])
+            except Exception:
+                pass
+        payload = {
+            "version": 1,
+            "game": game or "",
+            "author": "",
+            "sensitivity": float(sensitivity),
+            "steps": steps,
+        }
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
-            f.write(content)
+            json.dump(payload, f, indent=2)
         return True
 
     def delete_script(self, name: str, game: Optional[str] = None) -> bool:
         try:
-            path = self._resolve_path(name, game)
+            json_path = self._resolve_path(name, game, ext=".json")
+            txt_path = self._resolve_path(name, game, ext=".txt")
         except ValueError:
             return False
-        if os.path.exists(path):
-            os.remove(path)
-            if game:
-                folder = os.path.join(self.scripts_dir, game)
-                try:
-                    if not os.listdir(folder):
-                        os.rmdir(folder)
-                except Exception:
-                    pass
-            return True
-        return False
+        deleted = False
+        for path in (json_path, txt_path):
+            if os.path.exists(path):
+                os.remove(path)
+                deleted = True
+        if deleted and game:
+            folder = os.path.join(self.scripts_dir, game)
+            try:
+                if not os.listdir(folder):
+                    os.rmdir(folder)
+            except Exception:
+                pass
+        return deleted
 
     def cycle_script(self):
         with self._lock:
@@ -293,6 +334,17 @@ class AppState:
                 idx = 0
             name = scripts[idx]
         self.load_script(name, current_game)
+
+    @staticmethod
+    def _parse_vectors_json(steps: list) -> List[Tuple[float, float, float]]:
+        out = []
+        for item in steps:
+            try:
+                x, y, d = float(item[0]), float(item[1]), float(item[2])
+                out.append((x, y, d / 1000))
+            except Exception:
+                pass
+        return out
 
     @staticmethod
     def _parse_vectors(text: str) -> List[Tuple[float, float, float]]:
@@ -328,6 +380,7 @@ class AppState:
                     "return_speed": self.return_speed,
                     "scripts_dir": self.scripts_dir,
                     "loaded_script": self.loaded_script,
+                    "script_sensitivity": self.script_sensitivity,
                 },
                 "flashlight": {
                     "enabled": self.flashlight_enabled,

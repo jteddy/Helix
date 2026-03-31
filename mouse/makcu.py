@@ -29,14 +29,17 @@ class makcu_controller:
 
     connection_lock   = threading.Lock()
     command_lock      = threading.Lock()
+    _button_lock      = threading.Lock()
     is_connected_flag = False
     _watchdog_thread  = None
     _spray_active     = threading.Event()
+    _clicking_button  = None          # MouseButton being programmatically clicked
 
     @staticmethod
     def _clear_button_states():
-        for k in makcu_controller.button_states:
-            makcu_controller.button_states[k] = False
+        with makcu_controller._button_lock:
+            for k in makcu_controller.button_states:
+                makcu_controller.button_states[k] = False
 
     @staticmethod
     def is_connected():
@@ -141,16 +144,22 @@ class makcu_controller:
             controller = create_controller(debug=False, auto_reconnect=False)
 
             def on_button_event(button, pressed):
-                if button == MouseButton.LEFT:
-                    makcu_controller.button_states["LMB"] = pressed
-                elif button == MouseButton.RIGHT:
-                    makcu_controller.button_states["RMB"] = pressed
-                elif button == MouseButton.MIDDLE:
-                    makcu_controller.button_states["MMB"] = pressed
-                elif button == MouseButton.MOUSE4:
-                    makcu_controller.button_states["M4"] = pressed
-                elif button == MouseButton.MOUSE5:
-                    makcu_controller.button_states["M5"] = pressed
+                with makcu_controller._button_lock:
+                    # Ignore spurious events for a button being clicked
+                    # programmatically — the firmware re-reports them when
+                    # monitoring is toggled back on around each HID command.
+                    if button == makcu_controller._clicking_button:
+                        return
+                    if button == MouseButton.LEFT:
+                        makcu_controller.button_states["LMB"] = pressed
+                    elif button == MouseButton.RIGHT:
+                        makcu_controller.button_states["RMB"] = pressed
+                    elif button == MouseButton.MIDDLE:
+                        makcu_controller.button_states["MMB"] = pressed
+                    elif button == MouseButton.MOUSE4:
+                        makcu_controller.button_states["M4"] = pressed
+                    elif button == MouseButton.MOUSE5:
+                        makcu_controller.button_states["M5"] = pressed
 
             controller.set_button_callback(on_button_event)
             controller.enable_button_monitoring(True)
@@ -218,10 +227,22 @@ class makcu_controller:
             return False
         try:
             # v3.7 firmware intercepts programmatic button presses when button
-            # monitoring is active — pause monitoring for the click duration.
+            # monitoring is active — monitoring must be OFF for each HID
+            # command.  But we re-enable it during the 30 ms inter-press
+            # sleep so that physical button events (e.g. LMB release) are
+            # still captured.  Spurious firmware events for the clicked
+            # button are filtered in the on_button_event callback via
+            # _clicking_button.  The filter is held for 5 ms after the last
+            # monitoring toggle to let pending USB events drain before it is
+            # cleared — without this, late-arriving events slip through and
+            # can falsely trip the recoil toggle keybind.
+            with makcu_controller._button_lock:
+                makcu_controller._clicking_button = button
             mck.enable_button_monitoring(False)
             mck.press(button)
+            mck.enable_button_monitoring(True)
             time.sleep(0.03)
+            mck.enable_button_monitoring(False)
             mck.release(button)
             mck.enable_button_monitoring(True)
             return True
@@ -233,6 +254,12 @@ class makcu_controller:
             makcu_controller._clear_button_states()
             return False
         finally:
+            # Let pending firmware events drain while the filter is still
+            # active, then clear.  5 ms is well above typical USB HID
+            # latency (~1-2 ms).
+            time.sleep(0.005)
+            with makcu_controller._button_lock:
+                makcu_controller._clicking_button = None
             makcu_controller.command_lock.release()
 
     # ── Simple move ───────────────────────────────────────────────────────────
@@ -316,7 +343,7 @@ class makcu_controller:
 
                 # Check AFTER sending this step's movement so that at least
                 # one micro-move always fires even on the very first step.
-                if interrupt_on_lmb_release and not makcu_controller.button_states.get("LMB", False):
+                if interrupt_on_lmb_release and not makcu_controller.get_button_state("LMB"):
                     return False
 
                 time.sleep(step_delay)
@@ -337,7 +364,8 @@ class makcu_controller:
 
     @staticmethod
     def get_button_state(button_name):
-        return makcu_controller.button_states.get(button_name, False)
+        with makcu_controller._button_lock:
+            return makcu_controller.button_states.get(button_name, False)
 
     # ── Disconnect ────────────────────────────────────────────────────────────
 
