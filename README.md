@@ -443,3 +443,56 @@ When a CS2 weapon is selected it overrides the loaded script for the recoil loop
   "script":     "ABI/ak47"
 }
 ```
+
+# Troubleshooting
+## Firmware
+The minimum version firmware of your MAKCU device needs to be (INSERT HERE)
+
+### Updating Firmeare
+
+- MAKCU requires the CH343 USB-to-serial driver to be loaded on your computer (the computer you will use for flashing). The driver download link is provided in the section below.
+
+Correct COM Port
+The COM port for USB 2 should be below 10. If your COM port number is 10 or higher, you may experience connection issues.
+
+Baud Rate
+Baud rate is matched to the software you will use, please see the baud rate section in the information page.
+
+Both Sides Flashed
+Make sure you have correctly set up and flashed MAKCU on both the left side (device) and right side (host).
+
+
+
+#### Documentation
+- https://www.makcu.com/en/setup
+
+#### Tools
+- https://terminal.spacehuhn.com/
+- https://makxd.com/
+
+# MAKCU Setup on Arch Linux (CachyOS)
+
+The MAKCU uses an ESP32-S3 with native CDC ACM — no CH343 driver needed.
+
+## Connect
+
+1. Put MAKCU in flash/normal mode per docs
+2. Plug into USB
+3. Check port:
+   ```bash
+   ls /dev/ttyACM*
+Connect via serial
+screen /dev/ttyACM0 115200
+- Exit screen: Ctrl+A then \
+- Baud rate defaults to 115200 unless changed
+Notes
+- Device appears as ttyACM0 via the built-in cdc-acm kernel driver
+- No additional drivers required on modern Linux kernels
+
+To save directly:
+
+```bash
+cat > ~/makcu/makcu-setup.md << 'EOF'
+# MAKCU Setup on Arch Linux (CachyOS)
+
+...
