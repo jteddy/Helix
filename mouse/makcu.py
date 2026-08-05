@@ -226,25 +226,18 @@ class makcu_controller:
         if not makcu_controller._acquire_command_lock():
             return False
         try:
-            # v3.7 firmware intercepts programmatic button presses when button
-            # monitoring is active — monitoring must be OFF for each HID
-            # command.  But we re-enable it during the 30 ms inter-press
-            # sleep so that physical button events (e.g. LMB release) are
-            # still captured.  Spurious firmware events for the clicked
-            # button are filtered in the on_button_event callback via
-            # _clicking_button.  The filter is held for 5 ms after the last
-            # monitoring toggle to let pending USB events drain before it is
-            # cleared — without this, late-arriving events slip through and
-            # can falsely trip the recoil toggle keybind.
+            # Keep monitoring ON throughout the click.  v3.7 firmware
+            # re-reports programmatic presses as button events, but the
+            # _clicking_button callback filter silently drops them so they
+            # never corrupt button_states or trip the toggle keybind.
+            # NOT toggling monitoring avoids two problems:
+            #   1. A monitoring gap that loses physical LMB release events
+            #   2. Rapid enable/disable cycling that can desync the firmware
             with makcu_controller._button_lock:
                 makcu_controller._clicking_button = button
-            mck.enable_button_monitoring(False)
             mck.press(button)
-            mck.enable_button_monitoring(True)
             time.sleep(0.03)
-            mck.enable_button_monitoring(False)
             mck.release(button)
-            mck.enable_button_monitoring(True)
             return True
         except Exception as e:
             print(f"[MAKCU] Click error: {e}")
