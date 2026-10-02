@@ -6,13 +6,10 @@ from collections import deque
 import serial
 from makcu import create_controller, MouseButton
 
-# Last bytes received from the device, for diagnosing the button-stream format
-# (GET /api/device/rx). The library's listener thread consumes the port, so the
-# only place to see raw bytes is a wrapper around the serial class's read().
-_rx_tail = deque(maxlen=512)
-# Non-text bytes (anything but printable ASCII and CR/LF) are button-stream or binary
-# frames. Keep the latest few with context, so they are visible even while text
-# replies flood the tail above.
+# The library's listener thread consumes the serial port, so the only place to see the
+# raw bytes is a wrapper around the serial class's read(). It feeds the binary frame
+# decoder, and keeps the latest non-text bytes (anything but printable ASCII and CR/LF,
+# i.e. button-stream or binary frames) with context for the Button Monitor.
 _rx_events = deque(maxlen=30)
 _rx_nontext = [0]
 
@@ -26,7 +23,6 @@ def _install_rx_tee():
     def read(self, size=1):
         data = orig(self, size)
         if data:
-            _rx_tail.extend(data)
             try:
                 makcu_controller._decode_frames(data)
             except Exception as e:
@@ -101,6 +97,11 @@ class makcu_controller:
     _framed           = False         # button events arrive as binary 0x53 frames
     _frame_buf        = bytearray()   # partial frame carried between reads
     _last_reenable    = 0.0
+    button_events     = {n: 0 for n in _BTN_NAMES}      # press/release events Helix processed
+    button_last       = {n: None for n in _BTN_NAMES}   # monotonic time of the last change
+    overflow_count    = 0
+    last_overflow     = None
+    _overflow_times   = deque(maxlen=10)
     _waiter           = None          # (regex, Event, matches) for the pending query()
     _info_lock        = threading.Lock()
     device_info       = {"firmware": None, "baud": None, "baud_ok": None}
@@ -216,6 +217,8 @@ class makcu_controller:
     @staticmethod
     def _do_connect():
         try:
+            makcu_controller._framed = False
+            makcu_controller._frame_buf.clear()
             controller = create_controller(debug=False, auto_reconnect=False)
 
             def on_button_event(button, pressed):
@@ -236,8 +239,6 @@ class makcu_controller:
                 makcu_controller.is_connected_flag = True
 
             makcu_controller._native_click = False
-            makcu_controller._framed = False
-            makcu_controller._frame_buf.clear()
             makcu_controller._set_info(firmware=None, baud="checking…", baud_ok=None)
             threading.Thread(
                 target=makcu_controller.verify_link, args=(controller,),
@@ -473,6 +474,8 @@ class makcu_controller:
             if _ENUM_NAME.get(makcu_controller._clicking_button) == name:
                 return
             makcu_controller.button_states[name] = pressed
+            makcu_controller.button_events[name] += 1
+            makcu_controller.button_last[name] = time.monotonic()
 
     @staticmethod
     def _decode_frames(data):
@@ -508,6 +511,10 @@ class makcu_controller:
         if bid == 0xFF and state == 0xFF:
             # Overflow: the firmware has disabled the mouse stream and dropped queued
             # changes. Forget cached state and ask for the stream again.
+            now = time.monotonic()
+            makcu_controller.overflow_count += 1
+            makcu_controller.last_overflow = now
+            makcu_controller._overflow_times.append(now)
             print("[MAKCU] Button stream overflow — re-enabling")
             makcu_controller._clear_button_states()
             makcu_controller._reenable_stream()
@@ -519,6 +526,8 @@ class makcu_controller:
         now = time.monotonic()
         if now - makcu_controller._last_reenable < 0.5:
             return
+        if makcu_controller.overflow_loop():
+            return  # re-enabling just overflows again; stop thrashing and let the user look
         makcu_controller._last_reenable = now
         # Not from the listener thread: send_text takes locks and writes to the port.
         threading.Thread(
@@ -528,6 +537,93 @@ class makcu_controller:
     @staticmethod
     def stream_format():
         return "0x53 frames" if makcu_controller._framed else "text or none seen"
+
+    @staticmethod
+    def overflow_loop():
+        t = makcu_controller._overflow_times
+        return len(t) >= 5 and time.monotonic() - t[-5] < 30
+
+    @staticmethod
+    def button_summary():
+        now = time.monotonic()
+        with makcu_controller._button_lock:
+            states = dict(makcu_controller.button_states)
+            events = dict(makcu_controller.button_events)
+            last = dict(makcu_controller.button_last)
+        lo = makcu_controller.last_overflow
+        return {
+            "states": states,
+            "events": events,
+            "last_change_age_s": {k: (round(now - v, 1) if v else None) for k, v in last.items()},
+            "stream_format": makcu_controller.stream_format(),
+            "framed": makcu_controller._framed,
+            "overflows": makcu_controller.overflow_count,
+            "last_overflow_age_s": round(now - lo, 1) if lo else None,
+            "overflow_loop": makcu_controller.overflow_loop(),
+            "nontext_bytes": _rx_nontext[0],
+            "recent_frames": [
+                {"age_s": round(now - t, 2), "hex": makcu_controller._fmt(d)["hex"]}
+                for t, d in list(_rx_events)[-10:]
+            ],
+        }
+
+    @staticmethod
+    def reset_button_stats():
+        with makcu_controller._button_lock:
+            for n in _BTN_NAMES:
+                makcu_controller.button_events[n] = 0
+                makcu_controller.button_last[n] = None
+        makcu_controller.overflow_count = 0
+        makcu_controller.last_overflow = None
+        makcu_controller._overflow_times.clear()
+
+    @staticmethod
+    def probe_buttons():
+        """Ask the firmware for the stream switch and each button's state. Returns
+        (stream_enabled, {name: 0..3 or None}, note). Skipped while the recorder or a
+        spray is using the line."""
+        if makcu_controller._recording.is_set() or makcu_controller._spray_active.is_set():
+            return None, None, "skipped: recorder or recoil is using the line"
+        m = makcu_controller.query(
+            "km.buttons()", r"^[>\s]*(?:km\.buttons\()?([01])\)?\s*$", timeout=0.06, retries=1
+        )
+        enabled = None if m is None else m.group(1) == "1"
+        probe = {}
+        for name, cmd in (("LMB", "left"), ("RMB", "right"), ("MMB", "middle"), ("M4", "side1"), ("M5", "side2")):
+            r = makcu_controller.query(
+                f"km.{cmd}()", r"^[>\s]*(?:km\.\w+\()?([0-3])\)?\s*$", timeout=0.05, retries=1
+            )
+            probe[name] = None if r is None else int(r.group(1))
+            if enabled is None and name == "LMB" and r is None:
+                return None, None, "firmware did not answer km.buttons() or km.left()"
+        return enabled, probe, None
+
+    @staticmethod
+    def enable_stream(mode):
+        if mode == "binary":
+            frame = bytes([0xDE, 0xAD, 2, 0, 0x52, 1, 1])      # INPUT_STREAM SET mouse on
+            if not makcu_controller._acquire_command_lock():
+                return False, "command lock timeout"
+            try:
+                with makcu_controller.connection_lock:
+                    ctrl = makcu_controller.controller
+                if ctrl is None:
+                    return False, "not connected"
+                ctrl.transport.serial.write(frame)
+                ctrl.transport.serial.flush()
+            except Exception as e:
+                return False, f"write failed: {e}"
+            finally:
+                makcu_controller.command_lock.release()
+            return True, "binary INPUT_STREAM set: " + " ".join(f"{b:02x}" for b in frame)
+        m = makcu_controller.query("km.buttons(1)", r"\S", timeout=0.3, retries=1)
+        reply = m.string.lstrip("> ").strip() if m else None
+        return makcu_controller.is_connected(), f"km.buttons(1) (reply: {reply or 'none'})"
+
+    @staticmethod
+    def device_route():
+        m = makcu_controller.query("km.device()", r"^[>\s]*(\(.*\)|R:.*)\s*$", timeout=0.2, retries=2)
+        return m.group(1) if m else None
 
     # ── Text queries (replies arrive via the library's line parser) ───────────
     #
@@ -694,19 +790,6 @@ class makcu_controller:
         return {
             "hex": " ".join(f"{b:02x}" for b in data),
             "ascii": "".join(chr(b) if 32 <= b < 127 else "." for b in data),
-        }
-
-    @staticmethod
-    def rx_tail(n=256):
-        data = bytes(list(_rx_tail)[-n:])
-        now = time.monotonic()
-        return {
-            "bytes": len(data),
-            **makcu_controller._fmt(data),
-            "nontext_bytes_total": _rx_nontext[0],
-            "nontext_events": [
-                {"age_s": round(now - t, 2), **makcu_controller._fmt(d)} for t, d in list(_rx_events)
-            ],
         }
 
     @staticmethod

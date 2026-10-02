@@ -282,6 +282,14 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .rec-canvas{display:none;width:100%;height:150px;background:var(--bg1);border:1px solid var(--border);border-radius:var(--rs);margin-top:4px;}
 .rec-warn{font-family:var(--fu);font-size:10px;color:var(--red);padding:3px 0 0;}
 .rec-stats{padding-bottom:7px;}
+.mon-pills{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0 6px;}
+.mon-pill{display:flex;flex-direction:column;align-items:center;min-width:56px;padding:5px 8px;background:var(--bg1);border:1px solid var(--border);border-radius:var(--rs);font-family:var(--fm);font-size:10px;color:var(--text2);}
+.mon-pill b{font-family:var(--fu);font-size:12px;color:var(--text);letter-spacing:.04em;}
+.mon-pill i{font-style:normal;color:var(--text3);font-size:9px;}
+.mon-pill.on{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset;}
+.mon-pill.on b{color:var(--green);}
+.mon-frames{font-family:var(--fm);font-size:10px;color:var(--text2);white-space:pre-wrap;word-break:break-all;max-height:140px;overflow:auto;padding:2px 0 6px;}
+.mon-report{width:100%;box-sizing:border-box;font-family:var(--fm);font-size:10px;background:var(--bg1);color:var(--text);border:1px solid var(--border);border-radius:var(--rs);padding:6px;resize:vertical;}
 
 /* ── Pattern Visualiser ─────────────────────────────────────────── */
 .vis-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;position:relative;}
@@ -598,6 +606,35 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
     </div>
   </div>
 
+
+  <div class="card" id="mon-card">
+    <div class="ch">Button Monitor</div>
+    <div class="cb">
+      <p class="rec-help">Start the monitor, then press each mouse button and watch what Helix receives from the MAKCU.</p>
+      <div class="mon-pills" id="mon-pills"><div class="mon-pill" id="mon-p-LMB"><b>LMB</b><span id="mon-n-LMB">0</span><i id="mon-a-LMB">—</i></div><div class="mon-pill" id="mon-p-RMB"><b>RMB</b><span id="mon-n-RMB">0</span><i id="mon-a-RMB">—</i></div><div class="mon-pill" id="mon-p-MMB"><b>MMB</b><span id="mon-n-MMB">0</span><i id="mon-a-MMB">—</i></div><div class="mon-pill" id="mon-p-M4"><b>M4</b><span id="mon-n-M4">0</span><i id="mon-a-M4">—</i></div><div class="mon-pill" id="mon-p-M5"><b>M5</b><span id="mon-n-M5">0</span><i id="mon-a-M5">—</i></div></div>
+      <div class="rec-status" id="mon-stream">Stream: —</div>
+      <div class="rec-status" id="mon-probe" style="display:none"></div>
+      <div class="rec-pos" id="mon-note"></div>
+      <div class="tool-section-lbl">Recent raw frames</div>
+      <div class="mon-frames" id="mon-frames">(none yet)</div>
+      <div class="rpm-row rec-row">
+        <button class="btn pri sm" id="mon-toggle" onclick="monToggle()">Start monitor</button>
+        <button class="btn sm" onclick="monEnable('text')">Re-enable stream (text)</button>
+        <button class="btn sm" onclick="monEnable('binary')" title="experimental: the vendor SDK enables the stream with a binary command">Enable via binary</button>
+        <button class="btn sm" onclick="monReset()">Reset counters</button>
+      </div>
+      <div class="tool-sep"></div>
+      <div class="rpm-row rec-row">
+        <button class="btn sm" onclick="monMove(100,0)">Test move right 100</button>
+        <button class="btn sm" onclick="monMove(0,100)">Test move down 100</button>
+      </div>
+      <p class="rec-help">Moves your mouse on the game PC; checks that movement injection works independently of buttons and recoil.</p>
+      <div class="tool-sep"></div>
+      <div class="rpm-row rec-row"><button class="btn sm" onclick="monReport()">Generate report</button></div>
+      <p class="rec-help">Copy this and send it when reporting a problem.</p>
+      <textarea class="mon-report" id="mon-report" rows="14" readonly spellcheck="false" onfocus="this.select()" onclick="this.select()"></textarea>
+    </div>
+  </div>
 
   <div id="pattern-visualiser-card" class="vis-card" data-vis-mode="simple">
     <div class="vis-header">
@@ -1691,8 +1728,44 @@ function recSchedule(){
   _recPoll=setTimeout(recTick,_recState==='armed'||_recState==='recording'?300:1500);
 }
 async function recTick(){try{recApply(await api('/api/recorder'));}catch(e){recSchedule();}}
+// ── Button Monitor (Tools) ───────────────────────────────────────────────────
+const _monBtns=['LMB','RMB','MMB','M4','M5'];let _monOn=false,_monT=null;
+function monAge(a){return a==null?'—':a<10?a.toFixed(1)+'s ago':Math.round(a)+'s ago';}
+function monApply(d){
+  const st=d.states||{},ev=d.events||{},ag=d.last_change_age_s||{};
+  _monBtns.forEach(b=>{$('mon-p-'+b).classList.toggle('on',!!st[b]);$('mon-n-'+b).textContent=ev[b]|0;$('mon-a-'+b).textContent=monAge(ag[b]);});
+  const s=$('mon-stream');
+  s.textContent=`Stream: ${d.stream_format||'?'} · non-text bytes ${d.nontext_bytes|0} · overflows ${d.overflows|0}`+(d.last_overflow_age_s!=null?` (last ${Number(d.last_overflow_age_s).toFixed(1)}s ago)`:'')+(d.overflow_loop?' — overflow loop: the firmware keeps dropping the stream':'');
+  s.className='rec-status'+(d.overflow_loop?' err':'');
+  const pr=$('mon-probe'),pb=d.probe,en=d.stream_enabled;
+  if(pb||en!=null){
+    const v=k=>pb&&pb[k]!=null?pb[k]:'?';
+    pr.style.display='';
+    pr.textContent=(pb?`Firmware reports (km.left()/right()/middle()/side1()/side2()): L ${v('LMB')} R ${v('RMB')} M ${v('MMB')} 4 ${v('M4')} 5 ${v('M5')} · `:'')+`Button stream enabled: ${en==null?'?':en?'yes':'no'}`;
+  }else pr.style.display='none';
+  $('mon-note').textContent=d.probe_note||'';
+  const fr=(d.recent_frames||[]).slice(-10);
+  $('mon-frames').textContent=fr.length?fr.map(f=>`${Number(f.age_s).toFixed(1)}s  ${f.hex}`).join('\n'):'(none yet)';
+}
+function monSched(){clearTimeout(_monT);_monT=null;if(!_monOn||!$('tab-tools').classList.contains('active'))return;_monT=setTimeout(monTick,300);}
+async function monTick(){try{monApply(await api('/api/buttons?probe=1'));}catch(e){}monSched();}
+async function monSnap(){if(_monOn)return;try{monApply(await api('/api/buttons?probe=0'));}catch(e){}}
+function monStart(){_monOn=true;$('mon-toggle').textContent='Stop monitor';monTick();}
+function monStop(){_monOn=false;clearTimeout(_monT);_monT=null;const b=$('mon-toggle');if(b)b.textContent='Start monitor';}
+function monToggle(){_monOn?monStop():monStart();}
+async function monPost(path,body){return api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});}
+async function monEnable(mode){try{const r=await monPost('/api/buttons/enable',{mode});notify((r.ok?'Sent: ':'Failed: ')+(r.sent||mode));}catch(e){notify(recErr(e));}}
+async function monReset(){try{await monPost('/api/buttons/reset');notify('Counters reset');monSnap();}catch(e){notify(recErr(e));}}
+async function monMove(dx,dy){try{const r=await monPost('/api/device/test-move',{dx,dy});notify(r.ok?`Moved (${dx}, ${dy})`:'Move failed');}catch(e){notify(recErr(e));}}
+async function monReport(){
+  try{
+    const t=JSON.stringify(await api('/api/diagnostics'),null,1),ta=$('mon-report');
+    ta.value=t;ta.focus();ta.select();
+    try{await navigator.clipboard.writeText(t);notify('Report copied');}catch(_){notify('Report ready — copy it from the box');}
+  }catch(e){notify(recErr(e));}
+}
 function onTabChange(name){
-  if(name==='tools')recTick();else{clearTimeout(_recPoll);_recPoll=null;}
+  if(name==='tools'){recTick();monSnap();}else{clearTimeout(_recPoll);_recPoll=null;monStop();}
   clearInterval(_srvTick);_srvTick=null;
   if(name==='settings'){devRefresh();srvRefresh();_srvTick=setInterval(srvRefresh,10000);}
 }

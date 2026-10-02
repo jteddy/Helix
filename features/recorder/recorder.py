@@ -20,6 +20,7 @@ from mouse.makcu import makcu_controller
 # patterns whose steps are tens of ms long.
 POLL_INTERVAL = 0.01
 STREAM_REASSERT_S = 3.0
+UI_GONE_S = 15.0
 ARM_TIMEOUT_S = 120
 MAX_SAMPLES = 20000
 MAX_QUERY_FAILS = 25
@@ -81,6 +82,7 @@ class Recorder:
         self._thread = None
         self._cancel = threading.Event()
         self._finish = threading.Event()
+        self._last_poll = time.monotonic()
         self._samples = []
         self._pub = self._blank()
 
@@ -96,6 +98,7 @@ class Recorder:
             self._pub.update(kw)
 
     def status(self):
+        self._last_poll = time.monotonic()      # the page polls this; see the armed-phase check
         with self._lock:
             return dict(self._pub)
 
@@ -235,6 +238,11 @@ class Recorder:
             if phase == "armed" and not lmb_ever and now - last_reassert >= STREAM_REASSERT_S:
                 last_reassert = now
                 makcu_controller.send_text("km.buttons(1)")
+            if phase == "armed" and time.monotonic() - self._last_poll > UI_GONE_S:
+                # The page stopped polling (tab closed or left): do not keep hammering the
+                # device with queries and stream re-enables in the background.
+                self._set(state="idle", message="Cancelled: the page stopped checking in", pos=None)
+                return
             if phase == "armed" and now - began > ARM_TIMEOUT_S:
                 return self._fail("Timed out waiting for left-click")
             if state.get_is_enabled():

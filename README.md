@@ -269,6 +269,10 @@ Records your own hand compensation while you spray and turns it into recoil step
 
 The recorder reads the firmware's tracked pointer position (`km.getpos`) 100 times a second (polling much faster makes the firmware drop its button-event stream, after which left-click is never seen), so it works on V3.x and V4.026+ firmware but needs Recoil OFF: the position includes everything sent to the PC, including Helix's own compensation. The live `position` readout lets you check that your movement is detected before you spray. A warning appears if the path reached the edge of the firmware's virtual screen (the data is then invalid). The default virtual screen allows about ±540 counts of vertical travel; tick **wide range** before arming for very long pulls (it enlarges the virtual screen for the recording and restores it afterwards).
 
+**Button Monitor**
+
+Shows what Helix receives from the MAKCU, so you can check each mouse button against your firmware: five lit pills (LMB, RMB, MMB, M4, M5) with event counts, the stream format Helix detected (`0x53 frames` or text), non-text byte and overflow counters, and the latest raw frames in hex. **Start monitor** also asks the firmware directly for the stream switch and each button's state (`km.buttons()`, `km.left()` …) so you can compare what the firmware says with what Helix received. Other buttons: re-enable the stream by text command or by the vendor's binary command, reset counters, and two **Test move** buttons that nudge the mouse 100 counts right or down to prove movement injection works independently of buttons and recoil. **Generate report** collects settings, the loaded script, button state and device information into one block of text to send when reporting a problem (it leaves out your folder paths). The monitor polls only while it is switched on and the Tools tab is open.
+
 **Pattern Visualiser**
 
 A canvas preview of the cumulative mouse path the loaded recoil script produces, with step count, total X / total Y and duration. It reads from and writes to the script editor on the Recoil tab — changes made here appear in that editor but are only stored when you press **Save** there. The **Advanced** button switches from the plain preview to the full editor:
@@ -391,6 +395,7 @@ helix/
 │   ├── cs2.py                    ← GET /api/cs2/weapons, POST /api/cs2/weapon
 │   ├── device.py                 ← GET /api/device
 │   ├── server.py                 ← GET /api/server, POST /api/server/restart
+│   ├── diagnostics.py            ← /api/buttons*, /api/device/test-move, /api/diagnostics
 │   ├── recorder.py               ← /api/recorder/*
 │   └── streamdeck.py             ← /api/streamdeck, /streamdeck/setup
 ├── mouse/makcu.py                ← MAKCU USB HID controller
@@ -423,7 +428,6 @@ helix/
 |--------|----------|-------------|
 | GET | `/api/state` | Full state snapshot (recoil, flashlight, settings, scripts, games, `makcu_connected`) |
 | GET | `/api/health` | Server + MAKCU health check |
-| GET | `/api/device/rx` | Last raw bytes received from the MAKCU (`{bytes, hex, ascii}`), for diagnosing the button-stream format |
 | GET | `/api/device` | `{connected, firmware, baud, baud_ok}` — display strings from the post-connect link check; `baud_ok` is `true` (device answered at 4,000,000), `false` (device reported another rate) or `null` (not confirmed) |
 | GET | `/api/server` | `{restart_supported, mode, started_at, pid}` — `mode` is `systemd` (supervisor relaunches), `exec` (re-executes itself) or `null` (restart unavailable) |
 | POST | `/api/server/restart` | Save settings, then exit and relaunch. Returns `{ok, mode}` just before the server goes down. 403 if the request has a cross-site `Origin`, 501 if restart is unavailable |
@@ -488,6 +492,16 @@ Same storage as scripts (`saved_scripts/<game>/<weapon>.json`). The bundled web 
 | POST | `/api/recorder/stop` | Finish now and keep the data |
 | POST | `/api/recorder/cancel` | Discard |
 | GET | `/api/recorder/result` | Convert the last recording: `?interval_ms=85&shots=30&lead_ms=0` (`shots`, `lead_ms` optional) → `{steps: [[x, y, delay_ms], …], total, path, duration_ms, clamped}` |
+
+### Diagnostics
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/buttons` | Button states, event counts, stream format, overflow counters and recent raw frames. `?probe=1` also queries the firmware (`stream_enabled`, `probe`) |
+| POST | `/api/buttons/enable` | `{"mode": "text" \| "binary"}` — re-enable the button stream; returns what was sent and the firmware's reply |
+| POST | `/api/buttons/reset` | Zero the event and overflow counters |
+| POST | `/api/device/test-move` | `{"dx", "dy"}` (each within ±300) — one mouse move, to test injection |
+| GET | `/api/diagnostics` | Settings, loaded-script summary, button and device state in one JSON object (no folder paths) |
 
 ### CS2 Built-in Patterns
 
@@ -555,11 +569,11 @@ The library build has to match the firmware. With a mismatched build, programmat
 
 If the Pattern Recorder stays on *armed* (or recoil never fires), Helix is not receiving button events from the MAKCU. While armed, the card reports the live `getpos` rate, whether the firmware says its button stream is on, and how many non-text bytes (button-stream frames) the device has sent since you armed, with the latest one in hex. Press and release left-click and watch those: a non-zero count means the device is sending something; `button stream OFF` means the firmware refused to enable it. The recorder also asks the firmware for the physical button state (`km.left()`, shown in the card) and uses it as a fallback trigger when the button stream is silent.
 
-`http://<server-ip>:8000/api/device/rx` shows the last raw bytes from the device plus `nontext_events` (the most recent button-stream frames with their age in seconds). Send that output and your firmware version when reporting a problem.
+The **Button Monitor** card (Tools tab) shows what Helix receives live: each button's state and event count, the stream format, overflows and the latest raw frames in hex. **Generate report** collects everything needed to diagnose a problem into one block of text to send along with your firmware version.
 
 ### Script does not play to the end / left-click or right-click misread
 
-Newer MAKCU firmware reports mouse buttons as binary frames (`de ad 03 00 53 …`), which the `makcu` library misreads: a right-click can appear as a left-click and any button press while you hold left-click makes it flicker, restarting the recoil script from step 1. Helix decodes these frames itself (`/api/device/rx` shows `nontext_events`; the Pattern Recorder card names the format it sees). It also re-enables the stream by itself if the firmware reports an overflow.
+Newer MAKCU firmware reports mouse buttons as binary frames (`de ad 03 00 53 …`), which the `makcu` library misreads: a right-click can appear as a left-click and any button press while you hold left-click makes it flicker, restarting the recoil script from step 1. Helix decodes these frames itself (the Button Monitor and the Pattern Recorder card name the format they see). It also re-enables the stream by itself if the firmware reports an overflow.
 
 Every recoil burst logs how far the script got, for example `[Recoil] BURST: 2400ms, 30/30 steps (LMB released)` (`sudo journalctl -u helix -f` under systemd). If the last step never seems to apply, check that line first, then that **X Control** is not 0 (it zeroes all horizontal movement) and that the Game / Recoil Scalar is not tiny.
 

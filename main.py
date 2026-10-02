@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 
 # Suppress uvicorn access-log noise from high-frequency polling endpoints.
 class _SuppressPollingLogs(logging.Filter):
-    _MUTED = ("/api/streamdeck", "/api/health", "/api/device", "/api/recorder", "/api/server")
+    _MUTED = ("/api/streamdeck", "/api/health", "/api/device", "/api/recorder", "/api/server", "/api/buttons", "/api/diagnostics")
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
         return not any(ep in msg for ep in self._MUTED)
@@ -37,6 +37,7 @@ from features.flashlight.flashlight import flashlight as flashlight_feature, shu
 from routers import recoil, scripts, flashlight, settings, cs2, streamdeck, device
 from routers import recorder as recorder_router
 from routers import server as server_router
+from routers import diagnostics as diagnostics_router
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -152,6 +153,7 @@ app.include_router(streamdeck.router)
 app.include_router(device.router)
 app.include_router(recorder_router.router)
 app.include_router(server_router.router)
+app.include_router(diagnostics_router.router)
 
 # ── Background tasks ───────────────────────────────────────────────────────────
 async def _broadcast_loop():
