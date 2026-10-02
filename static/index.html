@@ -575,6 +575,7 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
       <p class="rec-help">Turn Recoil OFF, press Arm, then hold left-click and spray, compensating by hand. Recording starts when you press and ends when you release.</p>
       <div class="rpm-row rec-row">
         <select id="rec-trig"><option value="lmb">Hold left-click</option><option value="now">Start now</option></select>
+        <label class="rec-wide" title="Enlarge the firmware's virtual screen to 30000x30000 for very long pulls. Off by default: the normal range is about ±540 counts vertically and a warning appears if the path reaches the edge."><input type="checkbox" id="rec-wide"> wide range</label>
         <button class="btn pri sm" id="rec-arm" onclick="recArm()">Arm</button>
         <button class="btn sm" id="rec-stop" onclick="recStop()" disabled>Stop</button>
         <button class="btn dng sm" id="rec-cancel" onclick="recCancel()" disabled>Cancel</button>
@@ -1666,7 +1667,7 @@ async function recCall(path,body){
   try{recApply(await api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}));}
   catch(e){const m=recErr(e);notify(m);const s=$('rec-status');s.textContent=m;s.className='rec-status err';}
 }
-function recArm(){_recRes=null;recDraw();recCall('/api/recorder/arm',{trigger:$('rec-trig').value,max_s:20});}
+function recArm(){_recRes=null;recDraw();recCall('/api/recorder/arm',{trigger:$('rec-trig').value,max_s:20,wide:$('rec-wide').checked});}
 function recStop(){recCall('/api/recorder/stop');}
 function recCancel(){_recRes=null;recDraw();recCall('/api/recorder/cancel');}
 function recUseMeasured(){const v=parseFloat($('m-ms').textContent);if(v>0){$('rec-iv').value=v;recParamChanged();}}

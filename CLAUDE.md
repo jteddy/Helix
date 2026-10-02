@@ -24,7 +24,7 @@ All real testing is done live on the MAKCU hardware, which Claude does not have.
 
 ## Rules
 
-- Commit finished work without asking. Never push unless asked. Never commit `config.json`.
+- Commit and push finished fixes to `origin/main` without asking; the user tests from the pushed code. Never force-push, and if `origin/main` has new commits, stop and ask. Never commit `config.json`.
 - Don't edit, retune or delete anything in `saved_scripts/` unless asked. The patterns are hand-tuned.
 - The REST API and `/ws` payload are a contract with three clients. Before changing, renaming or removing an endpoint, field or message shape (including the `/api/streamdeck` keys), call out the Stream Deck and Android impact. Prefer additive changes.
 
@@ -57,7 +57,7 @@ All real testing is done live on the MAKCU hardware, which Claude does not have.
 - Resolve script paths only via `AppState._resolve_path` (path-traversal guard). Never join user-supplied `game` or `name` yourself.
 - `cycle_script` stays inside the loaded script's game folder (root if none); cycling across games was a bug.
 - A selected CS2 built-in weapon overrides the loaded script. `workshop_spread` is deliberately never auto-reloaded at startup.
-- The pattern recorder reads movement by polling `km.getpos`, because V4 firmware has no mouse-motion stream (`km.axis` and `km.mouse` exist only on V3.x). The tracked position includes injected moves, so the recorder refuses to start while Recoil is ON and aborts if it is turned on; it polls at 100 Hz, not flat out, because heavy text traffic makes the firmware overflow and disable its button-event stream (left-click then never arrives; re-send `km.buttons(1)` to recover, which the recorder does on arm and when done); it enlarges `km.screen` to avoid edge clamping (only if the firmware answers `km.screen()`) and restores it afterwards; the watchdog skips pings while `_recording` is set.
+- The pattern recorder reads movement by polling `km.getpos`, because V4 firmware has no mouse-motion stream (`km.axis` and `km.mouse` exist only on V3.x). The tracked position includes injected moves, so the recorder refuses to start while Recoil is ON and aborts if it is turned on; it polls at 100 Hz, not flat out, because heavy text traffic makes the firmware overflow and disable its button-event stream (left-click then never arrives; re-send `km.buttons(1)` to recover, which the recorder does on arm and when done); it resizes `km.screen` only when the "wide range" option is on (default off: the default 1920x1080 allows about ±540 counts) and restores it afterwards; it reads `km.left()` as a fallback left-click trigger when the button stream is silent, and stops after 3 unanswered queries because each miss costs a 50 ms timeout and drags the sample rate down; the watchdog skips pings while `_recording` is set.
 
 **Web and clients.**
 - The browser CSP is set in `main.py` (`add_security_headers`). Any new external script, style, font or image host must be added there or the browser silently blocks it. `/streamdeck/setup` loads marked and DOMPurify from jsdelivr, so it needs internet.

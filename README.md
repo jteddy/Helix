@@ -267,7 +267,7 @@ Records your own hand compensation while you spray and turns it into recoil step
 | Shots | Number of steps. Blank = recording length ÷ interval. |
 | Reaction lead | Shifts the recorded movement earlier by this many ms, to offset your reaction delay (you pull down *after* the recoil kick). 0 replays your movement exactly as recorded. |
 
-The recorder reads the firmware's tracked pointer position (`km.getpos`) 100 times a second (polling much faster makes the firmware drop its button-event stream, after which left-click is never seen), so it works on V3.x and V4.026+ firmware but needs Recoil OFF: the position includes everything sent to the PC, including Helix's own compensation. The live `position` readout lets you check that your movement is detected before you spray. A warning appears if the path reached the edge of the firmware's virtual screen (the data is then invalid).
+The recorder reads the firmware's tracked pointer position (`km.getpos`) 100 times a second (polling much faster makes the firmware drop its button-event stream, after which left-click is never seen), so it works on V3.x and V4.026+ firmware but needs Recoil OFF: the position includes everything sent to the PC, including Helix's own compensation. The live `position` readout lets you check that your movement is detected before you spray. A warning appears if the path reached the edge of the firmware's virtual screen (the data is then invalid). The default virtual screen allows about ±540 counts of vertical travel; tick **wide range** before arming for very long pulls (it enlarges the virtual screen for the recording and restores it afterwards).
 
 **Pattern Visualiser**
 
@@ -553,7 +553,7 @@ The library build has to match the firmware. With a mismatched build, programmat
 
 ### Left-click not detected
 
-If the Pattern Recorder stays on *armed* (or recoil never fires), Helix is not receiving button events from the MAKCU. While armed, the card reports the live `getpos` rate, whether the firmware says its button stream is on, and how many non-text bytes (button-stream frames) the device has sent since you armed, with the latest one in hex. Press and release left-click and watch those: a non-zero count means the device is sending something; `button stream OFF` means the firmware refused to enable it.
+If the Pattern Recorder stays on *armed* (or recoil never fires), Helix is not receiving button events from the MAKCU. While armed, the card reports the live `getpos` rate, whether the firmware says its button stream is on, and how many non-text bytes (button-stream frames) the device has sent since you armed, with the latest one in hex. Press and release left-click and watch those: a non-zero count means the device is sending something; `button stream OFF` means the firmware refused to enable it. The recorder also asks the firmware for the physical button state (`km.left()`, shown in the card) and uses it as a fallback trigger when the button stream is silent.
 
 `http://<server-ip>:8000/api/device/rx` shows the last raw bytes from the device plus `nontext_events` (the most recent button-stream frames with their age in seconds). Send that output and your firmware version when reporting a problem.
 

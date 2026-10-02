@@ -6,7 +6,7 @@ the path into recoil steps (x, y, delay_ms).
 V4 firmware has no mouse-motion stream, so getpos polling is the only way to
 read movement. The position is the sum of every mouse report sent to the PC
 (physical + injected) clamped to the km.screen virtual screen, so recording
-needs Recoil OFF and a large virtual screen.
+needs Recoil OFF (and optionally a wide virtual screen for very long pulls).
 """
 import bisect
 import threading
@@ -101,7 +101,7 @@ class Recorder:
 
     # ── Control ───────────────────────────────────────────────────────────
 
-    def arm(self, state, trigger: str, max_s: float):
+    def arm(self, state, trigger: str, max_s: float, wide: bool = False):
         if trigger not in ("lmb", "now"):
             raise RecorderError(400, "trigger must be 'lmb' or 'now'")
         if not makcu_controller.is_connected():
@@ -124,7 +124,7 @@ class Recorder:
             max_s = max(1.0, min(float(max_s), 60.0))
             makcu_controller._recording.set()
             self._thread = threading.Thread(
-                target=self._run, args=(state, trigger, max_s),
+                target=self._run, args=(state, trigger, max_s, wide),
                 daemon=True, name="pattern-recorder",
             )
             self._thread.start()
@@ -175,13 +175,16 @@ class Recorder:
     def _fail(self, message):
         self._set(state="error", message=message, pos=None)
 
-    def _run(self, state, trigger, max_s):
+    def _run(self, state, trigger, max_s, wide):
         orig_screen = None
         screen = None
         try:
-            # Only touch the virtual screen if the firmware answers km.screen().
+            # The virtual screen is only resized when asked (wide range): the default
+            # 1920x1080, centred, already allows +-540 counts vertically, and resizing is
+            # one more device-state change. Its size is still read to detect edge clamping.
             orig_screen = makcu_controller.get_screen()
-            if orig_screen:
+            screen = orig_screen
+            if wide and orig_screen:
                 makcu_controller.set_screen(VIRTUAL_SCREEN, VIRTUAL_SCREEN)
                 screen = makcu_controller.get_screen() or orig_screen
             makcu_controller.send_text("km.buttons(1)")
@@ -190,7 +193,7 @@ class Recorder:
             print(f"[Recorder] Unexpected error: {e}")
             self._fail(f"Recorder error: {e}")
         finally:
-            if orig_screen:
+            if wide and orig_screen:
                 makcu_controller.set_screen(*orig_screen)
             # The firmware drops the button stream if it overflowed; turn it back on.
             makcu_controller.send_text("km.buttons(1)")
@@ -206,6 +209,10 @@ class Recorder:
         nontext0 = makcu_controller.rx_nontext()[0]
         stream_state = "?"
         last_stream_q = 0.0
+        last_phys_q = 0.0
+        phys_lmb = False
+        phys_raw = "?"
+        phys_misses = 0
         lmb_ever = False
         last_pub = 0.0
         clamped = False
@@ -246,7 +253,20 @@ class Recorder:
                 time.sleep(0.01)
                 continue
             fails = 0
-            lmb = makcu_controller.get_button_state("LMB")
+            stream_lmb = makcu_controller.get_button_state("LMB")
+            # Fallback when the button stream is silent: V4 answers km.left() with
+            # 0 none / 1 physical / 2 injected / 3 both. Newer firmware may report the
+            # injected state only, in which case this simply stays 0.
+            # Gives up after 3 unanswered queries: each miss costs a 50 ms timeout.
+            if phys_misses < 3 and t - last_phys_q >= 0.05:
+                last_phys_q = t
+                m = makcu_controller.query(
+                    "km.left()", r"^[>\s]*(?:km\.left\()?([0-3])\)?\s*$", timeout=0.05, retries=1
+                )
+                phys_misses = 0 if m else phys_misses + 1
+                phys_raw = m.group(1) if m else "?"
+                phys_lmb = bool(m and int(m.group(1)) & 1)
+            lmb = stream_lmb or phys_lmb
 
             if phase == "armed":
                 pre.append((t, p[0], p[1]))
@@ -267,7 +287,8 @@ class Recorder:
                     sent = nontext - nontext0
                     msg = (
                         f"Waiting for left-click… getpos {polls / waited:.0f} Hz · "
-                        f"left-click {'HELD' if lmb else 'not seen'} · button stream {stream_state} · "
+                        f"left-click {'HELD' if lmb else 'not seen'} (stream {int(stream_lmb)}, km.left() {phys_raw}) · "
+                        f"button stream {stream_state} · "
                         f"device non-text bytes since arm: {sent}"
                         + (f" (last: {last_frame})" if sent and last_frame else "")
                     )

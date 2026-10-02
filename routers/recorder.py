@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api/recorder", tags=["recorder"])
 class ArmRequest(BaseModel):
     trigger: str = "lmb"
     max_s: float = 20
+    wide: bool = False
 
 
 def _run(fn, *args):
@@ -28,7 +29,7 @@ async def recorder_status():
 
 @router.post("/arm")
 def recorder_arm(req: ArmRequest):
-    return _run(recorder.arm, state, req.trigger, req.max_s)
+    return _run(recorder.arm, state, req.trigger, req.max_s, req.wide)
 
 
 @router.post("/stop")
