@@ -50,7 +50,7 @@ Any browser (phone, tablet, monitor)
     ├── Header + status cards — MAKCU dot, Recoil / Flashlight / Script at a glance
     ├── Recoil tab     — enable, mouse-button binds, sliders, scripts
     ├── Flashlight tab — timing controls
-    ├── Tools tab      — burst history, RPM calculator, Pattern Visualiser
+    ├── Tools tab      — burst history, RPM calculator, Pattern Recorder, Pattern Visualiser
     └── Settings tab   — theme, game sensitivity scaling, connection, Stream Deck endpoints
 ```
 
@@ -255,6 +255,18 @@ The duration (ms) of your last five fire bursts, newest first. Click an entry to
 | Theoretical | Enter a weapon's RPM and magazine size to get ms per shot and total magazine duration. |
 | Measured | Enter a measured burst time (ms) and shot count to get the effective RPM and ms per shot. |
 
+**Pattern Recorder**
+
+Records your own hand compensation while you spray and turns it into recoil steps. Turn **Recoil OFF**, press **Arm**, then hold left-click and spray (compensating by hand) — recording starts when you press and ends when you release (or choose *Start now* and press **Stop**). Set the shot interval (ms/shot — prefilled from the RPM Calculator), then **Load into editor** puts the steps into the script editor and the Pattern Visualiser; name and save them on the Recoil tab as usual.
+
+| Field | What it does |
+|-------|-------------|
+| Shot interval | Milliseconds per shot. Each recoil step is the mouse movement you made during one shot interval. |
+| Shots | Number of steps. Blank = recording length ÷ interval. |
+| Reaction lead | Shifts the recorded movement earlier by this many ms, to offset your reaction delay (you pull down *after* the recoil kick). 0 replays your movement exactly as recorded. |
+
+The recorder reads the firmware's tracked pointer position (`km.getpos`) about every few milliseconds, so it works on V3.x and V4.026+ firmware but needs Recoil OFF: the position includes everything sent to the PC, including Helix's own compensation. The live `position` readout lets you check that your movement is detected before you spray. A warning appears if the path reached the edge of the firmware's virtual screen (the data is then invalid).
+
 **Pattern Visualiser**
 
 A canvas preview of the cumulative mouse path the loaded recoil script produces, with step count, total X / total Y and duration. It reads from and writes to the script editor on the Recoil tab — changes made here appear in that editor but are only stored when you press **Save** there. The **Advanced** button switches from the plain preview to the full editor:
@@ -285,7 +297,7 @@ Theme selector (Default, Midnight, Ember, Cearum). The theme is stored on the se
 
 **Connection**
 
-Shows live status of the MAKCU device, the web server, and the WebSocket connection so you can diagnose connectivity issues at a glance.
+Shows live status of the MAKCU device, its firmware, the serial baud rate, the web server, and the WebSocket connection so you can diagnose connectivity issues at a glance. After every connect Helix confirms the device really runs at 4,000,000 baud by asking it (`km.version()`, plus `km.baud()` on V4.073+); *confirmed by device* means the device answered at that rate. If the device does not answer, the baud row says so rather than showing a healthy connection.
 
 **Stream Deck**
 
@@ -371,12 +383,15 @@ helix/
 │   ├── flashlight.py             ← /api/flashlight, /api/flashlight/toggle
 │   ├── settings.py               ← POST /api/settings
 │   ├── cs2.py                    ← GET /api/cs2/weapons, POST /api/cs2/weapon
+│   ├── device.py                 ← GET /api/device
+│   ├── recorder.py               ← /api/recorder/*
 │   └── streamdeck.py             ← /api/streamdeck, /streamdeck/setup
 ├── mouse/makcu.py                ← MAKCU USB HID controller
 ├── menu/games.py                 ← Game sensitivity table
 ├── features/
 │   ├── recoil/recoil.py          ← Recoil loop
 │   ├── flashlight/               ← Flashlight loop
+│   ├── recorder/recorder.py      ← Pattern recorder (getpos sampling, steps conversion)
 │   └── cs2/weapon_data.py        ← Built-in CS2 recoil patterns (AK-47, M4A1-S)
 ├── static/index.html             ← Entire frontend (Recoil, Flashlight, Tools, Settings tabs; self-contained)
 ├── launcher.py                   ← PyQt6 desktop launcher (optional, desktop Linux only)
@@ -401,6 +416,7 @@ helix/
 |--------|----------|-------------|
 | GET | `/api/state` | Full state snapshot (recoil, flashlight, settings, scripts, games, `makcu_connected`) |
 | GET | `/api/health` | Server + MAKCU health check |
+| GET | `/api/device` | `{connected, firmware, baud, baud_ok}` — display strings from the post-connect link check; `baud_ok` is `true` (device answered at 4,000,000), `false` (device reported another rate) or `null` (not confirmed) |
 | WS | `/ws` | Live status stream (state checked every 200 ms, pushed when it changes) |
 
 ### Recoil
@@ -452,6 +468,16 @@ Same storage as scripts (`saved_scripts/<game>/<weapon>.json`). The bundled web 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/settings` | Update `game_scalar` (game preset name or `Manual`), `game_sensitivity` and `theme` |
+
+### Pattern Recorder
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/recorder` | Status: `state` (`idle`, `armed`, `recording`, `done`, `error`), `message`, `samples`, `duration_ms`, live `pos`, `rate_hz`, `clamped` |
+| POST | `/api/recorder/arm` | Start (`{"trigger": "lmb" \| "now", "max_s": 20}`). `lmb` waits for left-click, records while held. 409 if Recoil is ON or a recording is running, 503 if MAKCU is not connected |
+| POST | `/api/recorder/stop` | Finish now and keep the data |
+| POST | `/api/recorder/cancel` | Discard |
+| GET | `/api/recorder/result` | Convert the last recording: `?interval_ms=85&shots=30&lead_ms=0` (`shots`, `lead_ms` optional) → `{steps: [[x, y, delay_ms], …], total, path, duration_ms, clamped}` |
 
 ### CS2 Built-in Patterns
 
