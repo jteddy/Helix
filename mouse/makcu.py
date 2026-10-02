@@ -97,6 +97,9 @@ class makcu_controller:
     _framed           = False         # button events arrive as binary 0x53 frames
     _frame_buf        = bytearray()   # partial frame carried between reads
     _last_reenable    = 0.0
+    _last_mask        = 0             # previous button mask from the text stream
+    lib_mask_calls    = 0             # times the library's parser handed us a mask byte
+    lib_error         = None
     button_events     = {n: 0 for n in _BTN_NAMES}      # press/release events Helix processed
     button_last       = {n: None for n in _BTN_NAMES}   # monotonic time of the last change
     overflow_count    = 0
@@ -108,6 +111,7 @@ class makcu_controller:
 
     @staticmethod
     def _clear_button_states():
+        makcu_controller._last_mask = 0
         with makcu_controller._button_lock:
             for k in makcu_controller.button_states:
                 makcu_controller.button_states[k] = False
@@ -218,6 +222,7 @@ class makcu_controller:
     def _do_connect():
         try:
             makcu_controller._framed = False
+            makcu_controller._last_mask = 0
             makcu_controller._frame_buf.clear()
             controller = create_controller(debug=False, auto_reconnect=False)
 
@@ -232,6 +237,7 @@ class makcu_controller:
 
             controller.set_button_callback(on_button_event)
             makcu_controller._install_line_hook(controller)
+            makcu_controller._install_mask_handler(controller)
             controller.enable_button_monitoring(True)
 
             with makcu_controller.connection_lock:
@@ -478,6 +484,37 @@ class makcu_controller:
             makcu_controller.button_last[name] = time.monotonic()
 
     @staticmethod
+    def _install_mask_handler(controller):
+        """Take over the library's button-mask handler.
+
+        The library's parser recognises mask bytes in the text stream, but its handler prints
+        before it fires the callback; if stdout is broken the print raises, the library
+        swallows it, and no button event is ever delivered. Our handler needs no I/O."""
+        transport = getattr(controller, "transport", None)
+        if transport is None or not hasattr(transport, "_handle_button_data"):
+            print("[MAKCU] Library mask handler not found — using its callback instead")
+            return
+
+        def handle(byte_val):
+            makcu_controller.lib_mask_calls += 1
+            try:
+                makcu_controller._apply_mask(byte_val)
+            except Exception as e:
+                makcu_controller.lib_error = repr(e)
+
+        transport._handle_button_data = handle
+
+    @staticmethod
+    def _apply_mask(mask):
+        if makcu_controller._framed:
+            return
+        changed = mask ^ makcu_controller._last_mask
+        makcu_controller._last_mask = mask
+        for bit, name in enumerate(_BTN_NAMES):
+            if changed & (1 << bit):
+                makcu_controller._set_button(name, bool(mask & (1 << bit)))
+
+    @staticmethod
     def _decode_frames(data):
         """Decode binary input-change frames `DE AD LEN:u16 CMD PAYLOAD` out of the raw
         bytes the library is reading. Newer firmware sends the button stream this way
@@ -561,6 +598,8 @@ class makcu_controller:
             "last_overflow_age_s": round(now - lo, 1) if lo else None,
             "overflow_loop": makcu_controller.overflow_loop(),
             "nontext_bytes": _rx_nontext[0],
+            "lib_mask_calls": makcu_controller.lib_mask_calls,
+            "lib_error": makcu_controller.lib_error,
             "recent_frames": [
                 {"age_s": round(now - t, 2), "hex": makcu_controller._fmt(d)["hex"]}
                 for t, d in list(_rx_events)[-10:]

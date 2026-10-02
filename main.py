@@ -4,6 +4,9 @@ Unified directory: saved_scripts/<game>/<weapon>.txt is used for BOTH
 the recoil scripts tab and the vector editor. Flat files in saved_scripts/
 root are also supported for backward compatibility.
 """
+import safe_io
+safe_io.install()  # before anything prints: a broken stdout must not break button input
+
 import asyncio
 import hashlib
 import json

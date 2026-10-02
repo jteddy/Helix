@@ -577,6 +577,10 @@ Newer MAKCU firmware reports mouse buttons as binary frames (`de ad 03 00 53 …
 
 Every recoil burst logs how far the script got, for example `[Recoil] BURST: 2400ms, 30/30 steps (LMB released)` (`sudo journalctl -u helix -f` under systemd). If the last step never seems to apply, check that line first, then that **X Control** is not 0 (it zeroes all horizontal movement) and that the Game / Recoil Scalar is not tiny.
 
+### Button frames arrive but nothing registers
+
+If the Button Monitor shows raw frames (e.g. `6b 6d 2e 10 0d 0a`) yet every event count stays 0, the `makcu` library is dropping them: its button handler prints a line before it fires its callback, and if the terminal Helix was started from has gone away (hung-up SSH session, closed pipe) that print raises, the library swallows the error, and no button event is ever delivered. Helix now handles button bytes itself and makes stdout/stderr unable to raise, so this no longer happens. The report's `lib_mask_calls` shows how many button bytes the library handed over and `lib_error` any error from handling them. For a server you leave running, use the systemd service (`setup-autostart.sh`) rather than a terminal session.
+
 ### MAKCU Setup on Arch Linux (CachyOS)
 
 The MAKCU uses an ESP32-S3 with native CDC ACM, so no CH343 driver is needed.
