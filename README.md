@@ -557,6 +557,12 @@ If the Pattern Recorder stays on *armed* (or recoil never fires), Helix is not r
 
 `http://<server-ip>:8000/api/device/rx` shows the last raw bytes from the device plus `nontext_events` (the most recent button-stream frames with their age in seconds). Send that output and your firmware version when reporting a problem.
 
+### Script does not play to the end / left-click or right-click misread
+
+Newer MAKCU firmware reports mouse buttons as binary frames (`de ad 03 00 53 …`), which the `makcu` library misreads: a right-click can appear as a left-click and any button press while you hold left-click makes it flicker, restarting the recoil script from step 1. Helix decodes these frames itself (`/api/device/rx` shows `nontext_events`; the Pattern Recorder card names the format it sees). It also re-enables the stream by itself if the firmware reports an overflow.
+
+Every recoil burst logs how far the script got, for example `[Recoil] BURST: 2400ms, 30/30 steps (LMB released)` (`sudo journalctl -u helix -f` under systemd). If the last step never seems to apply, check that line first, then that **X Control** is not 0 (it zeroes all horizontal movement) and that the Game / Recoil Scalar is not tiny.
+
 ### MAKCU Setup on Arch Linux (CachyOS)
 
 The MAKCU uses an ESP32-S3 with native CDC ACM, so no CH343 driver is needed.

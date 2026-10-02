@@ -288,7 +288,7 @@ class Recorder:
                     msg = (
                         f"Waiting for left-click… getpos {polls / waited:.0f} Hz · "
                         f"left-click {'HELD' if lmb else 'not seen'} (stream {int(stream_lmb)}, km.left() {phys_raw}) · "
-                        f"button stream {stream_state} · "
+                        f"button stream {stream_state} ({makcu_controller.stream_format()}) · "
                         f"device non-text bytes since arm: {sent}"
                         + (f" (last: {last_frame})" if sent and last_frame else "")
                     )

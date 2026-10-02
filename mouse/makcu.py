@@ -27,6 +27,10 @@ def _install_rx_tee():
         data = orig(self, size)
         if data:
             _rx_tail.extend(data)
+            try:
+                makcu_controller._decode_frames(data)
+            except Exception as e:
+                print(f"[MAKCU] Frame decode error: {e}")
             for i, b in enumerate(data):
                 if (b < 32 and b != 10 and b != 13) or b > 126:
                     _rx_nontext[0] += 1
@@ -67,6 +71,13 @@ WATCHDOG_INTERVAL = 30
 RECONNECT_INTERVAL = 5
 
 
+_BTN_NAMES = ("LMB", "RMB", "MMB", "M4", "M5")          # 0x53 mouse event ids 0..4
+_ENUM_NAME = {
+    MouseButton.LEFT: "LMB", MouseButton.RIGHT: "RMB", MouseButton.MIDDLE: "MMB",
+    MouseButton.MOUSE4: "M4", MouseButton.MOUSE5: "M5",
+}
+
+
 class makcu_controller:
     controller = None
 
@@ -87,6 +98,9 @@ class makcu_controller:
     _recording        = threading.Event()   # pattern recorder is polling getpos
     _clicking_button  = None          # MouseButton being programmatically clicked
     _native_click     = False         # True once the firmware is known to support km.click
+    _framed           = False         # button events arrive as binary 0x53 frames
+    _frame_buf        = bytearray()   # partial frame carried between reads
+    _last_reenable    = 0.0
     _waiter           = None          # (regex, Event, matches) for the pending query()
     _info_lock        = threading.Lock()
     device_info       = {"firmware": None, "baud": None, "baud_ok": None}
@@ -178,6 +192,7 @@ class makcu_controller:
                 makcu_controller._spray_active.is_set()
                 or makcu_controller._recording.is_set()
                 or makcu_controller._clicking_button is not None
+                or makcu_controller.button_states["LMB"]   # a re-enable restarts the stream's baseline
             ):
                 continue
 
@@ -204,22 +219,13 @@ class makcu_controller:
             controller = create_controller(debug=False, auto_reconnect=False)
 
             def on_button_event(button, pressed):
-                with makcu_controller._button_lock:
-                    # Ignore spurious events for a button being clicked
-                    # programmatically — the firmware re-reports them when
-                    # monitoring is toggled back on around each HID command.
-                    if button == makcu_controller._clicking_button:
-                        return
-                    if button == MouseButton.LEFT:
-                        makcu_controller.button_states["LMB"] = pressed
-                    elif button == MouseButton.RIGHT:
-                        makcu_controller.button_states["RMB"] = pressed
-                    elif button == MouseButton.MIDDLE:
-                        makcu_controller.button_states["MMB"] = pressed
-                    elif button == MouseButton.MOUSE4:
-                        makcu_controller.button_states["M4"] = pressed
-                    elif button == MouseButton.MOUSE5:
-                        makcu_controller.button_states["M5"] = pressed
+                # Once binary 0x53 frames are seen they are decoded by _decode_frames;
+                # the library parses those bytes as masks and reports garbage.
+                if makcu_controller._framed:
+                    return
+                name = _ENUM_NAME.get(button)
+                if name:
+                    makcu_controller._set_button(name, pressed)
 
             controller.set_button_callback(on_button_event)
             makcu_controller._install_line_hook(controller)
@@ -230,6 +236,8 @@ class makcu_controller:
                 makcu_controller.is_connected_flag = True
 
             makcu_controller._native_click = False
+            makcu_controller._framed = False
+            makcu_controller._frame_buf.clear()
             makcu_controller._set_info(firmware=None, baud="checking…", baud_ok=None)
             threading.Thread(
                 target=makcu_controller.verify_link, args=(controller,),
@@ -453,6 +461,73 @@ class makcu_controller:
     def get_button_state(button_name):
         with makcu_controller._button_lock:
             return makcu_controller.button_states.get(button_name, False)
+
+    # ── Button events ─────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _set_button(name, pressed):
+        with makcu_controller._button_lock:
+            # Ignore spurious events for a button being clicked
+            # programmatically — the firmware re-reports them when
+            # monitoring is toggled back on around each HID command.
+            if _ENUM_NAME.get(makcu_controller._clicking_button) == name:
+                return
+            makcu_controller.button_states[name] = pressed
+
+    @staticmethod
+    def _decode_frames(data):
+        """Decode binary input-change frames `DE AD LEN:u16 CMD PAYLOAD` out of the raw
+        bytes the library is reading. Newer firmware sends the button stream this way
+        (`53 kind id state`; kind 1 = mouse, id 0..4 = LMB RMB MMB M4 M5; id/state FF FF
+        = overflow). Runs on the library's listener thread, before its own parser."""
+        buf = makcu_controller._frame_buf
+        buf += data
+        while True:
+            i = buf.find(b"\xde\xad")
+            if i < 0:
+                del buf[: len(buf) - (1 if buf.endswith(b"\xde") else 0)]
+                return
+            del buf[:i]
+            if len(buf) < 5:
+                return
+            length = buf[2] | (buf[3] << 8)
+            if length > 16:             # not a real frame
+                del buf[:2]
+                continue
+            total = 5 + length
+            if len(buf) < total:
+                return
+            cmd, payload = buf[4], bytes(buf[5:total])
+            del buf[:total]
+            if cmd == 0x53 and len(payload) == 3 and payload[0] == 1:
+                makcu_controller._on_stream_event(payload[1], payload[2])
+
+    @staticmethod
+    def _on_stream_event(bid, state):
+        makcu_controller._framed = True
+        if bid == 0xFF and state == 0xFF:
+            # Overflow: the firmware has disabled the mouse stream and dropped queued
+            # changes. Forget cached state and ask for the stream again.
+            print("[MAKCU] Button stream overflow — re-enabling")
+            makcu_controller._clear_button_states()
+            makcu_controller._reenable_stream()
+        elif bid < len(_BTN_NAMES) and state in (0, 1):
+            makcu_controller._set_button(_BTN_NAMES[bid], bool(state))
+
+    @staticmethod
+    def _reenable_stream():
+        now = time.monotonic()
+        if now - makcu_controller._last_reenable < 0.5:
+            return
+        makcu_controller._last_reenable = now
+        # Not from the listener thread: send_text takes locks and writes to the port.
+        threading.Thread(
+            target=makcu_controller.send_text, args=("km.buttons(1)",), daemon=True
+        ).start()
+
+    @staticmethod
+    def stream_format():
+        return "0x53 frames" if makcu_controller._framed else "text or none seen"
 
     # ── Text queries (replies arrive via the library's line parser) ───────────
     #
