@@ -218,6 +218,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .s-top{display:flex;align-items:center;gap:6px;padding:5px 9px;background:var(--bg3);border-bottom:1px solid var(--border);}
 .s-dir{font-family:var(--fu);font-size:10px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;transition:color .15s;}
 .s-dir:hover{color:var(--accent);}
+.s-draft{font-family:var(--fu);font-size:10px;color:var(--accent);padding:4px 9px;background:var(--bg3);border-bottom:1px solid var(--border);}
 /* Two-column body */
 .s-body{display:flex;height:200px;}
 .s-left{width:180px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;}
@@ -504,6 +505,7 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
       <span class="s-dir" id="s-dir-lbl" onclick="notify('Directory: '+sDir)" title="Click to copy path">saved_scripts/</span>
       <button class="btn sm" onclick="newGame()">+ Game</button>
     </div>
+    <div class="s-draft" id="s-draft" style="display:none"></div>
     <!-- Body: textarea left, script list right -->
     <div class="s-body">
       <div class="s-left">
@@ -603,7 +605,14 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
       <canvas id="rec-canvas" class="rec-canvas"></canvas>
       <div class="rec-warn" id="rec-warn" style="display:none"></div>
       <div class="rpm-result rec-stats" id="rec-stats" style="display:none"></div>
-      <div class="rpm-row rec-row"><button class="btn sm" id="rec-load" onclick="recLoad()" disabled>Load into editor</button></div>
+      <div class="tool-sep"></div>
+      <p class="rec-help">Save the recording as a script (it becomes the active recoil script), or copy it to the script editor on the Recoil tab to edit it first.</p>
+      <div class="rpm-row rec-row">
+        <input type="text" id="rec-name" placeholder="script name" style="flex:1;min-width:0">
+        <select id="rec-game" title="Folder to save into" onchange="this.dataset.picked='1'"><option value="">(root)</option></select>
+        <button class="btn pri sm" id="rec-save" onclick="recSave()" disabled>Save as script</button>
+      </div>
+      <div class="rpm-row rec-row"><button class="btn sm" id="rec-load" onclick="recLoad()" disabled title="Opens the recording on the Recoil tab as a new, unsaved script">Copy to script editor</button></div>
     </div>
   </div>
 
@@ -645,7 +654,7 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
         </div>
         <div>
           <p class="vis-title">Pattern Visualiser</p>
-          <p class="vis-subtitle">live recoil path preview &amp; editor</p>
+          <p class="vis-subtitle" id="vis-src">live recoil path preview &amp; editor</p>
         </div>
       </div>
       <div class="vis-header-right">
@@ -882,6 +891,7 @@ function applyStatus(d){
   if(d.flashlight_enabled!==undefined){const m=$('sc-flash-master');if(m)m.textContent=d.flashlight_enabled?'Master: ON':'Master: OFF';}
   const hs=d.loaded_script&&d.loaded_script!=='NONE';
   card('sc-script',hs?'on':'');$('sc-script-v').textContent=d.loaded_script||'NONE';
+  if(d.loaded_script!==undefined&&d.loaded_script!==_activeScript){_activeScript=d.loaded_script;updateDraftUi();}
   // Update script list highlight when loaded script changes
   if(d.loaded_script){
     const rows=$('s-list')?.querySelectorAll('.srow2')||[];
@@ -990,6 +1000,8 @@ async function selectCs2Weapon(weapon){
 // ── Scripts ───────────────────────────────────────────────────────────────────
 let sCurrentGame = '';
 let sNewScriptMode = false;  // true when New is clicked — suppresses WebSocket name overwrite
+let _editorScript = null;    // script shown in the editor (game/name), null for a new draft
+let _activeScript = 'NONE';  // script the recoil loop uses (server's loaded_script)
 let sDir = 'saved_scripts/';
 
 function updateDirLabel(game) {
@@ -1005,11 +1017,13 @@ function populateGameSelector(games, current) {
   sel.innerHTML = '<option value="">(root)</option>' +
     games.map(g=>`<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('');
   if(current) for(const o of sel.options) if(o.value===current){o.selected=true;break;}
+  recSyncFolders();
 }
 
 async function switchGame(game) {
   sCurrentGame = game;
   updateDirLabel(game);
+  updateDraftUi();
   await refreshScripts(game);
 }
 
@@ -1058,6 +1072,7 @@ async function loadScriptContent(fullName) {
       $('vec-ta').value=d.content||'';
       updateGutter();if(window.visRefresh)window.visRefresh();
       $('s-name-inp').value=parts[parts.length-1];
+      _editorScript=fullName;updateDraftUi();
       const si=$('s-sens-inp');
       if(si) si.value=(d.sensitivity??1.0).toFixed(2);
     }
@@ -1084,7 +1099,7 @@ async function delScript(name, game) {
   await fetch(url,{method:'DELETE'});
   const fullName=game?`${game}/${name}`:name;
   const currentName=$('s-name-inp').value.trim();
-  if(currentName===name||currentName===fullName){$('vec-ta').value='';$('s-name-inp').value='';const si=$('s-sens-inp');if(si)si.value='1.00';updateGutter();if(window.visRefresh)window.visRefresh();}
+  if(currentName===name||currentName===fullName){$('vec-ta').value='';$('s-name-inp').value='';const si=$('s-sens-inp');if(si)si.value='1.00';updateGutter();if(window.visRefresh)window.visRefresh();_editorScript=null;updateDraftUi();}
   await refreshScripts(sCurrentGame);
   notify(`Deleted: ${name}`);
 }
@@ -1099,12 +1114,24 @@ async function saveScript() {
   const url=sCurrentGame?`/api/scripts/load/${encodeURIComponent(sCurrentGame)}/${encodeURIComponent(name)}`:`/api/scripts/load/${encodeURIComponent(name)}`;
   await fetch(url,{method:'POST'});
   await refreshScripts(sCurrentGame);
-  
-  
+  _editorScript=sCurrentGame?`${sCurrentGame}/${name}`:name;updateDraftUi();
   notify(`Saved: ${name}`);
 }
 
-function newScript(){sNewScriptMode=true;$('vec-ta').value='';$('s-name-inp').value='';const si=$('s-sens-inp');if(si)si.value=(parseFloat($('st-sens')?.value)||1.0).toFixed(2);updateGutter();if(window.visRefresh)window.visRefresh();setTimeout(()=>$('s-name-inp').focus(),50);}
+// The editor can hold an unsaved draft while recoil keeps using the active script
+// (header card); say which one the editor and the Visualiser are showing.
+function updateDraftUi(){
+  const b=$('s-draft'),c=$('vis-src');
+  if(b){
+    b.style.display=sNewScriptMode?'':'none';
+    b.textContent=`Unsaved new script · Save stores it in ${sCurrentGame?sCurrentGame+'/':'the root folder (saved_scripts/)'} and makes it active`;
+  }
+  if(c)c.textContent=sNewScriptMode?'showing the unsaved draft in the script editor'
+    :_editorScript?`showing ${_editorScript}${_editorScript===_activeScript?' (active)':' (not active)'}`
+    :'live recoil path preview & editor';
+}
+
+function newScript(){sNewScriptMode=true;_editorScript=null;updateDraftUi();$('vec-ta').value='';$('s-name-inp').value='';const si=$('s-sens-inp');if(si)si.value=(parseFloat($('st-sens')?.value)||1.0).toFixed(2);updateGutter();if(window.visRefresh)window.visRefresh();setTimeout(()=>$('s-name-inp').focus(),50);}
 
 function updateGutter(){
   const ta=$('vec-ta'),gut=$('vec-gut');if(!ta||!gut)return;
@@ -1797,7 +1824,7 @@ async function recFetchResult(){
 }
 function recDraw(err){
   const cv=$('rec-canvas'),warn=$('rec-warn'),stats=$('rec-stats'),ld=$('rec-load'),r=_recRes;
-  ld.disabled=!(r&&r.steps&&r.steps.length);
+  ld.disabled=$('rec-save').disabled=!(r&&r.steps&&r.steps.length);
   if(!r){
     cv.style.display='none';stats.style.display='none';
     warn.style.display=err?'':'none';warn.textContent=err||'';
@@ -1829,12 +1856,40 @@ function recDraw(err){
   g.fillStyle='#38bdf8';g.beginPath();g.arc(X(0),Y(0),4,0,6.2832);g.fill();
 }
 window.addEventListener('resize',()=>{if(_recRes)recDraw();});
+function recStepsText(s){return s.map(v=>`${v[0]},${v[1]},${Math.round(v[2])}`).join('\n');}
 function recLoad(){
   const s=_recRes&&_recRes.steps;if(!s||!s.length)return;
   newScript();
-  $('vec-ta').value=s.map(v=>`${v[0]},${v[1]},${Math.round(v[2])}`).join('\n');
+  $('vec-ta').value=recStepsText(s);
   updateGutter();window.visRefresh&&window.visRefresh();
-  notify(`Loaded ${s.length} steps — name it and save in Recoil → Scripts`);
+  st('recoil');
+  const n=$('s-name-inp');n.scrollIntoView({block:'center'});n.focus();
+  notify(`Copied ${s.length} steps — not saved yet: name it and press Save`);
+}
+// Folder choices mirror the scripts panel; follow its folder until one is picked here.
+function recSyncFolders(){
+  const s=$('rec-game');if(!s)return;
+  const keep=s.dataset.picked==='1'?s.value:sCurrentGame;
+  s.innerHTML=$('s-game-sel').innerHTML;
+  s.value=[...s.options].some(o=>o.value===keep)?keep:'';
+}
+async function recSave(){
+  const s=_recRes&&_recRes.steps;if(!s||!s.length)return;
+  const name=$('rec-name').value.trim(),game=$('rec-game').value;
+  if(!name){notify('Enter a script name');$('rec-name').focus();return;}
+  const full=game?`${game}/${name}`:name;
+  try{
+    const ex=await api(game?`/api/scripts?game=${encodeURIComponent(game)}`:'/api/scripts');
+    if((ex.scripts||[]).includes(name)&&!confirm(`Replace the existing script "${full}"?`))return;
+    await api('/api/scripts/save',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,content:recStepsText(s),game:game||null,sensitivity:parseFloat($('st-sens')?.value)||1.0})});
+    await api(game?`/api/scripts/load/${encodeURIComponent(game)}/${encodeURIComponent(name)}`:`/api/scripts/load/${encodeURIComponent(name)}`,{method:'POST'});
+    sNewScriptMode=false;
+    sCurrentGame=game;updateDirLabel(game);
+    await loadScriptContent(full);
+    await refreshScripts(game);
+    notify(`Saved ${full} — now the active script`);
+  }catch(e){notify(recErr(e));}
 }
 (function(){const v=parseFloat($('t-ms').textContent);if(v>0)$('rec-iv').value=v;})();
 

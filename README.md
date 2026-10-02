@@ -259,7 +259,7 @@ The duration (ms) of your last five fire bursts, newest first. Click an entry to
 
 **Pattern Recorder**
 
-Records your own hand compensation while you spray and turns it into recoil steps. Turn **Recoil OFF**, press **Arm**, then hold left-click and spray (compensating by hand) — recording starts when you press and ends when you release (or choose *Start now* and press **Stop**). Set the shot interval (ms/shot — prefilled from the RPM Calculator), or enter how many bullets you fired to work it out from how long you held left-click, then **Load into editor** puts the steps into the script editor and the Pattern Visualiser; name and save them on the Recoil tab as usual.
+Records your own hand compensation while you spray and turns it into recoil steps. Turn **Recoil OFF**, press **Arm**, then hold left-click and spray (compensating by hand) — recording starts when you press and ends when you release (or choose *Start now* and press **Stop**). Set the shot interval (ms/shot — prefilled from the RPM Calculator), or enter how many bullets you fired to work it out from how long you held left-click, then either **Save as script** (type a name and pick a folder, default the one open in the Recoil tab's scripts panel; it asks before replacing an existing script, and the new script becomes the active recoil script) or **Copy to script editor**, which opens the steps on the Recoil tab as a new, unsaved script so you can edit them first. Nothing is saved until you press Save there; a banner above the editor says so and names the folder Save will use. The header's Script card always shows the script recoil is actually using, so it does not change until you save.
 
 | Field | What it does |
 |-------|-------------|
@@ -275,7 +275,7 @@ Shows what Helix receives from the MAKCU, so you can check each mouse button aga
 
 **Pattern Visualiser**
 
-A canvas preview of the cumulative mouse path the loaded recoil script produces, with step count, total X / total Y and duration. It reads from and writes to the script editor on the Recoil tab — changes made here appear in that editor but are only stored when you press **Save** there. The **Advanced** button switches from the plain preview to the full editor:
+A canvas preview of the cumulative mouse path the script in the editor produces (the line under its title says whether that is the active script, another script, or an unsaved draft), with step count, total X / total Y and duration. It reads from and writes to the script editor on the Recoil tab — changes made here appear in that editor but are only stored when you press **Save** there. The **Advanced** button switches from the plain preview to the full editor:
 
 | Feature | What it does |
 |---------|-------------|
