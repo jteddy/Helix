@@ -20,11 +20,15 @@ The web UI, Stream Deck plugin and Android app (separate private repo, not avail
 
 ## Verification
 
-All real testing is done live on the MAKCU hardware, which Claude does not have. The server starts without the device (MAKCU shows N/C), so the API and UI can be exercised, but device behavior cannot be verified. State exactly what was and wasn't verified; never claim a hardware path works because the code looks right. Report device results the way the vendor does: transport, firmware version, returned bytes and observed physical behavior separately; a host-side test is not hardware proof. There is no test suite or linter.
+Device behavior can only be verified against the real MAKCU. Two setups:
+- **On the host that has the device** (`mini`, where Helix runs): verify live. After a change, restart the server so it takes effect (Settings → Server → Restart, `sudo systemctl restart helix`, or rerun `python main.py`; if this checkout is what the server runs from, no `git pull` is needed), then look at the evidence: `curl -s localhost:8000/api/diagnostics`, `/api/buttons?probe=1`, `/api/recorder`, the server log (`sudo journalctl -u helix -f` or the terminal) and the Button Monitor. Check which checkout the server runs from (`systemctl cat helix | grep WorkingDirectory`, or `pgrep -af main.py`) before assuming.
+- **On a machine without the device**: the server starts without it (MAKCU shows N/C), so the API and UI can be exercised, but device behavior can only be checked with a simulator or reports the user pastes.
+
+Either way, state exactly what was and wasn't verified; never claim a hardware path works because the code looks right. Report device results the way the vendor does: transport, firmware version, returned bytes and observed physical behavior separately; a host-side test is not hardware proof. The repo has no test suite or linter; a simulator harness (fake MAKCU driving the real `makcu` library and Helix code) was built outside it, so ask the user whether they still have it before rebuilding one.
 
 ## Rules
 
-- Commit and push finished fixes to `origin/main` without asking; the user tests from the pushed code. Never force-push, and if `origin/main` has new commits, stop and ask. Never commit `config.json`.
+- Commit and push finished fixes to `origin/main` without asking; the user tests from the pushed code (when you are on the host, also restart the server so the change is live). Never force-push, and if `origin/main` has new commits, stop and ask. Never commit `config.json`.
 - Don't edit, retune or delete anything in `saved_scripts/` unless asked. The patterns are hand-tuned.
 - The REST API and `/ws` payload are a contract with three clients. Before changing, renaming or removing an endpoint, field or message shape (including the `/api/streamdeck` keys), call out the Stream Deck and Android impact. Prefer additive changes.
 
