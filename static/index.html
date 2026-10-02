@@ -723,9 +723,9 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
             </div>
             <button id="vis-insp-close" class="vis-insp-close" title="Close"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>
           </div>
-          <div class="vis-insp-row"><label class="vis-insp-label">x</label><input id="vis-insp-x" type="number" step="1" class="vis-insp-input"></div>
-          <div class="vis-insp-row"><label class="vis-insp-label">y</label><input id="vis-insp-y" type="number" step="1" class="vis-insp-input"></div>
-          <div class="vis-insp-row"><label class="vis-insp-label">ms</label><input id="vis-insp-d" type="number" step="1" min="1" class="vis-insp-input"></div>
+          <div class="vis-insp-row"><label class="vis-insp-label">x</label><input id="vis-insp-x" type="number" step="any" class="vis-insp-input"></div>
+          <div class="vis-insp-row"><label class="vis-insp-label">y</label><input id="vis-insp-y" type="number" step="any" class="vis-insp-input"></div>
+          <div class="vis-insp-row"><label class="vis-insp-label">ms</label><input id="vis-insp-d" type="number" step="any" min="1" class="vis-insp-input"></div>
           <div id="vis-insp-dist" class="vis-insp-dist"></div>
           <p class="vis-insp-hint">arrows nudge · shift×5 · del removes</p>
           <button id="vis-insp-del" class="vis-insp-del"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>Delete step</button>
@@ -1275,7 +1275,7 @@ function updateGutter(){
   // ── Canvas helpers ────────────────────────────────────────────────────────
   function syncSize(){const dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();const w=Math.floor(rect.width*dpr),h=Math.floor(rect.height*dpr);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}return{W:rect.width,H:rect.height};}
   function easeOutQuad(t){return t*(2-t);}
-  function r1(n){return Math.round(n);}
+  function r1(n){return Math.round(n*10)/10;}  // one decimal, the precision scripts and the recorder use
   function getControlMultipliers(){
     const xCtrl=(parseFloat(document.getElementById('v-xc')?.value)||100)/100;
     const yCtrl=(parseFloat(document.getElementById('v-yc')?.value)||100)/100;
@@ -1285,8 +1285,8 @@ function updateGutter(){
   function snapVal(v,snapSize){return snapSize?Math.round(v/snapSize)*snapSize:v;}
   function speedColor(t){
     t=Math.max(0,Math.min(1,t));
-    if(t<0.5){const f=t*2;return`rgb(${r1(52+(251-52)*f)},${r1(211+(191-211)*f)},${r1(153+(36-153)*f)})`;}
-    else{const f=(t-0.5)*2;return`rgb(${r1(251+(248-251)*f)},${r1(191+(113-191)*f)},${r1(36+(113-36)*f)})`;}
+    if(t<0.5){const f=t*2;return`rgb(${Math.round(52+(251-52)*f)},${Math.round(211+(191-211)*f)},${Math.round(153+(36-153)*f)})`;}
+    else{const f=(t-0.5)*2;return`rgb(${Math.round(251+(248-251)*f)},${Math.round(191+(113-191)*f)},${Math.round(36+(113-36)*f)})`;}
   }
   function getTransform(W,H){
     const PAD=40,{xCtrl,yCtrl}=getControlMultipliers(),STEPS=20;
@@ -1339,7 +1339,7 @@ function updateGutter(){
       case'scale-x':{const v=parseFloat(prompt('Scale X by factor (e.g. 1.5):','1.0'));if(!isNaN(v))steps=steps.map(s=>({...s,x:r1(s.x*v)}));break;}
       case'scale-y':{const v=parseFloat(prompt('Scale Y by factor (e.g. 1.5):','1.0'));if(!isNaN(v))steps=steps.map(s=>({...s,y:r1(s.y*v)}));break;}
       case'scale-delay':{const v=parseFloat(prompt('Scale all delays by factor (e.g. 0.8):','1.0'));if(!isNaN(v))steps=steps.map(s=>({...s,d:Math.max(1,r1(s.d*v))}));break;}
-      case'set-delay':{const v=parseInt(prompt('Set all delays to (ms):','100'));if(!isNaN(v)&&v>0)steps=steps.map(s=>({...s,d:v}));break;}
+      case'set-delay':{const v=r1(parseFloat(prompt('Set all delays to (ms):','100')));if(!isNaN(v)&&v>0)steps=steps.map(s=>({...s,d:v}));break;}
     }
     writeStepsToTextarea();renderStepList();updateStats(steps);startEntrance();
   };
@@ -1379,7 +1379,7 @@ function updateGutter(){
     if(!elStepList)return;const scrollTop=elStepList.scrollTop;elStepList.innerHTML='';
     steps.forEach((s,i)=>{
       const row=document.createElement('div');row.className='vis-sl-row'+(i===selectedIdx?' vis-sl-selected':'');row.dataset.idx=i;row.draggable=true;
-      row.innerHTML=`<span class="vis-sl-num">${i+1}</span><input class="vis-sl-input" type="number" step="1" value="${r1(s.x)}" data-field="x" title="X"><input class="vis-sl-input" type="number" step="1" value="${r1(s.y)}" data-field="y" title="Y"><input class="vis-sl-input vis-sl-ms" type="number" step="1" min="1" value="${s.d}" data-field="d" title="ms"><span class="vis-sl-ms-label">ms</span><button class="vis-sl-del" data-idx="${i}" title="Delete"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>`;
+      row.innerHTML=`<span class="vis-sl-num">${i+1}</span><input class="vis-sl-input" type="number" step="any" value="${r1(s.x)}" data-field="x" title="X"><input class="vis-sl-input" type="number" step="any" value="${r1(s.y)}" data-field="y" title="Y"><input class="vis-sl-input vis-sl-ms" type="number" step="any" min="1" value="${s.d}" data-field="d" title="ms"><span class="vis-sl-ms-label">ms</span><button class="vis-sl-del" data-idx="${i}" title="Delete"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg></button>`;
       row.querySelectorAll('.vis-sl-input').forEach(inp=>{
         inp.addEventListener('change',()=>{const field=inp.dataset.field,val=parseFloat(inp.value);if(isNaN(val))return;pushUndo();if(field==='x')steps[i].x=r1(val);else if(field==='y')steps[i].y=r1(val);else if(field==='d')steps[i].d=Math.max(1,r1(val));writeStepsToTextarea();updateStats(steps);if(selectedIdx===i)openInspector(i);scheduleDraw();});
         inp.addEventListener('focus',()=>{selectedIdx=i;openInspector(i);});
@@ -1856,7 +1856,7 @@ function recDraw(err){
   g.fillStyle='#38bdf8';g.beginPath();g.arc(X(0),Y(0),4,0,6.2832);g.fill();
 }
 window.addEventListener('resize',()=>{if(_recRes)recDraw();});
-function recStepsText(s){return s.map(v=>`${v[0]},${v[1]},${Math.round(v[2])}`).join('\n');}
+function recStepsText(s){return s.map(v=>`${v[0]},${v[1]},${v[2]}`).join('\n');}
 function recLoad(){
   const s=_recRes&&_recRes.steps;if(!s||!s.length)return;
   newScript();

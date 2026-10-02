@@ -280,7 +280,7 @@ A canvas preview of the cumulative mouse path the script in the editor produces 
 | Feature | What it does |
 |---------|-------------|
 | Canvas | Drag points to adjust them; double-click to add a step; right-click for add / insert / inspect / delete. |
-| Step list + inspector | Numeric x, y and delay (ms) editing per step; arrow keys nudge a selected point (Shift = ×5), Delete removes it. |
+| Step list + inspector | Numeric x, y and delay (ms) editing per step, to one decimal place (every edit, bulk operation and nudge keeps one decimal, and whole numbers are written without `.0`); arrow keys nudge a selected point (Shift = ×5), Delete removes it. |
 | Undo / Redo | Ctrl+Z / Ctrl+Y. |
 | Play | Animates the path using each step's delay. |
 | Bulk menu | Reverse, Mirror X / Y, Smooth, Scale X / Y / delays, Set all delays. |
