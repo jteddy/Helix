@@ -1,7 +1,12 @@
+import re
 import time
 import threading
 from makcu import create_controller, MouseButton
 
+
+# The makcu library switches the link to this rate during connect (legacy
+# baud-change frame + host side); verify_link() confirms it took effect.
+TARGET_BAUD = 4000000
 
 # How long to wait for command_lock before assuming the device is hung.
 # 3 s is generous for a normal HID write (should complete in <10 ms).
@@ -33,7 +38,11 @@ class makcu_controller:
     is_connected_flag = False
     _watchdog_thread  = None
     _spray_active     = threading.Event()
+    _recording        = threading.Event()   # pattern recorder is polling getpos
     _clicking_button  = None          # MouseButton being programmatically clicked
+    _waiter           = None          # (regex, Event, matches) for the pending query()
+    _info_lock        = threading.Lock()
+    device_info       = {"firmware": None, "baud": None, "baud_ok": None}
 
     @staticmethod
     def _clear_button_states():
@@ -118,7 +127,7 @@ class makcu_controller:
             if not connected:
                 continue
 
-            if makcu_controller._spray_active.is_set():
+            if makcu_controller._spray_active.is_set() or makcu_controller._recording.is_set():
                 continue
 
             if not makcu_controller._acquire_command_lock():
@@ -162,11 +171,18 @@ class makcu_controller:
                         makcu_controller.button_states["M5"] = pressed
 
             controller.set_button_callback(on_button_event)
+            makcu_controller._install_line_hook(controller)
             controller.enable_button_monitoring(True)
 
             with makcu_controller.connection_lock:
                 makcu_controller.controller = controller
                 makcu_controller.is_connected_flag = True
+
+            makcu_controller._set_info(firmware=None, baud="checking…", baud_ok=None)
+            threading.Thread(
+                target=makcu_controller.verify_link, args=(controller,),
+                daemon=True, name="makcu-verify",
+            ).start()
 
             return controller
 
@@ -359,6 +375,167 @@ class makcu_controller:
     def get_button_state(button_name):
         with makcu_controller._button_lock:
             return makcu_controller.button_states.get(button_name, False)
+
+    # ── Text queries (replies arrive via the library's line parser) ───────────
+    #
+    # The library's listener thread owns the serial port and drops any reply
+    # we did not register for, so query() hooks its line callback instead of
+    # reading the port ourselves.
+
+    @staticmethod
+    def _install_line_hook(controller):
+        transport = getattr(controller, "transport", None)
+        original = getattr(transport, "_process_pending_commands", None)
+        if original is None:
+            print("[MAKCU] Library line hook unavailable — text queries disabled")
+            return
+
+        def hook(content):
+            w = makcu_controller._waiter
+            if w is not None:
+                rx, ev, out = w
+                m = rx.search(content)
+                if m and not ev.is_set():
+                    out.append(m)
+                    ev.set()
+            return original(content)
+
+        transport._process_pending_commands = hook
+
+    @staticmethod
+    def _set_info(**kw):
+        with makcu_controller._info_lock:
+            makcu_controller.device_info.update(kw)
+
+    @staticmethod
+    def _mark_disconnected():
+        with makcu_controller.connection_lock:
+            makcu_controller.is_connected_flag = False
+            makcu_controller.controller = None
+        makcu_controller._clear_button_states()
+
+    @staticmethod
+    def query(cmd, pattern, timeout=0.3, retries=3):
+        """Send a text command and return the first reply line matching
+        *pattern* (a regex searched in each line), or None. Retries because a
+        stray prompt can garble the first reply line after a burst of setters."""
+        rx = re.compile(pattern)
+        for _ in range(retries):
+            if not makcu_controller._acquire_command_lock():
+                return None
+            ev, out = threading.Event(), []
+            try:
+                with makcu_controller.connection_lock:
+                    ctrl = makcu_controller.controller
+                if ctrl is None:
+                    return None
+                makcu_controller._waiter = (rx, ev, out)
+                try:
+                    ser = ctrl.transport.serial
+                    ser.write(f"{cmd}\r\n".encode("ascii"))
+                    ser.flush()
+                except Exception as e:
+                    print(f"[MAKCU] Query write error: {e}")
+                    makcu_controller._mark_disconnected()
+                    return None
+                if ev.wait(timeout):
+                    return out[0]
+            finally:
+                makcu_controller._waiter = None
+                makcu_controller.command_lock.release()
+        return None
+
+    @staticmethod
+    def send_text(cmd):
+        """Fire-and-forget text command (no reply expected)."""
+        if not makcu_controller._acquire_command_lock():
+            return False
+        try:
+            with makcu_controller.connection_lock:
+                ctrl = makcu_controller.controller
+            if ctrl is None:
+                return False
+            ctrl.transport.serial.write(f"{cmd}\r\n".encode("ascii"))
+            ctrl.transport.serial.flush()
+            return True
+        except Exception as e:
+            print(f"[MAKCU] Send error: {e}")
+            makcu_controller._mark_disconnected()
+            return False
+        finally:
+            makcu_controller.command_lock.release()
+
+    @staticmethod
+    def get_pos(timeout=0.1):
+        """Firmware-tracked pointer position (V3.x and V4.026+), or None."""
+        m = makcu_controller.query(
+            "km.getpos()", r"getpos\((-?\d+)\s*,\s*(-?\d+)\)", timeout, retries=1
+        )
+        return (int(m.group(1)), int(m.group(2))) if m else None
+
+    @staticmethod
+    def get_screen():
+        m = makcu_controller.query("km.screen()", r"screen\((\d+)\s*,\s*(\d+)\)")
+        return (int(m.group(1)), int(m.group(2))) if m else None
+
+    @staticmethod
+    def set_screen(w, h):
+        return makcu_controller.send_text(f"km.screen({int(w)},{int(h)})")
+
+    # ── Link verification ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def verify_link(controller):
+        """Confirm the serial link really runs at TARGET_BAUD.
+
+        The library never checks that the device accepted the baud switch, so
+        a failed switch looks like a healthy connection. Any valid reply at
+        the host rate proves the device is at that rate too."""
+        time.sleep(0.3)
+        try:
+            ser = controller.transport.serial
+            if ser is not None and ser.baudrate != TARGET_BAUD:
+                print(f"[MAKCU] Host baud was {ser.baudrate}, forcing {TARGET_BAUD}")
+                ser.baudrate = TARGET_BAUD
+        except Exception as e:
+            print(f"[MAKCU] Could not check host baud: {e}")
+
+        ver = makcu_controller.query("km.version()", r"MAKCU")
+        baud = makcu_controller.query("km.baud()", r"^[>\s]*(\d{4,8})\s*$", retries=2) if ver else None
+
+        if makcu_controller.controller is not controller:
+            return  # reconnected or dropped while probing
+
+        reply = ver.string.lstrip("> ").strip() if ver else None
+        if baud is not None:
+            rate = int(baud.group(1))
+            ok = rate == TARGET_BAUD
+            info = {
+                "firmware": f"{reply} (V4.073 or newer)",
+                "baud": f"{rate:,} (confirmed by device)" if ok else f"{rate:,} — expected {TARGET_BAUD:,}",
+                "baud_ok": ok,
+            }
+        elif ver is not None:
+            info = {
+                "firmware": f"{reply} (V3.x or V4 older than V4.073)",
+                "baud": f"{TARGET_BAUD:,} (device replies at this rate; firmware can't report baud)",
+                "baud_ok": True,
+            }
+        else:
+            info = {
+                "firmware": None,
+                "baud": "No reply to km.version() — baud could not be confirmed",
+                "baud_ok": None,
+            }
+        makcu_controller._set_info(**info)
+        print(f"[MAKCU] Link check: {info['baud']}")
+
+    @staticmethod
+    def device_summary():
+        if not makcu_controller.is_connected():
+            return {"connected": False, "firmware": None, "baud": None, "baud_ok": None}
+        with makcu_controller._info_lock:
+            return {"connected": True, **makcu_controller.device_info}
 
     # ── Disconnect ────────────────────────────────────────────────────────────
 

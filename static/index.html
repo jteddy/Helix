@@ -269,6 +269,20 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 .rpm-result{font-family:var(--fm);font-size:12px;font-weight:600;color:var(--accent);padding:2px 0 6px;}
 .rpm-dot{color:var(--text3);margin:0 6px;}
 
+/* ── Pattern Recorder ───────────────────────────────────────────── */
+.rec-help{font-family:var(--fu);font-size:10px;color:var(--text2);line-height:1.5;padding:6px 0 2px;}
+.rec-row{flex-wrap:wrap;}
+.rec-row .btn:disabled{opacity:.4;pointer-events:none;}
+.rec-row select{height:var(--rh);}
+.rec-status{font-family:var(--fm);font-size:11px;color:var(--text2);padding:3px 0;word-break:break-word;}
+.rec-status.on{color:var(--accent);}.rec-status.err{color:var(--red);}.rec-status.ok{color:var(--green);}
+.rec-pos{font-family:var(--fm);font-size:10px;color:var(--text3);padding:0 0 4px;min-height:14px;}
+.rec-link{color:var(--text2);font-family:var(--fu);font-size:10px;text-decoration:underline;text-underline-offset:2px;cursor:pointer;white-space:nowrap;}
+.rec-link:hover{color:var(--accent);}
+.rec-canvas{display:none;width:100%;height:150px;background:var(--bg1);border:1px solid var(--border);border-radius:var(--rs);margin-top:4px;}
+.rec-warn{font-family:var(--fu);font-size:10px;color:var(--red);padding:3px 0 0;}
+.rec-stats{padding-bottom:7px;}
+
 /* ── Pattern Visualiser ─────────────────────────────────────────── */
 .vis-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;position:relative;}
 .vis-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
@@ -555,6 +569,34 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
     </div>
   </div>
 
+  <div class="card" id="rec-card">
+    <div class="ch">Pattern Recorder</div>
+    <div class="cb">
+      <p class="rec-help">Turn Recoil OFF, press Arm, then hold left-click and spray, compensating by hand. Recording starts when you press and ends when you release.</p>
+      <div class="rpm-row rec-row">
+        <select id="rec-trig"><option value="lmb">Hold left-click</option><option value="now">Start now</option></select>
+        <button class="btn pri sm" id="rec-arm" onclick="recArm()">Arm</button>
+        <button class="btn sm" id="rec-stop" onclick="recStop()" disabled>Stop</button>
+        <button class="btn dng sm" id="rec-cancel" onclick="recCancel()" disabled>Cancel</button>
+      </div>
+      <div class="rec-status" id="rec-status">idle</div>
+      <div class="rec-pos" id="rec-pos"></div>
+      <div class="tool-sep"></div>
+      <div class="rpm-row rec-row">
+        <input type="number" id="rec-iv" min="1" max="2000" step="0.1" value="80" oninput="recParamChanged()"><span class="rpm-unit">ms/shot</span>
+        <a class="rec-link" onclick="recUseMeasured()">use measured</a>
+      </div>
+      <div class="rpm-row rec-row">
+        <input type="number" id="rec-sh" min="1" max="500" step="1" placeholder="auto" oninput="recParamChanged()"><span class="rpm-unit">shots</span>
+        <input type="number" id="rec-lead" min="0" max="1000" step="1" value="0" oninput="recParamChanged()" title="Shifts compensation earlier by this many ms to offset your reaction delay. 0 reproduces your movement exactly as recorded."><span class="rpm-unit">lead ms</span>
+      </div>
+      <canvas id="rec-canvas" class="rec-canvas"></canvas>
+      <div class="rec-warn" id="rec-warn" style="display:none"></div>
+      <div class="rpm-result rec-stats" id="rec-stats" style="display:none"></div>
+      <div class="rpm-row rec-row"><button class="btn sm" id="rec-load" onclick="recLoad()" disabled>Load into editor</button></div>
+    </div>
+  </div>
+
 
   <div id="pattern-visualiser-card" class="vis-card" data-vis-mode="simple">
     <div class="vis-header">
@@ -703,6 +745,8 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
     <div class="mak-card">
       <div class="mak-section-head">Connection</div>
       <div class="mak-row"><span class="mak-row-label">MAKCU</span><span id="s-mst" class="mak-row-val">checking…</span></div>
+      <div class="mak-row"><span class="mak-row-label">Firmware</span><span id="s-fw" class="mak-row-val">—</span></div>
+      <div class="mak-row"><span class="mak-row-label">Baud</span><span id="s-baud" class="mak-row-val">—</span></div>
       <div class="mak-row"><span class="mak-row-label">Server</span><span id="s-srv" class="mak-row-val">—</span></div>
       <div class="mak-row"><span class="mak-row-label">WebSocket</span><span id="s-ws" class="mak-row-val">—</span></div>
     </div>
@@ -762,7 +806,7 @@ function st(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   $('tab-'+name).classList.add('active');
-  
+  onTabChange(name);
 }
 let _nt;
 function notify(msg){const el=$('notif');el.textContent=msg;el.classList.add('show');clearTimeout(_nt);_nt=setTimeout(()=>el.classList.remove('show'),2500);}
@@ -1557,12 +1601,115 @@ function calcMeasured(){
 
 loadState();
 
+// ── Device info (Settings → Connection) ──────────────────────────────────────
+async function devRefresh(){
+  try{
+    const d=await api('/api/device'),on=!!d.connected;
+    $('s-fw').textContent=on&&d.firmware?d.firmware:'—';
+    const b=$('s-baud');
+    b.textContent=on&&d.baud?d.baud:'—';
+    b.style.color=on&&d.baud_ok===true?'var(--green)':on&&d.baud_ok===false?'var(--red)':'';
+  }catch(e){}
+}
+devRefresh();
+
+// ── Pattern Recorder (Tools) ─────────────────────────────────────────────────
+let _recPoll=null,_recState='idle',_recResT=null,_recRes=null;
+function recErr(e){let m=(e&&e.message)||String(e);try{m=JSON.parse(m).detail||m;}catch(_){}return typeof m==='string'?m:JSON.stringify(m);}
+async function recCall(path,body){
+  try{recApply(await api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}));}
+  catch(e){const m=recErr(e);notify(m);const s=$('rec-status');s.textContent=m;s.className='rec-status err';}
+}
+function recArm(){_recRes=null;recDraw();recCall('/api/recorder/arm',{trigger:$('rec-trig').value,max_s:20});}
+function recStop(){recCall('/api/recorder/stop');}
+function recCancel(){_recRes=null;recDraw();recCall('/api/recorder/cancel');}
+function recUseMeasured(){const v=parseFloat($('m-ms').textContent);if(v>0){$('rec-iv').value=v;recParamChanged();}}
+function recApply(s){
+  const prev=_recState;_recState=s.state||'idle';
+  const busy=_recState==='armed'||_recState==='recording';
+  const el=$('rec-status');
+  let t=_recState+(s.message?' — '+s.message:'');
+  if(busy||_recState==='done'){t+=` · ${s.samples|0} samples · ${Math.round(s.duration_ms||0)} ms`+(s.rate_hz?` · ${Math.round(s.rate_hz)} Hz`:'');}
+  el.textContent=t;
+  el.className='rec-status'+(_recState==='error'?' err':busy?' on':_recState==='done'?' ok':'');
+  $('rec-pos').textContent=s.pos?`position  x ${s.pos[0]}   y ${s.pos[1]}`:'';
+  $('rec-arm').disabled=busy;$('rec-stop').disabled=_recState!=='recording';$('rec-cancel').disabled=_recState==='idle';
+  if(_recState==='done'&&prev!=='done')recFetchResult();
+  else if(_recState!=='done'&&prev==='done'){_recRes=null;recDraw();}
+  recSchedule();
+}
+function recSchedule(){
+  clearTimeout(_recPoll);_recPoll=null;
+  if(!$('tab-tools').classList.contains('active'))return;
+  _recPoll=setTimeout(recTick,_recState==='armed'||_recState==='recording'?300:1500);
+}
+async function recTick(){try{recApply(await api('/api/recorder'));}catch(e){recSchedule();}}
+function onTabChange(name){
+  if(name==='tools')recTick();else{clearTimeout(_recPoll);_recPoll=null;}
+  if(name==='settings')devRefresh();
+}
+function recParams(){
+  const iv=parseFloat($('rec-iv').value),sh=parseInt($('rec-sh').value),ld=parseFloat($('rec-lead').value);
+  const q=new URLSearchParams();q.set('interval_ms',iv>0?iv:80);
+  if(sh>0)q.set('shots',sh);if(ld>0)q.set('lead_ms',ld);
+  return q.toString();
+}
+function recParamChanged(){clearTimeout(_recResT);_recResT=setTimeout(recFetchResult,350);}
+async function recFetchResult(){
+  if(_recState!=='done')return;
+  try{_recRes=await api('/api/recorder/result?'+recParams());recDraw();}
+  catch(e){_recRes=null;recDraw(recErr(e));}
+}
+function recDraw(err){
+  const cv=$('rec-canvas'),warn=$('rec-warn'),stats=$('rec-stats'),ld=$('rec-load'),r=_recRes;
+  ld.disabled=!(r&&r.steps&&r.steps.length);
+  if(!r){
+    cv.style.display='none';stats.style.display='none';
+    warn.style.display=err?'':'none';warn.textContent=err||'';
+    return;
+  }
+  const msgs=[];if(r.clamped)msgs.push('Path hit the firmware’s virtual screen edge — this recording is not reliable.');
+  warn.style.display=msgs.length?'':'none';warn.textContent=msgs.join(' ');
+  stats.style.display='';
+  stats.textContent=`${r.shots} shots · total x ${Math.round(r.total[0]*10)/10} · total y ${Math.round(r.total[1]*10)/10} · ${Math.round(r.duration_ms)} ms`;
+  cv.style.display='block';
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+  if(!W||!H)return;
+  cv.width=W*dpr;cv.height=H*dpr;
+  const g=cv.getContext('2d'),css=getComputedStyle(document.documentElement);
+  g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
+  const path=(r.path&&r.path.length?r.path:[[0,0,0]]).map(q=>[q[1],q[2]]);
+  let cx=0,cy=0;const pts=[[0,0]];(r.steps||[]).forEach(s=>{cx+=s[0];cy+=s[1];pts.push([cx,cy]);});
+  const all=path.concat(pts,[[0,0]]);
+  let x0=Math.min(...all.map(a=>a[0])),x1=Math.max(...all.map(a=>a[0])),y0=Math.min(...all.map(a=>a[1])),y1=Math.max(...all.map(a=>a[1]));
+  const pad=14,sc=Math.min((W-2*pad)/Math.max(x1-x0,1),(H-2*pad)/Math.max(y1-y0,1));
+  const ox=(W-(x1-x0)*sc)/2-x0*sc,oy=(H-(y1-y0)*sc)/2-y0*sc;
+  const X=v=>ox+v*sc,Y=v=>oy+v*sc;
+  g.strokeStyle=css.getPropertyValue('--border2').trim()||'#3a3f48';g.lineWidth=1;
+  g.beginPath();g.moveTo(X(0),0);g.lineTo(X(0),H);g.moveTo(0,Y(0));g.lineTo(W,Y(0));g.stroke();
+  g.strokeStyle=css.getPropertyValue('--accent').trim()||'#4d9cff';g.lineWidth=1.5;g.lineJoin='round';
+  g.beginPath();path.forEach((a,i)=>i?g.lineTo(X(a[0]),Y(a[1])):g.moveTo(X(a[0]),Y(a[1])));g.stroke();
+  g.fillStyle=css.getPropertyValue('--green').trim()||'#44ff77';
+  pts.forEach(a=>{g.beginPath();g.arc(X(a[0]),Y(a[1]),2,0,6.2832);g.fill();});
+  g.fillStyle='#38bdf8';g.beginPath();g.arc(X(0),Y(0),4,0,6.2832);g.fill();
+}
+window.addEventListener('resize',()=>{if(_recRes)recDraw();});
+function recLoad(){
+  const s=_recRes&&_recRes.steps;if(!s||!s.length)return;
+  newScript();
+  $('vec-ta').value=s.map(v=>`${v[0]},${v[1]},${Math.round(v[2])}`).join('\n');
+  updateGutter();window.visRefresh&&window.visRefresh();
+  notify(`Loaded ${s.length} steps — name it and save in Recoil → Scripts`);
+}
+(function(){const v=parseFloat($('t-ms').textContent);if(v>0)$('rec-iv').value=v;})();
+
 // ── MAKCU poll — independent of WebSocket, catches hardware disconnects ──────
 async function pollMakcu(){
   try{
     const d=await(await fetch('/api/streamdeck')).json();
     applyStatus({makcu_connected:d.makcu,recoil_enabled:d.recoil,flashlight_active:d.flashlight,loaded_script:d.script});
   }catch(e){}
+  devRefresh();
 }
 setInterval(pollMakcu,7000);
 
