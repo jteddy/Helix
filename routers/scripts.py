@@ -10,6 +10,12 @@ from shared import state, save_async
 router = APIRouter(tags=["scripts"])
 
 
+def _num(v) -> str:
+    """Whole numbers without a trailing .0 (4.0 -> "4", -0.0 -> "0"); others as-is."""
+    v = float(v)
+    return str(int(v)) if v.is_integer() else str(v)
+
+
 def _read_script(name: str, game: Optional[str] = None) -> dict:
     """Read a script file (.json preferred, .txt fallback).
     Returns {"content": csv_text, "sensitivity": float, "game": str, "author": str}.
@@ -30,7 +36,7 @@ def _read_script(name: str, game: Optional[str] = None) -> dict:
         for item in steps:
             try:
                 x, y, d = item[0], item[1], item[2]
-                lines.append(f"{x},{y},{int(d)}" if d == int(d) else f"{x},{y},{d}")
+                lines.append(f"{_num(x)},{_num(y)},{_num(d)}")
             except Exception:
                 pass
         return {
