@@ -8,6 +8,11 @@ from makcu import create_controller, MouseButton
 # baud-change frame + host side); verify_link() confirms it took effect.
 TARGET_BAUD = 4000000
 
+# Programmatic click: hold time, and km.click's button numbers (the V3 reference
+# numbers buttons 1=left 2=right 3=middle 4=side1 5=side2).
+CLICK_HOLD_MS = 30
+CLICK_INDEX = {"LMB": 1, "RMB": 2, "MMB": 3, "M4": 4, "M5": 5}
+
 # How long to wait for command_lock before assuming the device is hung.
 # 3 s is generous for a normal HID write (should complete in <10 ms).
 COMMAND_TIMEOUT = 3.0
@@ -40,6 +45,7 @@ class makcu_controller:
     _spray_active     = threading.Event()
     _recording        = threading.Event()   # pattern recorder is polling getpos
     _clicking_button  = None          # MouseButton being programmatically clicked
+    _native_click     = False         # True once the firmware is known to support km.click
     _waiter           = None          # (regex, Event, matches) for the pending query()
     _info_lock        = threading.Lock()
     device_info       = {"firmware": None, "baud": None, "baud_ok": None}
@@ -127,7 +133,11 @@ class makcu_controller:
             if not connected:
                 continue
 
-            if makcu_controller._spray_active.is_set() or makcu_controller._recording.is_set():
+            if (
+                makcu_controller._spray_active.is_set()
+                or makcu_controller._recording.is_set()
+                or makcu_controller._clicking_button is not None
+            ):
                 continue
 
             if not makcu_controller._acquire_command_lock():
@@ -178,6 +188,7 @@ class makcu_controller:
                 makcu_controller.controller = controller
                 makcu_controller.is_connected_flag = True
 
+            makcu_controller._native_click = False
             makcu_controller._set_info(firmware=None, baud="checking…", baud_ok=None)
             threading.Thread(
                 target=makcu_controller.verify_link, args=(controller,),
@@ -239,6 +250,7 @@ class makcu_controller:
         if button is None:
             return False
 
+        native = makcu_controller._native_click
         if not makcu_controller._acquire_command_lock():
             return False
         try:
@@ -251,24 +263,49 @@ class makcu_controller:
             #   2. Rapid enable/disable cycling that can desync the firmware
             with makcu_controller._button_lock:
                 makcu_controller._clicking_button = button
-            mck.press(button)
-            time.sleep(0.03)
+            if native:
+                ser = mck.transport.serial
+                ser.write(f"km.click({CLICK_INDEX[button_name]},1,{CLICK_HOLD_MS})\r\n".encode("ascii"))
+                ser.flush()
+            else:
+                mck.press(button)
+        except Exception as e:
+            print(f"[MAKCU] Click error: {e}")
+            makcu_controller._mark_disconnected()
+            with makcu_controller._button_lock:
+                makcu_controller._clicking_button = None
+            return False
+        finally:
+            makcu_controller.command_lock.release()
+
+        # The lock is deliberately not held while the button is down: recoil
+        # moves would otherwise stall for the whole hold.
+        try:
+            time.sleep(CLICK_HOLD_MS / 1000.0)
+            if not native and not makcu_controller._release_button(mck, button):
+                return False
+            # Let pending firmware events drain while the filter is still
+            # active.  5 ms is well above typical USB HID latency (~1-2 ms).
+            time.sleep(0.005)
+            return True
+        finally:
+            with makcu_controller._button_lock:
+                makcu_controller._clicking_button = None
+
+    @staticmethod
+    def _release_button(mck, button):
+        if not makcu_controller._acquire_command_lock():
+            return False
+        try:
+            if makcu_controller.controller is not mck:
+                return False  # replaced by a reconnect while the button was down
             mck.release(button)
             return True
         except Exception as e:
-            print(f"[MAKCU] Click error: {e}")
-            with makcu_controller.connection_lock:
-                makcu_controller.is_connected_flag = False
-                makcu_controller.controller = None
-            makcu_controller._clear_button_states()
+            print(f"[MAKCU] Click release error: {e}")
+            makcu_controller._mark_disconnected()
             return False
         finally:
-            # Let pending firmware events drain while the filter is still
-            # active, then clear.  5 ms is well above typical USB HID
-            # latency (~1-2 ms).
-            time.sleep(0.005)
-            with makcu_controller._button_lock:
-                makcu_controller._clicking_button = None
             makcu_controller.command_lock.release()
 
     # ── Simple move ───────────────────────────────────────────────────────────
@@ -510,6 +547,8 @@ class makcu_controller:
         if makcu_controller.controller is not controller:
             return  # reconnected or dropped while probing
 
+        # km.baud() exists only on V4.073+, which implies km.click (V4.026+).
+        makcu_controller._native_click = baud is not None
         reply = ver.string.lstrip("> ").strip() if ver else None
         if baud is not None:
             rate = int(baud.group(1))
