@@ -111,6 +111,8 @@ sudo systemctl restart helix
 sudo journalctl -u helix -f    # live logs
 ```
 
+You can also restart from any browser: **Settings → Server → Restart**. The server exits and systemd relaunches it (about 5–10 s), with no sudo or password. This relies on the unit's `Restart=always` line, which `setup-autostart.sh` writes; if you edit the unit, keep `Restart=always` (or `on-failure`).
+
 ---
 
 ## Desktop Launcher
@@ -299,6 +301,10 @@ Theme selector (Default, Midnight, Ember, Cearum). The theme is stored on the se
 
 Shows live status of the MAKCU device, its firmware, the serial baud rate, the web server, and the WebSocket connection so you can diagnose connectivity issues at a glance. After every connect Helix confirms the device really runs at 4,000,000 baud by asking it (`km.version()`, plus `km.baud()` on V4.073+); *confirmed by device* means the device answered at that rate. If the device does not answer, the baud row says so rather than showing a healthy connection.
 
+**Server**
+
+Shows how long the server has been up and has a **Restart** button (it asks for confirmation, then the page reconnects and reloads by itself). Under the systemd service the server exits and systemd relaunches it; started by hand (`python main.py` / `./start.sh`) it restarts itself in place. Settings are saved first, and the MAKCU reconnects on startup. Restart is not available on Windows (use the launcher) or when the server was started some other way, such as `uvicorn main:app`; the button is then disabled. Requests from other websites are rejected, but like the rest of the API there is no password, so anyone on your network can restart the server.
+
 **Stream Deck**
 
 Displays the API endpoints needed to configure the Web Requests plugin. See the [Stream Deck setup guide](https://github.com/jteddy/Helix/blob/main/streamdeck/SETUP.md) for full button-by-button instructions.
@@ -384,6 +390,7 @@ helix/
 │   ├── settings.py               ← POST /api/settings
 │   ├── cs2.py                    ← GET /api/cs2/weapons, POST /api/cs2/weapon
 │   ├── device.py                 ← GET /api/device
+│   ├── server.py                 ← GET /api/server, POST /api/server/restart
 │   ├── recorder.py               ← /api/recorder/*
 │   └── streamdeck.py             ← /api/streamdeck, /streamdeck/setup
 ├── mouse/makcu.py                ← MAKCU USB HID controller
@@ -417,6 +424,8 @@ helix/
 | GET | `/api/state` | Full state snapshot (recoil, flashlight, settings, scripts, games, `makcu_connected`) |
 | GET | `/api/health` | Server + MAKCU health check |
 | GET | `/api/device` | `{connected, firmware, baud, baud_ok}` — display strings from the post-connect link check; `baud_ok` is `true` (device answered at 4,000,000), `false` (device reported another rate) or `null` (not confirmed) |
+| GET | `/api/server` | `{restart_supported, mode, started_at, pid}` — `mode` is `systemd` (supervisor relaunches), `exec` (re-executes itself) or `null` (restart unavailable) |
+| POST | `/api/server/restart` | Save settings, then exit and relaunch. Returns `{ok, mode}` just before the server goes down. 403 if the request has a cross-site `Origin`, 501 if restart is unavailable |
 | WS | `/ws` | Live status stream (state checked every 200 ms, pushed when it changes) |
 
 ### Recoil

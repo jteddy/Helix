@@ -9,12 +9,13 @@ import hashlib
 import json
 import logging
 import os
+import sys
 import threading
 from contextlib import asynccontextmanager
 
 # Suppress uvicorn access-log noise from high-frequency polling endpoints.
 class _SuppressPollingLogs(logging.Filter):
-    _MUTED = ("/api/streamdeck", "/api/health", "/api/device", "/api/recorder")
+    _MUTED = ("/api/streamdeck", "/api/health", "/api/device", "/api/recorder", "/api/server")
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
         return not any(ep in msg for ep in self._MUTED)
@@ -27,6 +28,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 # shared singletons — must be imported before routers so state is initialised once
+import shared
 from shared import state, makcu_controller, save_async
 import config_manager
 from features.recoil.recoil import recoil as recoil_feature
@@ -34,6 +36,7 @@ from features.flashlight.flashlight import flashlight as flashlight_feature, shu
 
 from routers import recoil, scripts, flashlight, settings, cs2, streamdeck, device
 from routers import recorder as recorder_router
+from routers import server as server_router
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -148,6 +151,7 @@ app.include_router(cs2.router)
 app.include_router(streamdeck.router)
 app.include_router(device.router)
 app.include_router(recorder_router.router)
+app.include_router(server_router.router)
 
 # ── Background tasks ───────────────────────────────────────────────────────────
 async def _broadcast_loop():
@@ -200,6 +204,15 @@ async def _autosave_loop():
         await save_async()
 
 
+def _restart_process():
+    if os.environ.get("INVOCATION_ID"):
+        # Supervised by systemd: exit non-zero so Restart=always or on-failure relaunches us.
+        print("[Helix] Exiting for restart — systemd will relaunch")
+        sys.exit(75)
+    print("[Helix] Restarting in place", flush=True)  # exec discards buffered output
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
 if __name__ == "__main__":
     import uvicorn, socket
     try:
@@ -207,4 +220,9 @@ if __name__ == "__main__":
     except Exception:
         ip = "localhost"
     print(f"\n{'='*40}\n  Helix\n  http://localhost:8000\n  http://{ip}:8000\n{'='*40}\n")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    # Pass the app object, not "main:app": the string form re-imports this file as a second
+    # module, so shared.server / shared.restart_requested would not be visible here.
+    shared.server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=8000, reload=False))
+    shared.server.run()
+    if shared.restart_requested:
+        _restart_process()

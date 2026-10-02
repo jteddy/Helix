@@ -752,6 +752,13 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
     </div>
 
     <div class="mak-card">
+      <div class="mak-section-head">Server</div>
+      <div class="mak-row"><span class="mak-row-label">Uptime</span><span id="s-uptime" class="mak-row-val">—</span></div>
+      <div class="mak-row"><span class="mak-row-label">Restart server</span><button class="btn dng sm" id="srv-restart" onclick="srvRestart()" disabled>Restart</button></div>
+      <p class="mak-note" id="srv-restart-msg"></p>
+    </div>
+
+    <div class="mak-card">
       <div class="mak-section-head">Stream Deck</div>
       <div class="mak-row"><span class="mak-row-label">Toggle Recoil</span><span class="mak-row-val" style="color:var(--accent);font-size:9px">POST /api/recoil/toggle</span></div>
       <div class="mak-row"><span class="mak-row-label">Toggle Flashlight</span><span class="mak-row-val" style="color:var(--accent);font-size:9px">POST /api/flashlight/toggle</span></div>
@@ -1613,6 +1620,45 @@ async function devRefresh(){
 }
 devRefresh();
 
+// ── Server restart (Settings) ────────────────────────────────────────────────
+let _srvStart=null,_srvTick=null,_srvBusy=false;
+function srvFmt(s){
+  s=Math.max(0,Math.floor(s));
+  const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+  return d?d+'d '+h+'h':h?h+'h '+m+'m':m?m+'m '+(s%60)+'s':s+'s';
+}
+async function srvRefresh(){
+  if(_srvBusy)return;
+  try{
+    const d=await api('/api/server');
+    _srvStart=d.started_at;
+    $('s-uptime').textContent=srvFmt(Date.now()/1000-d.started_at);
+    $('srv-restart').disabled=!d.restart_supported;
+    const m=$('srv-restart-msg');
+    if(d.restart_supported)m.textContent='';
+    else m.innerHTML='Restart is only available when Helix is started with <code>python main.py</code> on Linux (systemd service or manual).';
+  }catch(e){}
+}
+async function srvRestart(){
+  if(_srvBusy)return;
+  if(!confirm('Restart the Helix server? This page reconnects automatically.'))return;
+  const b=$('srv-restart'),m=$('srv-restart-msg');
+  b.disabled=true;
+  let before;
+  try{
+    before=_srvStart!==null?_srvStart:(await api('/api/server')).started_at;
+    await api('/api/server/restart',{method:'POST'});
+  }catch(e){notify(recErr(e));b.disabled=false;return;}
+  _srvBusy=true;m.textContent='Restarting…';
+  const t0=Date.now();
+  const poll=async()=>{
+    try{const d=await api('/api/server');if(d.started_at!==before){location.reload();return;}}catch(_){}
+    if(Date.now()-t0>90000){_srvBusy=false;m.textContent='Server did not come back. On the server run: sudo journalctl -u helix -f';return;}
+    setTimeout(poll,1500);
+  };
+  setTimeout(poll,1500);
+}
+
 // ── Pattern Recorder (Tools) ─────────────────────────────────────────────────
 let _recPoll=null,_recState='idle',_recResT=null,_recRes=null;
 function recErr(e){let m=(e&&e.message)||String(e);try{m=JSON.parse(m).detail||m;}catch(_){}return typeof m==='string'?m:JSON.stringify(m);}
@@ -1646,7 +1692,8 @@ function recSchedule(){
 async function recTick(){try{recApply(await api('/api/recorder'));}catch(e){recSchedule();}}
 function onTabChange(name){
   if(name==='tools')recTick();else{clearTimeout(_recPoll);_recPoll=null;}
-  if(name==='settings')devRefresh();
+  clearInterval(_srvTick);_srvTick=null;
+  if(name==='settings'){devRefresh();srvRefresh();_srvTick=setInterval(srvRefresh,10000);}
 }
 function recParams(){
   const iv=parseFloat($('rec-iv').value),sh=parseInt($('rec-sh').value),ld=parseFloat($('rec-lead').value);
