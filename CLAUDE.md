@@ -20,7 +20,7 @@ The web UI, Stream Deck plugin and Android app (separate private repo, not avail
 
 ## Verification
 
-All real testing is done live on the MAKCU hardware, which Claude does not have. The server starts without the device (MAKCU shows N/C), so the API and UI can be exercised, but device behavior cannot be verified. State exactly what was and wasn't verified; never claim a hardware path works because the code looks right. There is no test suite or linter.
+All real testing is done live on the MAKCU hardware, which Claude does not have. The server starts without the device (MAKCU shows N/C), so the API and UI can be exercised, but device behavior cannot be verified. State exactly what was and wasn't verified; never claim a hardware path works because the code looks right. Report device results the way the vendor does: transport, firmware version, returned bytes and observed physical behavior separately; a host-side test is not hardware proof. There is no test suite or linter.
 
 ## Rules
 
@@ -48,7 +48,7 @@ All real testing is done live on the MAKCU hardware, which Claude does not have.
 - `verify_link()` runs after every connect and only reports (`/api/device`); it never disconnects. Any valid reply at the host baud proves the device is at that baud, because the library never checks the switch itself.
 - `move_mouse_smoothly` returns True for a zero move, and checks LMB after each step's move rather than before. Returning False means "interrupted or failed"; changing either behavior makes the recoil loop reset forever or produce no movement.
 
-**Firmware compatibility lives in the `makcu` library build, not in Helix.** `install.py` picks stable `makcu==2.3.1` (firmware 3.4) or the `jteddy/makcu-py-lib` `firmware-v3.7` branch. They differ only in the M4/M5 command names (`ms1`/`ms2` vs `side1`/`side2`); a mismatch silently breaks `click_button` (flashlight). `requirements.txt` alone installs the stock build, so a 3.7 setup needs `install.py`. Helix itself only calls `create_controller`, `set_button_callback`, `enable_button_monitoring`, `move`, `press`, `release` and `disconnect`. The library's firmware assumptions are: the legacy binary baud-change frame at connect (never verified by a read-back), the `km.buttons(1)` stream parsed as bare mask bytes, and plain `km.move` / button commands (from V4.041 the firmware's default mouse interpolation is AUTO, which can alter the timing of Helix's ~2.5 ms move cadence; the library cannot change it). The vendor reference is https://makcu.com/en/api/ (it has a per-build V4 differences section). The `makcu-docs` MCP server (`.mcp.json`, https://makcu.com/mcp) serves the same command reference: use `get_command` / `search_docs` for firmware questions instead of scraping the site. It is docs only; it cannot talk to the device. Re-check those three assumptions against it on any firmware change, and test live before assuming a new firmware works.
+**Firmware compatibility lives in the `makcu` library build, not in Helix.** `install.py` picks stable `makcu==2.3.1` (firmware 3.4) or the `jteddy/makcu-py-lib` `firmware-v3.7` branch. They differ only in the M4/M5 command names (`ms1`/`ms2` vs `side1`/`side2`); a mismatch silently breaks `click_button` (flashlight). `requirements.txt` alone installs the stock build, so a 3.7 setup needs `install.py`. Helix itself only calls `create_controller`, `set_button_callback`, `enable_button_monitoring`, `move`, `press`, `release` and `disconnect`. The library's firmware assumptions are: the legacy binary baud-change frame at connect (never verified by a read-back), the `km.buttons(1)` stream parsed as bare mask bytes, and plain `km.move` / button commands (from V4.041 the firmware's default mouse interpolation is AUTO, which can alter the timing of Helix's ~2.5 ms move cadence; the library cannot change it). Re-check those three assumptions against the references below on any firmware change, and test live before assuming a new firmware works.
 
 **Scripts.**
 - Save always writes `.json`. Load prefers `.json` over `.txt`, so a same-named `.json` shadows a hand-edited `.txt`. Delete removes both.
@@ -66,6 +66,17 @@ All real testing is done live on the MAKCU hardware, which Claude does not have.
 - The API has no auth, binds `0.0.0.0` and allows all CORS origins. It is LAN-only by design, so don't add endpoints that would make exposure dangerous (shell, arbitrary file access).
 
 **Config and platforms.** `config.json` stores an absolute `scripts_dir`, so never commit it or copy it between machines. Its save is atomic only on POSIX. Linux and Windows must both keep working: no Linux-only calls in the server or `mouse/` path; `start.sh`, systemd and udev are Linux-only and Windows runs `python main.py`. `cearum-web.service` is a legacy leftover; the real unit is written by `setup-autostart.sh`.
+
+## MAKCU references
+
+Command and wire formats come from these, not from memory, another language's SDK, or an older firmware's behavior. If they disagree with each other or with the code, resolve that before changing device behavior.
+
+- `makcu-docs` MCP (`.mcp.json`, https://makcu.com/mcp): the `km.*` serial command reference with per-firmware notes (`get_command`, `search_docs`). Docs only; it cannot talk to the device.
+- Vendor pages: https://makcu.com/en/api/ (V3 reference plus the V4 differences section) and https://makcu.com/api/versions (per-build capability matrix and changelog).
+- mak-suite (https://github.com/terrafirma2021/mak-suite), the vendor's SDK and protocol contracts: `protocol/MAK_API.md` (binary), `protocol/KM_API.md` (ASCII), `llm.md` (integration guide). Read them with `gh api repos/terrafirma2021/mak-suite/contents/<path>` or the raw GitHub URL. The MCP endpoint it advertises (https://makxd.com/mcp) redirected to a web page and rejected MCP requests when tried, so it is not registered here.
+- Helix uses the third-party `makcu` library only. The vendor's own Python SDK is `makxd` (PyPI, Python 3.10+; source in mak-suite `python/makxd`): typed MAK_API calls, `firmware_version()`, framed `input_stream` events, explicit connection config. It has not been evaluated against Helix. It would be the route to the exact firmware build, interpolation control and physical-button reads, but swapping it in is a large change that needs hardware testing.
+- The vendor calls the raw text `km.` button events legacy and the framed `input_stream` (`0x53` frames) the supported contract. Helix still depends on the text `km.buttons(1)` stream, so if button input goes dead on a new firmware, check that first.
+- SDK lifecycle rules worth keeping: connect once and reuse the connection, identify the firmware on connect, and release any input you hold down on every exit path, including shutdown.
 
 ## Git
 
