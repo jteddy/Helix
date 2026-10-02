@@ -482,7 +482,7 @@ Same storage as scripts (`saved_scripts/<game>/<weapon>.json`). The bundled web 
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/recorder` | Status: `state` (`idle`, `armed`, `recording`, `done`, `error`), `message`, `samples`, `duration_ms`, live `pos`, `rate_hz`, `clamped` |
+| GET | `/api/recorder` | Status: `state` (`idle`, `armed`, `recording`, `done`, `error`), `message` (while armed it shows the live getpos rate and whether left-click is being seen), `samples`, `duration_ms`, live `pos`, `rate_hz`, `clamped`, `lmb` |
 | POST | `/api/recorder/arm` | Start (`{"trigger": "lmb" \| "now", "max_s": 20}`). `lmb` waits for left-click, records while held. 409 if Recoil is ON or a recording is running, 503 if MAKCU is not connected |
 | POST | `/api/recorder/stop` | Finish now and keep the data |
 | POST | `/api/recorder/cancel` | Discard |

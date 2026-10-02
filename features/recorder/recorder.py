@@ -83,7 +83,7 @@ class Recorder:
     def _blank():
         return {
             "state": "idle", "message": "", "samples": 0, "duration_ms": 0.0,
-            "pos": None, "rate_hz": None, "clamped": False,
+            "pos": None, "rate_hz": None, "clamped": False, "lmb": False,
         }
 
     def _set(self, **kw):
@@ -191,6 +191,9 @@ class Recorder:
         phase = "armed"
         base = None
         fails = 0
+        polls = 0
+        lmb_ever = False
+        last_pub = 0.0
         clamped = False
         began = time.perf_counter()
 
@@ -225,7 +228,21 @@ class Recorder:
             if phase == "armed":
                 pre.append((t, p[0], p[1]))
                 first = pre[0]
-                self._set(pos=[p[0] - first[1], p[1] - first[2]])
+                polls += 1
+                lmb_ever = lmb_ever or lmb
+                if t - last_pub >= 0.2:
+                    last_pub = t
+                    waited = t - began
+                    msg = (
+                        f"Waiting for left-click… getpos {polls / waited:.0f} Hz · "
+                        f"left-click {'HELD' if lmb else 'not seen'}"
+                    )
+                    if trigger == "lmb" and waited > 8 and not lmb_ever:
+                        msg += " — Helix has not received any left-click from the MAKCU; try 'Start now' then Stop"
+                    self._set(
+                        pos=[p[0] - first[1], p[1] - first[2]], lmb=lmb,
+                        message=msg if trigger == "lmb" else "Recording…",
+                    )
                 if trigger == "now" or lmb:
                     # Baseline = the sample taken just before the press was seen.
                     base = pre[-2] if len(pre) > 1 else pre[-1]
@@ -246,7 +263,7 @@ class Recorder:
                 samples=len(samples), duration_ms=round(dur, 1),
                 pos=[samples[-1][1], samples[-1][2]],
                 rate_hz=round(len(samples) / (dur / 1000.0), 1) if dur > 0 else None,
-                clamped=clamped,
+                clamped=clamped, lmb=lmb,
             )
             if (
                 self._finish.is_set()
