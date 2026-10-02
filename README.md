@@ -271,7 +271,7 @@ The recorder reads the firmware's tracked pointer position (`km.getpos`) 100 tim
 
 **Button Monitor**
 
-Shows what Helix receives from the MAKCU, so you can check each mouse button against your firmware: five lit pills (LMB, RMB, MMB, M4, M5) with event counts, the stream format Helix detected (`0x53 frames` or text), non-text byte and overflow counters, and the latest raw frames in hex. **Start monitor** also asks the firmware directly for the stream switch and each button's state (`km.buttons()`, `km.left()` …) so you can compare what the firmware says with what Helix received. Other buttons: re-enable the stream by text command or by the vendor's binary command, reset counters, and two **Test move** buttons that nudge the mouse 100 counts right or down to prove movement injection works independently of buttons and recoil. **Generate report** collects settings, the loaded script, button state and device information into one block of text to send when reporting a problem (it leaves out your folder paths). The monitor polls only while it is switched on and the Tools tab is open.
+Shows what Helix receives from the MAKCU, so you can check each mouse button against your firmware: five lit pills (LMB, RMB, MMB, M4, M5) with event counts, the stream format Helix detected (`0x53 frames`, `km.+mask text`, or other text), non-text byte and overflow counters, and the latest raw frames in hex. **Start monitor** also asks the firmware directly for the stream switch and each button's state (`km.buttons()`, `km.left()` …) so you can compare what the firmware says with what Helix received. Other buttons: re-enable the stream by text command or by the vendor's binary command, reset counters, and two **Test move** buttons that nudge the mouse 100 counts right or down to prove movement injection works independently of buttons and recoil. **Generate report** collects settings, the loaded script, button state and device information into one block of text to send when reporting a problem (it leaves out your folder paths). The monitor polls only while it is switched on and the Tools tab is open.
 
 **Pattern Visualiser**
 
@@ -579,7 +579,11 @@ Every recoil burst logs how far the script got, for example `[Recoil] BURST: 240
 
 ### Button frames arrive but nothing registers
 
-If the Button Monitor shows raw frames (e.g. `6b 6d 2e 10 0d 0a`) yet every event count stays 0, the `makcu` library is dropping them: its button handler prints a line before it fires its callback, and if the terminal Helix was started from has gone away (hung-up SSH session, closed pipe) that print raises, the library swallows the error, and no button event is ever delivered. Helix now handles button bytes itself and makes stdout/stderr unable to raise, so this no longer happens. The report's `lib_mask_calls` shows how many button bytes the library handed over and `lib_error` any error from handling them. For a server you leave running, use the systemd service (`setup-autostart.sh`) rather than a terminal session.
+If the Button Monitor shows raw frames (e.g. `6b 6d 2e 10 0d 0a`) yet every event count stays 0, the `makcu` library is dropping them. There are two known causes.
+
+V4 firmware sends each button change as `km.` + one mask byte + CR LF. Some `makcu` builds throw that mask byte away (the patched v3.7 build sees it in the middle of a text line), and stock 2.3.1 loses masks that happen to equal CR or LF. With such a build no click registers at all, so recoil never fires and the toggle button does nothing. Helix now decodes these lines itself, whichever library build is installed; the Button Monitor then reports the stream as `km.+mask text`.
+
+The other cause: the library's button handler prints a line before it fires its callback, and if the terminal Helix was started from has gone away (hung-up SSH session, closed pipe) that print raises, the library swallows the error, and no button event is ever delivered. Helix now handles button bytes itself and makes stdout/stderr unable to raise, so this no longer happens. The report's `lib_mask_calls` shows how many button bytes the library handed over and `lib_error` any error from handling them. For a server you leave running, use the systemd service (`setup-autostart.sh`) rather than a terminal session.
 
 ### MAKCU Setup on Arch Linux (CachyOS)
 

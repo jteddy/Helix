@@ -23,10 +23,11 @@ def _install_rx_tee():
     def read(self, size=1):
         data = orig(self, size)
         if data:
-            try:
-                makcu_controller._decode_frames(data)
-            except Exception as e:
-                print(f"[MAKCU] Frame decode error: {e}")
+            for decode in (makcu_controller._decode_frames, makcu_controller._decode_text_masks):
+                try:
+                    decode(data)
+                except Exception as e:
+                    print(f"[MAKCU] Frame decode error: {e}")
             for i, b in enumerate(data):
                 if (b < 32 and b != 10 and b != 13) or b > 126:
                     _rx_nontext[0] += 1
@@ -96,6 +97,8 @@ class makcu_controller:
     _native_click     = False         # True once the firmware is known to support km.click
     _framed           = False         # button events arrive as binary 0x53 frames
     _frame_buf        = bytearray()   # partial frame carried between reads
+    _km_text          = False         # button events arrive as km.+mask+CRLF text (V4)
+    _km_buf           = bytearray()   # partial km. mask frame carried between reads
     _last_reenable    = 0.0
     _last_mask        = 0             # previous button mask from the text stream
     lib_mask_calls    = 0             # times the library's parser handed us a mask byte
@@ -222,14 +225,16 @@ class makcu_controller:
     def _do_connect():
         try:
             makcu_controller._framed = False
+            makcu_controller._km_text = False
             makcu_controller._last_mask = 0
             makcu_controller._frame_buf.clear()
+            makcu_controller._km_buf.clear()
             controller = create_controller(debug=False, auto_reconnect=False)
 
             def on_button_event(button, pressed):
-                # Once binary 0x53 frames are seen they are decoded by _decode_frames;
-                # the library parses those bytes as masks and reports garbage.
-                if makcu_controller._framed:
+                # Once binary 0x53 frames or km. mask lines are seen they are decoded by
+                # _decode_frames / _decode_text_masks; the library misparses those bytes.
+                if makcu_controller._framed or makcu_controller._km_text:
                     return
                 name = _ENUM_NAME.get(button)
                 if name:
@@ -497,6 +502,8 @@ class makcu_controller:
 
         def handle(byte_val):
             makcu_controller.lib_mask_calls += 1
+            if makcu_controller._km_text:
+                return  # decoded by _decode_text_masks, which sees the bytes first
             try:
                 makcu_controller._apply_mask(byte_val)
             except Exception as e:
@@ -543,6 +550,31 @@ class makcu_controller:
                 makcu_controller._on_stream_event(payload[1], payload[2])
 
     @staticmethod
+    def _decode_text_masks(data):
+        """Decode the V4 text button stream, `km.` + mask byte + CRLF per change (mask
+        bits 0..4 = LMB RMB MMB M4 M5). The library loses these: the installed build drops
+        a control byte that follows `km.` because it is mid text line, and stock 2.3.1
+        takes a mask equal to CR or LF for a line ending. Runs on the library's listener
+        thread, before its own parser."""
+        buf = makcu_controller._km_buf
+        buf += data
+        while True:
+            i = buf.find(b"km.")
+            if i < 0:
+                del buf[: max(0, len(buf) - 2)]     # keep a possible partial "km"
+                return
+            del buf[:i]
+            if len(buf) < 6:
+                return
+            if buf[3] < 32 and buf[4:6] == b"\r\n":
+                mask = buf[3]
+                del buf[:6]
+                makcu_controller._km_text = True
+                makcu_controller._apply_mask(mask)
+            else:
+                del buf[:3]                         # a command echo or reply line
+
+    @staticmethod
     def _on_stream_event(bid, state):
         makcu_controller._framed = True
         if bid == 0xFF and state == 0xFF:
@@ -573,7 +605,11 @@ class makcu_controller:
 
     @staticmethod
     def stream_format():
-        return "0x53 frames" if makcu_controller._framed else "text or none seen"
+        if makcu_controller._framed:
+            return "0x53 frames"
+        if makcu_controller._km_text:
+            return "km.+mask text"
+        return "text or none seen"
 
     @staticmethod
     def overflow_loop():
