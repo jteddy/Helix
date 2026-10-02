@@ -580,7 +580,7 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
   <div class="card" id="rec-card">
     <div class="ch">Pattern Recorder</div>
     <div class="cb">
-      <p class="rec-help">Turn Recoil OFF, press Arm, then hold left-click and spray, compensating by hand. Recording starts when you press and ends when you release.</p>
+      <p class="rec-help">Turn Recoil OFF, press Arm, then hold left-click and spray, compensating by hand. Recording starts when you press and ends when you release. Enter the bullets you fired to set ms/shot from your hold time (let go as soon as the magazine runs dry).</p>
       <div class="rpm-row rec-row">
         <select id="rec-trig"><option value="lmb">Hold left-click</option><option value="now">Start now</option></select>
         <label class="rec-wide" title="Enlarge the firmware's virtual screen to 30000x30000 for very long pulls. Off by default: the normal range is about ±540 counts vertically and a warning appears if the path reaches the edge."><input type="checkbox" id="rec-wide"> wide range</label>
@@ -592,13 +592,14 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
       <div class="rec-pos" id="rec-pos"></div>
       <div class="tool-sep"></div>
       <div class="rpm-row rec-row">
-        <input type="number" id="rec-iv" min="1" max="2000" step="0.1" value="80" oninput="recParamChanged()"><span class="rpm-unit">ms/shot</span>
+        <input type="number" id="rec-iv" min="1" max="2000" step="0.1" value="80" oninput="recIvTyped()"><span class="rpm-unit">ms/shot</span>
         <a class="rec-link" onclick="recUseMeasured()">use measured</a>
       </div>
       <div class="rpm-row rec-row">
-        <input type="number" id="rec-sh" min="1" max="500" step="1" placeholder="auto" oninput="recParamChanged()"><span class="rpm-unit">shots</span>
+        <input type="number" id="rec-sh" min="1" max="500" step="1" placeholder="auto" oninput="recBulletsTyped()" title="Bullets you fired. Sets ms/shot to your hold time ÷ bullets; typing your own ms/shot afterwards overrides it. Blank = recording length ÷ ms/shot."><span class="rpm-unit">bullets</span>
         <input type="number" id="rec-lead" min="0" max="1000" step="1" value="0" oninput="recParamChanged()" title="Shifts compensation earlier by this many ms to offset your reaction delay. 0 reproduces your movement exactly as recorded."><span class="rpm-unit">lead ms</span>
       </div>
+      <div class="rec-pos" id="rec-calc"></div>
       <canvas id="rec-canvas" class="rec-canvas"></canvas>
       <div class="rec-warn" id="rec-warn" style="display:none"></div>
       <div class="rpm-result rec-stats" id="rec-stats" style="display:none"></div>
@@ -1698,7 +1699,7 @@ async function srvRestart(){
 }
 
 // ── Pattern Recorder (Tools) ─────────────────────────────────────────────────
-let _recPoll=null,_recState='idle',_recResT=null,_recRes=null;
+let _recPoll=null,_recState='idle',_recResT=null,_recRes=null,_recHold=0,_recIvAuto=false;
 function recErr(e){let m=(e&&e.message)||String(e);try{m=JSON.parse(m).detail||m;}catch(_){}return typeof m==='string'?m:JSON.stringify(m);}
 async function recCall(path,body){
   try{recApply(await api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}));}
@@ -1707,7 +1708,18 @@ async function recCall(path,body){
 function recArm(){_recRes=null;recDraw();recCall('/api/recorder/arm',{trigger:$('rec-trig').value,max_s:20,wide:$('rec-wide').checked});}
 function recStop(){recCall('/api/recorder/stop');}
 function recCancel(){_recRes=null;recDraw();recCall('/api/recorder/cancel');}
-function recUseMeasured(){const v=parseFloat($('m-ms').textContent);if(v>0){$('rec-iv').value=v;recParamChanged();}}
+function recUseMeasured(){const v=parseFloat($('m-ms').textContent);if(v>0){_recIvAuto=false;$('rec-iv').value=v;recSyncIv();recParamChanged();}}
+function recIvTyped(){_recIvAuto=false;recSyncIv();recParamChanged();}
+function recBulletsTyped(){_recIvAuto=parseInt($('rec-sh').value)>0;recSyncIv();recParamChanged();}
+// Bullets entered: ms/shot = hold time ÷ bullets, until ms/shot is set by hand.
+function recSyncIv(){
+  const b=parseInt($('rec-sh').value),el=$('rec-calc');
+  if(!_recIvAuto||!(b>0)){el.textContent='';return;}
+  if(_recState!=='done'||!(_recHold>0)){el.textContent=`ms/shot will be your hold time ÷ ${b} bullets`;return;}
+  const iv=Math.round(_recHold/b*10)/10;
+  $('rec-iv').value=iv;
+  el.textContent=`${Math.round(_recHold)} ms held ÷ ${b} bullets = ${iv} ms/shot`;
+}
 function recApply(s){
   const prev=_recState;_recState=s.state||'idle';
   const busy=_recState==='armed'||_recState==='recording';
@@ -1718,6 +1730,8 @@ function recApply(s){
   el.className='rec-status'+(_recState==='error'?' err':busy?' on':_recState==='done'?' ok':'');
   $('rec-pos').textContent=s.pos?`position  x ${s.pos[0]}   y ${s.pos[1]}`:'';
   $('rec-arm').disabled=busy;$('rec-stop').disabled=_recState!=='recording';$('rec-cancel').disabled=_recState==='idle';
+  if(_recState==='done')_recHold=s.duration_ms||0;
+  if(_recState!==prev)recSyncIv();
   if(_recState==='done'&&prev!=='done')recFetchResult();
   else if(_recState!=='done'&&prev==='done'){_recRes=null;recDraw();}
   recSchedule();

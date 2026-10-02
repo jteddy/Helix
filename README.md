@@ -259,12 +259,12 @@ The duration (ms) of your last five fire bursts, newest first. Click an entry to
 
 **Pattern Recorder**
 
-Records your own hand compensation while you spray and turns it into recoil steps. Turn **Recoil OFF**, press **Arm**, then hold left-click and spray (compensating by hand) — recording starts when you press and ends when you release (or choose *Start now* and press **Stop**). Set the shot interval (ms/shot — prefilled from the RPM Calculator), then **Load into editor** puts the steps into the script editor and the Pattern Visualiser; name and save them on the Recoil tab as usual.
+Records your own hand compensation while you spray and turns it into recoil steps. Turn **Recoil OFF**, press **Arm**, then hold left-click and spray (compensating by hand) — recording starts when you press and ends when you release (or choose *Start now* and press **Stop**). Set the shot interval (ms/shot — prefilled from the RPM Calculator), or enter how many bullets you fired to work it out from how long you held left-click, then **Load into editor** puts the steps into the script editor and the Pattern Visualiser; name and save them on the Recoil tab as usual.
 
 | Field | What it does |
 |-------|-------------|
 | Shot interval | Milliseconds per shot. Each recoil step is the mouse movement you made during one shot interval. |
-| Shots | Number of steps. Blank = recording length ÷ interval. |
+| Bullets | Bullets you fired. Entering it sets Shot interval to your hold time ÷ bullets (the working is shown under the fields), so the steps cover the whole hold. Let go as soon as the magazine runs dry, or the interval comes out too long. Typing your own Shot interval (or *use measured*) afterwards overrides it. Blank = recording length ÷ interval. |
 | Reaction lead | Shifts the recorded movement earlier by this many ms, to offset your reaction delay (you pull down *after* the recoil kick). 0 replays your movement exactly as recorded. |
 
 The recorder reads the firmware's tracked pointer position (`km.getpos`) 100 times a second (polling much faster makes the firmware drop its button-event stream, after which left-click is never seen), so it works on V3.x and V4.026+ firmware but needs Recoil OFF: the position includes everything sent to the PC, including Helix's own compensation. The live `position` readout lets you check that your movement is detected before you spray. A warning appears if the path reached the edge of the firmware's virtual screen (the data is then invalid). The default virtual screen allows about ±540 counts of vertical travel; tick **wide range** before arming for very long pulls (it enlarges the virtual screen for the recording and restores it afterwards).
