@@ -267,7 +267,7 @@ Records your own hand compensation while you spray and turns it into recoil step
 | Shots | Number of steps. Blank = recording length ÷ interval. |
 | Reaction lead | Shifts the recorded movement earlier by this many ms, to offset your reaction delay (you pull down *after* the recoil kick). 0 replays your movement exactly as recorded. |
 
-The recorder reads the firmware's tracked pointer position (`km.getpos`) about every few milliseconds, so it works on V3.x and V4.026+ firmware but needs Recoil OFF: the position includes everything sent to the PC, including Helix's own compensation. The live `position` readout lets you check that your movement is detected before you spray. A warning appears if the path reached the edge of the firmware's virtual screen (the data is then invalid).
+The recorder reads the firmware's tracked pointer position (`km.getpos`) 100 times a second (polling much faster makes the firmware drop its button-event stream, after which left-click is never seen), so it works on V3.x and V4.026+ firmware but needs Recoil OFF: the position includes everything sent to the PC, including Helix's own compensation. The live `position` readout lets you check that your movement is detected before you spray. A warning appears if the path reached the edge of the firmware's virtual screen (the data is then invalid).
 
 **Pattern Visualiser**
 
@@ -423,6 +423,7 @@ helix/
 |--------|----------|-------------|
 | GET | `/api/state` | Full state snapshot (recoil, flashlight, settings, scripts, games, `makcu_connected`) |
 | GET | `/api/health` | Server + MAKCU health check |
+| GET | `/api/device/rx` | Last raw bytes received from the MAKCU (`{bytes, hex, ascii}`), for diagnosing the button-stream format |
 | GET | `/api/device` | `{connected, firmware, baud, baud_ok}` — display strings from the post-connect link check; `baud_ok` is `true` (device answered at 4,000,000), `false` (device reported another rate) or `null` (not confirmed) |
 | GET | `/api/server` | `{restart_supported, mode, started_at, pid}` — `mode` is `systemd` (supervisor relaunches), `exec` (re-executes itself) or `null` (restart unavailable) |
 | POST | `/api/server/restart` | Save settings, then exit and relaunch. Returns `{ok, mode}` just before the server goes down. 403 if the request has a cross-site `Origin`, 501 if restart is unavailable |
@@ -549,6 +550,10 @@ The library build has to match the firmware. With a mismatched build, programmat
 #### Tools
 - https://terminal.spacehuhn.com/
 - https://makxd.com/
+
+### Left-click not detected
+
+If the Pattern Recorder stays on *armed* and says it has not seen a left-click (or recoil never fires), Helix is not receiving button events from the MAKCU. Open `http://<server-ip>:8000/api/device/rx` right after pressing and releasing left-click (not while the recorder is running) — it shows the last raw bytes the device sent, in hex and ASCII. The button stream should appear as a short burst around your click; send that output along with your firmware version when reporting a problem.
 
 ### MAKCU Setup on Arch Linux (CachyOS)
 

@@ -1,7 +1,37 @@
 import re
 import time
 import threading
+from collections import deque
+
+import serial
 from makcu import create_controller, MouseButton
+
+# Last bytes received from the device, for diagnosing the button-stream format
+# (GET /api/device/rx). The library's listener thread consumes the port, so the
+# only place to see raw bytes is a wrapper around the serial class's read().
+_rx_tail = deque(maxlen=512)
+
+
+def _install_rx_tee():
+    cls = serial.Serial
+    orig = cls.read
+    if getattr(orig, "_helix_tee", False):
+        return
+
+    def read(self, size=1):
+        data = orig(self, size)
+        if data:
+            _rx_tail.extend(data)
+        return data
+
+    read._helix_tee = True
+    cls.read = read
+
+
+try:
+    _install_rx_tee()
+except Exception as e:  # diagnostics only; never block startup
+    print(f"[MAKCU] RX capture unavailable: {e}")
 
 
 # The makcu library switches the link to this rate during connect (legacy
@@ -572,6 +602,15 @@ class makcu_controller:
             }
         makcu_controller._set_info(**info)
         print(f"[MAKCU] Link check: {info['baud']}")
+
+    @staticmethod
+    def rx_tail(n=256):
+        data = bytes(list(_rx_tail)[-n:])
+        return {
+            "bytes": len(data),
+            "hex": " ".join(f"{b:02x}" for b in data),
+            "ascii": "".join(chr(b) if 32 <= b < 127 else "." for b in data),
+        }
 
     @staticmethod
     def device_summary():

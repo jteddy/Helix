@@ -15,6 +15,11 @@ from collections import deque
 
 from mouse.makcu import makcu_controller
 
+# Polling flat out (hundreds of queries/s) starves the firmware's button-event stream:
+# on overflow it disables the stream, so left-click is never seen. 100 Hz is plenty for
+# patterns whose steps are tens of ms long.
+POLL_INTERVAL = 0.01
+STREAM_REASSERT_S = 3.0
 ARM_TIMEOUT_S = 120
 MAX_SAMPLES = 20000
 MAX_QUERY_FAILS = 25
@@ -172,10 +177,14 @@ class Recorder:
 
     def _run(self, state, trigger, max_s):
         orig_screen = None
+        screen = None
         try:
+            # Only touch the virtual screen if the firmware answers km.screen().
             orig_screen = makcu_controller.get_screen()
-            makcu_controller.set_screen(VIRTUAL_SCREEN, VIRTUAL_SCREEN)
-            screen = makcu_controller.get_screen()
+            if orig_screen:
+                makcu_controller.set_screen(VIRTUAL_SCREEN, VIRTUAL_SCREEN)
+                screen = makcu_controller.get_screen() or orig_screen
+            makcu_controller.send_text("km.buttons(1)")
             self._sample_loop(state, trigger, max_s, screen)
         except Exception as e:
             print(f"[Recorder] Unexpected error: {e}")
@@ -183,6 +192,8 @@ class Recorder:
         finally:
             if orig_screen:
                 makcu_controller.set_screen(*orig_screen)
+            # The firmware drops the button stream if it overflowed; turn it back on.
+            makcu_controller.send_text("km.buttons(1)")
             makcu_controller._recording.clear()
 
     def _sample_loop(self, state, trigger, max_s, screen):
@@ -196,6 +207,8 @@ class Recorder:
         last_pub = 0.0
         clamped = False
         began = time.perf_counter()
+        next_poll = began
+        last_reassert = began
 
         def rel(t, x, y):
             return ((t - base[0]) * 1000.0, x - base[1], y - base[2])
@@ -204,7 +217,14 @@ class Recorder:
             if self._cancel.is_set():
                 self._set(state="idle", message="Cancelled", pos=None)
                 return
+            wait = next_poll - time.perf_counter()
+            if wait > 0:
+                time.sleep(wait)
             now = time.perf_counter()
+            next_poll = max(next_poll + POLL_INTERVAL, now)
+            if phase == "armed" and not lmb_ever and now - last_reassert >= STREAM_REASSERT_S:
+                last_reassert = now
+                makcu_controller.send_text("km.buttons(1)")
             if phase == "armed" and now - began > ARM_TIMEOUT_S:
                 return self._fail("Timed out waiting for left-click")
             if state.get_is_enabled():
