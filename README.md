@@ -12,7 +12,7 @@ A native Android companion app is available — full functionality except the ve
 
 - Download / auto-update via [Obtainium](https://github.com/ImranR98/Obtainium) from the [releases page](https://github.com/jteddy/Helix/releases)
 - Requires Android 8.0+ and the Helix server on the same Wi-Fi network
-- Maintains a persistent WebSocket connection for live 200ms status updates; all changes sent instantly via REST
+- Maintains a persistent WebSocket connection for live status updates; all changes sent instantly via REST
 - Status bar shows two indicator dots: **MAKCU** (device connected) and **WS** (WebSocket live)
 
 ---
@@ -32,7 +32,7 @@ Helix Server  (Linux or Windows, any hardware)
 └── Recoil + Flashlight loops running continuously
 ```
 
-The server is a Python [FastAPI](https://fastapi.tiangolo.com/) application that runs on Linux or Windows. It exposes an HTTP API and a WebSocket endpoint that the browser UI connects to. State is pushed to all connected clients every 200 ms over WebSocket, so every open browser tab stays in sync automatically.
+The server is a Python [FastAPI](https://fastapi.tiangolo.com/) application that runs on Linux or Windows. It exposes an HTTP API and a WebSocket endpoint that the browser UI connects to. The server checks state every 200 ms and pushes it to all connected clients over WebSocket whenever it has changed, so every open browser tab stays in sync automatically.
 
 ### How It Fits Into Your Setup
 
@@ -47,11 +47,11 @@ Helix Server (Linux, any hardware)
 
 Any browser (phone, tablet, monitor)
 └── http://<server-ip>:8000
-    ├── Status panel  — MAKCU / Recoil / Flashlight / Script at a glance
-    ├── Recoil tab    — enable, keybinds, sliders, scripts
+    ├── Header + status cards — MAKCU dot, Recoil / Flashlight / Script at a glance
+    ├── Recoil tab     — enable, mouse-button binds, sliders, scripts
     ├── Flashlight tab — timing controls
-    ├── Settings tab  — game sensitivity scaling, browser hotkey, Stream Deck docs
-    └── Vector Editor — canvas-based recoil pattern editor
+    ├── Tools tab      — burst history, RPM calculator, Pattern Visualiser
+    └── Settings tab   — theme, game sensitivity scaling, connection, Stream Deck endpoints
 ```
 
 ---
@@ -67,7 +67,7 @@ python install.py   # first-time setup — installs deps, USB groups, udev rule
 ./start.sh          # run manually (Ctrl+C to stop)
 ```
 
-`install.py` will ask which MAKCU firmware version you are running and install the correct makcu library automatically.
+`install.py` will ask which MAKCU firmware version you are running and install the correct makcu library automatically. Helix is tested on firmware **v3.7** — see [Troubleshooting → Firmware](#firmware).
 
 Open `http://<server-ip>:8000` from any browser. Find your server's IP with:
 ```bash
@@ -96,11 +96,13 @@ python main.py
 
 ## Auto-start on Boot
 
-Run once — installs dependencies, writes a systemd service, enables it, and starts it:
+Run once — installs `requirements.txt`, adds your user to the `plugdev` / `dialout` groups, writes the udev rule and a systemd service, then enables and starts it. Log out and back in (or reboot) afterwards so the group change applies:
 
 ```bash
 ./setup-autostart.sh
 ```
+
+`requirements.txt` pulls the stock `makcu` library from PyPI. If you are on firmware v3.7, run `python install.py` first and pick the matching build (see [Firmware](#firmware)).
 
 Useful commands after setup:
 ```bash
@@ -174,16 +176,15 @@ After this the launcher will detect `systemd-user` mode and all controls work wi
 
 ## Status Panel
 
-The top of the UI shows four live cards — readable at a glance on a phone:
+The header shows the app version and a **MAKCU** dot — green = connected, red = not connected (or the WebSocket to the server is down). Below it are three live cards — readable at a glance on a phone:
 
 | Card | Meaning |
 |------|---------|
-| **MAKCU** | `OK` green = connected · `N/C` red = not connected |
 | **Recoil** | `ON` green / `OFF` — tap to toggle from the browser |
-| **Flashlight** | `ON` only when both flashlight and recoil are enabled |
-| **Script** | Name of the currently loaded recoil script |
+| **Flashlight** | `ON` only when both flashlight and recoil are enabled — tap to toggle the flashlight master switch (shown as `Master: ON/OFF` on the card) |
+| **Script** | Name of the currently loaded recoil script (`CS2: <weapon>` while a CS2 built-in pattern is selected) |
 
-Status updates via WebSocket every 200 ms.
+Status is pushed over WebSocket (checked every 200 ms, sent when it changes), with a 7 s REST poll of `/api/streamdeck` as a fallback for the MAKCU dot and cards.
 
 ---
 
@@ -195,26 +196,33 @@ Status updates via WebSocket every 200 ms.
 
 | Setting | What it does |
 |---------|-------------|
-| Toggle Keybind (MAKCU) | Which mouse button (M4, M5, MMB) physically toggles recoil on/off via the MAKCU hardware. |
-| Cycle Script Keybind | Which mouse button cycles to the next saved script — useful for swapping weapons without touching the UI. |
+| Enable Recoil | Master switch for recoil compensation (same as tapping the Recoil status card). |
+| Toggle Mouse Button | Which mouse button (M4, M5, MMB) physically toggles recoil on/off via the MAKCU hardware. |
+| Cycle Script Mouse Button | Which mouse button (M4, M5, MMB) cycles to the next saved script — useful for swapping weapons without touching the UI. Cycling stays inside the loaded script's game folder (or the root folder if the script has no game). |
 | Require Aim (RMB) | Recoil compensation only fires while right mouse button is held (i.e. while aiming down sights). |
 | Loop Recoil | When the script reaches the last shot vector, it loops back to the beginning instead of stopping. Useful for sustained automatic fire. |
-| Randomisation | Adds small random offsets to each movement so the pattern is less deterministic. The amount is controlled by **Randomisation Strength** in the Scaling card. |
-| Return Crosshair | After the script finishes, the MAKCU moves the mouse back to approximately where it started. |
+| Randomisation | Adds small random offsets to each movement (and ±10% jitter to each shot's delay) so the pattern is less deterministic. The offset size is controlled by **Random Strength** in the Scaling card. |
+| Return Crosshair | When you release the fire button, the MAKCU moves the mouse back by the vertical (Y) movement it applied during that burst. Horizontal movement is not undone. |
 
 **Scaling**
 
+All sliders run 0–100 in the UI; the API takes the underlying value (UI ÷ 20 for Recoil Scalar and Random Strength, ÷ 100 for X/Y Control, ÷ 50 for Return Speed).
+
 | Setting | What it does |
 |---------|-------------|
-| Recoil Scalar | Global multiplier applied to every vector in the script. 1.0 = unchanged; increase to compensate for lower in-game sensitivity; decrease to dial it back. Overridden automatically when a game preset is selected in Settings. |
+| Recoil Scalar | Global multiplier applied to every vector in the script. 1.0 (slider 20) = unchanged; increase to compensate for lower in-game sensitivity; decrease to dial it back. Ignored while a game preset is selected in Settings (the preset's scalar is used instead). |
 | X Control | Scales only the horizontal (X) component of each vector — 0 disables all horizontal correction. |
 | Y Control | Scales only the vertical (Y) component — 0 disables all vertical correction. |
-| Randomisation Strength | How large the random offsets can be when Randomisation is enabled. Higher values feel more human; too high and accuracy degrades. |
-| Return Speed | Controls how quickly the crosshair returns to its original position after the script finishes (only relevant when Return Crosshair is on). |
+| Random Strength | How large the random offsets can be when Randomisation is enabled. Higher values feel more human; too high and accuracy degrades. |
+| Return Speed | Duration of the crosshair return move (slider 50 = 1 s), so higher values return more slowly. Only relevant when Return Crosshair is on. |
+
+**CS2 Built-in Patterns**
+
+Shown on the Recoil tab only while **Game** is set to **CS2** in Settings. Selecting a weapon (AK-47, M4A1-S) overrides the loaded script with a built-in pattern; choose *None* to go back to the loaded script.
 
 **Scripts**
 
-The scripts panel lets you manage your recoil scripts directly in the browser without needing a file manager or SSH. You can organise scripts into game folders (e.g. `ABI/`, `Tarkov/`), load a script to make it active, edit the raw vector text, and save or delete scripts — all stored on the web server.
+The scripts panel lets you manage your recoil scripts directly in the browser without needing a file manager or SSH. You can organise scripts into game folders (e.g. `ABI/`, `PubG/`) with **+ Game**, load a script to make it active, edit the raw vector text in the editor (steps are numbered in the gutter), and save or delete scripts — all stored on the web server. The `sens` field stores the in-game sensitivity the script was recorded at; it is saved with the script and shown here, but is not used when scaling (scaling comes from Settings).
 
 ---
 
@@ -224,27 +232,56 @@ The Flashlight feature automates your in-game torch/flashlight key to fire autom
 
 | Setting | What it does |
 |---------|-------------|
-| Flashlight Keybind | Which mouse button maps to your in-game flashlight key. |
+| Enable Flashlight | Master switch for the flashlight feature (same as tapping the Flashlight status card). |
+| Flashlight Mouse Button | Which mouse button (LMB, RMB, MMB, M4, M5) the MAKCU clicks to trigger your in-game flashlight key. |
 | Hold Threshold (ms) | How long you must hold the fire button before the flashlight triggers. Short tap shots (burst fire) won't activate it — only sustained fire will. |
 | Cooldown (ms) | Minimum time between flashlight activations to avoid rapid re-triggering. |
 | Pre-Fire Delay (ms) | A randomised delay (min → max) added after the hold threshold is met before the flashlight actually turns on. |
 
-> Flashlight only fires when **Recoil is ON** — prevents it from triggering in menus.
+> Flashlight only fires when **Recoil is ON** and a mouse button is selected — prevents it from triggering in menus.
+
+---
+
+### Tools Tab
+
+**Burst History**
+
+The duration (ms) of your last five fire bursts, newest first. Click an entry to copy it into the RPM Calculator's *Measured* field. Not persisted across server restarts.
+
+**RPM Calculator**
+
+| Section | What it does |
+|---------|-------------|
+| Theoretical | Enter a weapon's RPM and magazine size to get ms per shot and total magazine duration. |
+| Measured | Enter a measured burst time (ms) and shot count to get the effective RPM and ms per shot. |
+
+**Pattern Visualiser**
+
+A canvas preview of the cumulative mouse path the loaded recoil script produces, with step count, total X / total Y and duration. It reads from and writes to the script editor on the Recoil tab — changes made here appear in that editor but are only stored when you press **Save** there. The **Advanced** button switches from the plain preview to the full editor:
+
+| Feature | What it does |
+|---------|-------------|
+| Canvas | Drag points to adjust them; double-click to add a step; right-click for add / insert / inspect / delete. |
+| Step list + inspector | Numeric x, y and delay (ms) editing per step; arrow keys nudge a selected point (Shift = ×5), Delete removes it. |
+| Undo / Redo | Ctrl+Z / Ctrl+Y. |
+| Play | Animates the path using each step's delay. |
+| Bulk menu | Reverse, Mirror X / Y, Smooth, Scale X / Y / delays, Set all delays. |
+| Snap, grid, numbers | Snap dragged points to a coordinate step (1, 5, 10 or 25), show the grid, show step numbers. |
 
 ---
 
 ### Settings Tab
 
-**Game Sensitivity Scaling**
+**Appearance**
+
+Theme selector (Default, Midnight, Ember, Cearum). The theme is stored on the server, so every connected client uses it.
+
+**Sensitivity Scaling**
 
 | Setting | What it does |
 |---------|-------------|
 | Game | Select your game from a built-in preset list. This sets a base scalar for that game so scripts written for a reference sensitivity are automatically scaled correctly. Select **Manual** to control the Recoil Scalar yourself. |
 | In-Game Sensitivity | Enter your actual in-game sensitivity. Combined with the game preset, the server calculates the correct scalar: `base / your_sens`. |
-
-**Browser Hotkey**
-
-Lets you bind a keyboard key on the current device to toggle recoil without needing a Stream Deck or MAKCU button. The binding is stored in the browser's local storage — it only applies when the tab is focused and is per-device.
 
 **Connection**
 
@@ -256,40 +293,40 @@ Displays the API endpoints needed to configure the Web Requests plugin. See the 
 
 ---
 
-### Vector Editor Tab
-
-A canvas-based graphical editor for creating and editing recoil patterns visually rather than editing raw text.
-
-| Feature | What it does |
-|---------|-------------|
-| Canvas | Click to place shot vectors; drag existing points to adjust. The path shows the cumulative mouse travel the MAKCU will produce. |
-| Table view | Switch between the visual canvas and a tabular list of all vectors (x, y, delay) for precise numeric editing. |
-| Game / Weapon fields | Organise patterns by game and weapon name — mirrors the folder structure used by the Recoil Scripts panel. |
-| Save Pattern | Writes the pattern to the web server as a script file (`saved_scripts/<game>/<weapon>.txt`). |
-| Copy to Scripts | Saves the pattern and immediately loads it as the active recoil script, switching to the Recoil tab. |
-| Load / Delete | Browse and manage previously saved patterns from the sidebar. |
-
-> The Vector Editor and the Recoil Scripts panel share the same `saved_scripts/` directory — a pattern saved here appears in the Recoil Scripts list and vice versa.
-
----
-
 ## Saved Scripts
 
-Scripts are plain text files stored in the `saved_scripts/` directory on the web server. They can be organised into game subfolders:
+Scripts are files stored in the `saved_scripts/` directory on the web server. They can be organised into game subfolders:
 
 ```
 saved_scripts/
 ├── ABI/
-│   ├── ak47.txt
-│   └── mp5.txt
-├── Tarkov/
-│   └── m4.txt
+│   ├── General.json
+│   └── MP5.json
+├── PubG/
+│   └── M416.txt         ← legacy .txt scripts are still read
 └── legacy_script.txt    ← flat root scripts still supported
 ```
 
 ### Script File Format
 
-One vector per line — `x_offset, y_offset, delay_ms`:
+Scripts saved from the web UI or the API are written as `.json`:
+
+```json
+{
+  "version": 1,
+  "game": "ABI",
+  "author": "",
+  "sensitivity": 1.0,
+  "steps": [
+    [0.0, 5.0, 85.0],
+    [-1.0, 6.0, 85.0]
+  ]
+}
+```
+
+Each step is `[x_offset, y_offset, delay_ms]`. `sensitivity` is the in-game sensitivity the script was recorded at (informational — see Scripts above), and `author` is currently always written empty.
+
+Plain `.txt` scripts are still supported for loading — one vector per line, `x_offset, y_offset, delay_ms`; lines starting with `#` are comments and are ignored:
 
 ```
 # x_offset, y_offset, delay_ms
@@ -298,13 +335,13 @@ One vector per line — `x_offset, y_offset, delay_ms`:
 1, 7, 90
 ```
 
-Lines starting with `#` are comments and are ignored.
+If a `.json` and a `.txt` share a name, the `.json` is used. Saving a script always writes `.json` (comment lines are not carried over), and deleting a script removes both formats. `.txt` files are treated as recorded at sensitivity 1.0.
 
 ---
 
 ## Stream Deck
 
-A custom Stream Deck plugin is included with live state-aware icons — buttons update automatically when state changes from any source (web UI, MAKCU side button, API).
+A custom Stream Deck plugin is included with live state-aware icons — buttons update automatically when state changes from any source (web UI, MAKCU side button, API). It provides four actions: **Toggle Recoil**, **Toggle Flashlight**, **Cycle Script** and a display-only **MAKCU Status**, and polls `GET /api/streamdeck` once per second.
 
 **Quick install:** copy `streamdeck/com.helix.sdPlugin` into your Stream Deck plugins folder, restart the software, and set your server URL:
 
@@ -321,7 +358,7 @@ See the [full setup guide](https://github.com/jteddy/Helix/blob/main/streamdeck/
 ```
 helix/
 ├── main.py                       ← FastAPI app, WebSocket, lifespan, health
-├── shared.py                     ← Shared singletons (state, save_async)
+├── shared.py                     ← Shared singletons (state, makcu_controller, save_async)
 ├── state.py                      ← Shared app state (thread-safe)
 ├── config_manager.py             ← JSON save/load (atomic write)
 ├── install.py                    ← First-time setup (deps, USB groups, udev)
@@ -341,25 +378,18 @@ helix/
 │   ├── recoil/recoil.py          ← Recoil loop
 │   ├── flashlight/               ← Flashlight loop
 │   └── cs2/weapon_data.py        ← Built-in CS2 recoil patterns (AK-47, M4A1-S)
-├── static/index.html             ← Entire frontend (4 tabs, self-contained)
+├── static/index.html             ← Entire frontend (Recoil, Flashlight, Tools, Settings tabs; self-contained)
 ├── launcher.py                   ← PyQt6 desktop launcher (optional, desktop Linux only)
 ├── install-launcher.sh           ← Installs launcher to app menu + desktop shortcut
 ├── icons/helix.svg               ← App icon (used by launcher + .desktop file)
-├── saved_scripts/                ← Recoil scripts + Vector Editor patterns
+├── saved_scripts/                ← Recoil scripts (.json, legacy .txt)
 │   └── <game>/
-│       └── <weapon>.txt
-├── config.json                   ← Auto-saved every 30s (gitignored)
+│       └── <weapon>.json
+├── config.json                   ← Saved on every change and every 30s (gitignored)
+├── config.json.bak               ← Copy of config.json made at startup (gitignored)
 ├── streamdeck/SETUP.md           ← Stream Deck configuration guide
 └── streamdeck/com.helix.sdPlugin ← Stream Deck plugin (copy to Plugins folder)
 ```
-
----
-
-## Future Enhancements
-
-### JSON-Wrapped Script Metadata
-
-Scripts are currently stored as plain `.txt` files. A future enhancement could wrap them in a thin JSON envelope to attach metadata — name, description, creation date, tags, weapon type — without breaking the existing `x,y,delay_ms` line format stored inside. This would make the script library searchable and self-describing without relying on folder/file naming alone.
 
 ---
 
@@ -369,55 +399,59 @@ Scripts are currently stored as plain `.txt` files. A future enhancement could w
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/state` | Full state snapshot (recoil, flashlight, settings, scripts, games) |
+| GET | `/api/state` | Full state snapshot (recoil, flashlight, settings, scripts, games, `makcu_connected`) |
 | GET | `/api/health` | Server + MAKCU health check |
-| WS | `/ws` | Live status stream (200ms push) |
+| WS | `/ws` | Live status stream (state checked every 200 ms, pushed when it changes) |
 
 ### Recoil
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/recoil` | Update recoil settings (partial update supported) |
+| POST | `/api/recoil` | Update recoil settings (partial update supported). Fields: `enabled`, `toggle_keybind`, `cycle_keybind`, `require_aim`, `loop_recoil`, `randomisation`, `return_crosshair`, `randomisation_strength`, `recoil_scalar`, `x_control`, `y_control`, `return_speed` |
 | POST | `/api/recoil/toggle` | Toggle recoil on/off |
+
+Slider-type fields take the underlying value, not the 0–100 UI value (see [Scaling](#recoil-tab)).
 
 ### Scripts
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/scripts` | List flat scripts + loaded script + all games |
+| GET | `/api/scripts` | List scripts (root, or a game folder via `?game=`) + loaded script + all games |
 | GET | `/api/scripts/games` | List game subfolders |
-| GET | `/api/scripts/content/{name}` | Get flat script content |
+| GET | `/api/scripts/content/{name}` | Get script content — looks in the root folder first, then each game folder |
 | GET | `/api/scripts/content/{game}/{name}` | Get game-scoped script content |
 | POST | `/api/scripts/load/{name}` | Load a flat script |
 | POST | `/api/scripts/load/{game}/{name}` | Load a game-scoped script |
-| POST | `/api/scripts/save` | Save a script (`name`, `content`, optional `game`) |
-| POST | `/api/scripts/cycle` | Cycle to next script (across all games) |
+| POST | `/api/scripts/save` | Save a script as `.json` (`name`, `content`, optional `game`, optional `sensitivity`, default 1.0) |
+| POST | `/api/scripts/cycle` | Cycle to the next script within the loaded script's game folder (root folder if it has no game) |
 | DELETE | `/api/scripts/{name}` | Delete a flat script |
 | DELETE | `/api/scripts/{game}/{name}` | Delete a game-scoped script |
 
-### Vector Editor Patterns
+Content endpoints return `{"content": "x,y,delay_ms\n...", "sensitivity": 1.0, "game": "", "author": ""}` regardless of whether the file on disk is `.json` or `.txt`.
 
-Patterns share the same backend as scripts (`saved_scripts/<game>/<weapon>.txt`).
+### Patterns
+
+Same storage as scripts (`saved_scripts/<game>/<weapon>.json`). The bundled web UI no longer calls these endpoints (it uses `/api/scripts/*`); they remain for external clients.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/patterns` | List all game/weapon groups |
-| GET | `/api/patterns/{game}/{weapon}` | Get pattern content |
-| POST | `/api/patterns/{game}/{weapon}` | Save pattern content |
+| GET | `/api/patterns` | List all game/weapon groups (games with at least one script) |
+| GET | `/api/patterns/{game}/{weapon}` | Get pattern content (same response as the script content endpoints) |
+| POST | `/api/patterns/{game}/{weapon}` | Save pattern content — body is raw vector text, or JSON `{"content": ..., "sensitivity": ...}` |
 | DELETE | `/api/patterns/{game}/{weapon}` | Delete a pattern |
 
 ### Flashlight
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/flashlight` | Update flashlight settings |
+| POST | `/api/flashlight` | Update flashlight settings (partial update). Fields: `enabled`, `keybind`, `hold_threshold_ms`, `cooldown_ms`, `pre_fire_min_ms`, `pre_fire_max_ms` |
 | POST | `/api/flashlight/toggle` | Toggle flashlight on/off |
 
 ### Settings
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/settings` | Update game scalar and sensitivity |
+| POST | `/api/settings` | Update `game_scalar` (game preset name or `Manual`), `game_sensitivity` and `theme` |
 
 ### CS2 Built-in Patterns
 
@@ -426,13 +460,14 @@ Patterns share the same backend as scripts (`saved_scripts/<game>/<weapon>.txt`)
 | GET | `/api/cs2/weapons` | List available built-in CS2 weapon patterns |
 | POST | `/api/cs2/weapon` | Select a weapon (`{"weapon": "ak47"}`) or clear (`{"weapon": "none"}`) |
 
-When a CS2 weapon is selected it overrides the loaded script for the recoil loop. The scaling still uses your in-game sensitivity from Settings (`base 1.25 / your_sens`).
+When a CS2 weapon is selected it overrides the loaded script for the recoil loop. Scaling still follows the Settings tab: with **Game** set to CS2 it is `1.25 / your_sens`; with **Manual** it is the Recoil Scalar.
 
 ### Stream Deck
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/streamdeck` | Lightweight JSON status for polling |
+| GET | `/streamdeck/setup` | `streamdeck/SETUP.md` rendered as an HTML page (loads `marked` and `DOMPurify` from cdn.jsdelivr.net) |
 
 **Response:**
 ```json
@@ -444,24 +479,32 @@ When a CS2 weapon is selected it overrides the loaded script for the recoil loop
 }
 ```
 
-# Troubleshooting
-## Firmware
-The minimum version firmware of your MAKCU device needs to be (INSERT HERE)
 
-### Updating Firmeare
+---
 
-- MAKCU requires the CH343 USB-to-serial driver to be loaded on your computer (the computer you will use for flashing). The driver download link is provided in the section below.
+## Troubleshooting
 
-Correct COM Port
-The COM port for USB 2 should be below 10. If your COM port number is 10 or higher, you may experience connection issues.
+### Firmware
 
-Baud Rate
-Baud rate is matched to the software you will use, please see the baud rate section in the information page.
+Helix is tested on MAKCU firmware **v3.7**, flashed on **both** the left (device) and right (host) sides.
 
-Both Sides Flashed
-Make sure you have correctly set up and flashed MAKCU on both the left side (device) and right side (host).
+`install.py` asks which firmware you are running and installs the matching `makcu` library build:
 
+| Choice | Library build | Difference |
+|--------|---------------|------------|
+| 3.4 (stable) | `makcu==2.3.1` from PyPI | Side buttons are addressed as `ms1` / `ms2` |
+| 3.7 | [`jteddy/makcu-py-lib`](https://github.com/jteddy/makcu-py-lib) branch `firmware-v3.7` | Identical, except the side buttons are addressed as `side1` / `side2` (renamed in firmware 3.7) |
 
+The library build has to match the firmware. With a mismatched build, programmatic M4/M5 clicks fail — this affects the Flashlight when its mouse button is set to M4 or M5. Everything else Helix does goes through the same library calls on both builds.
+
+**Firmware V4.x is untested with Helix.** V4 removes some V3-only text commands (`lock_*`, `click`, `moveto`, `silent`, …) — see the [MAKCU API reference](https://makcu.com/en/api). Do not upgrade the firmware and expect Helix to keep working without testing it on your hardware.
+
+### Updating Firmware
+
+- MAKCU requires the CH343 USB-to-serial driver on the computer you use for flashing. See the setup page under Documentation below for the download link.
+- **Correct COM port:** the COM port for USB 2 should be numbered below 10. A port number of 10 or higher can cause connection issues.
+- **Baud rate:** the baud rate is matched to the software you use — see the baud rate section on the MAKCU information page.
+- **Both sides flashed:** make sure both the left (device) and right (host) sides are set up and flashed.
 
 #### Documentation
 - https://www.makcu.com/en/setup
@@ -470,29 +513,22 @@ Make sure you have correctly set up and flashed MAKCU on both the left side (dev
 - https://terminal.spacehuhn.com/
 - https://makxd.com/
 
-# MAKCU Setup on Arch Linux (CachyOS)
+### MAKCU Setup on Arch Linux (CachyOS)
 
-The MAKCU uses an ESP32-S3 with native CDC ACM — no CH343 driver needed.
+The MAKCU uses an ESP32-S3 with native CDC ACM, so no CH343 driver is needed.
 
-## Connect
-
-1. Put MAKCU in flash/normal mode per docs
-2. Plug into USB
-3. Check port:
+1. Put the MAKCU in flash/normal mode per the docs.
+2. Plug it into USB.
+3. Check the port:
    ```bash
    ls /dev/ttyACM*
-Connect via serial
-screen /dev/ttyACM0 115200
-- Exit screen: Ctrl+A then \
-- Baud rate defaults to 115200 unless changed
-Notes
-- Device appears as ttyACM0 via the built-in cdc-acm kernel driver
-- No additional drivers required on modern Linux kernels
+   ```
+4. Connect over serial (the baud rate defaults to 115200 unless changed):
+   ```bash
+   screen /dev/ttyACM0 115200
+   ```
+   Exit `screen` with `Ctrl+A` then `\`.
 
-To save directly:
-
-```bash
-cat > ~/makcu/makcu-setup.md << 'EOF'
-# MAKCU Setup on Arch Linux (CachyOS)
-
-...
+Notes:
+- The device appears as `ttyACM0` via the built-in `cdc-acm` kernel driver.
+- No additional drivers are required on modern Linux kernels.
