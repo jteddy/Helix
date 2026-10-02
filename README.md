@@ -534,6 +534,8 @@ The library build has to match the firmware. With a mismatched build, programmat
 
 #### Documentation
 - https://www.makcu.com/en/setup
+- https://makcu.com/en/api/ — serial command reference, including the V4 differences
+- https://makcu.com/mcp/documentation — MAKCU's MCP server: a read-only, hosted docs lookup (command reference, search, LED troubleshooting; no key needed). The repo's `.mcp.json` registers it as `makcu-docs` for Claude Code; approve it once when prompted.
 
 #### Tools
 - https://terminal.spacehuhn.com/

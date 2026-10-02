@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "makcu-docs": {
+      "type": "http",
+      "url": "https://makcu.com/mcp"
+    }
+  }
+}
