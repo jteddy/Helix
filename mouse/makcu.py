@@ -501,7 +501,11 @@ class makcu_controller:
             print(f"[MAKCU] Could not check host baud: {e}")
 
         ver = makcu_controller.query("km.version()", r"MAKCU")
-        baud = makcu_controller.query("km.baud()", r"^[>\s]*(\d{4,8})\s*$", retries=2) if ver else None
+        # Accepts "4000000" and "km.baud(4000000)": the reply form is not documented.
+        baud = (
+            makcu_controller.query("km.baud()", r"^[>\s]*(?:km\.baud\()?(\d{4,8})\)?\s*$", retries=2)
+            if ver else None
+        )
 
         if makcu_controller.controller is not controller:
             return  # reconnected or dropped while probing
