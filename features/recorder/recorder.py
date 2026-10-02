@@ -203,6 +203,9 @@ class Recorder:
         base = None
         fails = 0
         polls = 0
+        nontext0 = makcu_controller.rx_nontext()[0]
+        stream_state = "?"
+        last_stream_q = 0.0
         lmb_ever = False
         last_pub = 0.0
         clamped = False
@@ -253,9 +256,20 @@ class Recorder:
                 if t - last_pub >= 0.2:
                     last_pub = t
                     waited = t - began
+                    if t - last_stream_q >= 1.0:
+                        last_stream_q = t
+                        m = makcu_controller.query(
+                            "km.buttons()", r"^[>\s]*(?:km\.buttons\()?([01])\)?\s*$",
+                            timeout=0.1, retries=1,
+                        )
+                        stream_state = ("on" if m.group(1) == "1" else "OFF") if m else "?"
+                    nontext, last_frame = makcu_controller.rx_nontext()
+                    sent = nontext - nontext0
                     msg = (
                         f"Waiting for left-click… getpos {polls / waited:.0f} Hz · "
-                        f"left-click {'HELD' if lmb else 'not seen'}"
+                        f"left-click {'HELD' if lmb else 'not seen'} · button stream {stream_state} · "
+                        f"device non-text bytes since arm: {sent}"
+                        + (f" (last: {last_frame})" if sent and last_frame else "")
                     )
                     if trigger == "lmb" and waited > 8 and not lmb_ever:
                         msg += " — Helix has not received any left-click from the MAKCU; try 'Start now' then Stop"

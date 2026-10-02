@@ -553,7 +553,9 @@ The library build has to match the firmware. With a mismatched build, programmat
 
 ### Left-click not detected
 
-If the Pattern Recorder stays on *armed* and says it has not seen a left-click (or recoil never fires), Helix is not receiving button events from the MAKCU. Open `http://<server-ip>:8000/api/device/rx` right after pressing and releasing left-click (not while the recorder is running) — it shows the last raw bytes the device sent, in hex and ASCII. The button stream should appear as a short burst around your click; send that output along with your firmware version when reporting a problem.
+If the Pattern Recorder stays on *armed* (or recoil never fires), Helix is not receiving button events from the MAKCU. While armed, the card reports the live `getpos` rate, whether the firmware says its button stream is on, and how many non-text bytes (button-stream frames) the device has sent since you armed, with the latest one in hex. Press and release left-click and watch those: a non-zero count means the device is sending something; `button stream OFF` means the firmware refused to enable it.
+
+`http://<server-ip>:8000/api/device/rx` shows the last raw bytes from the device plus `nontext_events` (the most recent button-stream frames with their age in seconds). Send that output and your firmware version when reporting a problem.
 
 ### MAKCU Setup on Arch Linux (CachyOS)
 

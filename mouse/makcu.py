@@ -10,6 +10,11 @@ from makcu import create_controller, MouseButton
 # (GET /api/device/rx). The library's listener thread consumes the port, so the
 # only place to see raw bytes is a wrapper around the serial class's read().
 _rx_tail = deque(maxlen=512)
+# Non-text bytes (anything but printable ASCII and CR/LF) are button-stream or binary
+# frames. Keep the latest few with context, so they are visible even while text
+# replies flood the tail above.
+_rx_events = deque(maxlen=30)
+_rx_nontext = [0]
 
 
 def _install_rx_tee():
@@ -22,6 +27,12 @@ def _install_rx_tee():
         data = orig(self, size)
         if data:
             _rx_tail.extend(data)
+            for i, b in enumerate(data):
+                if (b < 32 and b != 10 and b != 13) or b > 126:
+                    _rx_nontext[0] += 1
+                    now = time.monotonic()
+                    if not _rx_events or now - _rx_events[-1][0] > 0.05:  # one entry per frame
+                        _rx_events.append((now, bytes(data[max(0, i - 6): i + 10])))
         return data
 
     read._helix_tee = True
@@ -604,13 +615,30 @@ class makcu_controller:
         print(f"[MAKCU] Link check: {info['baud']}")
 
     @staticmethod
-    def rx_tail(n=256):
-        data = bytes(list(_rx_tail)[-n:])
+    def _fmt(data):
         return {
-            "bytes": len(data),
             "hex": " ".join(f"{b:02x}" for b in data),
             "ascii": "".join(chr(b) if 32 <= b < 127 else "." for b in data),
         }
+
+    @staticmethod
+    def rx_tail(n=256):
+        data = bytes(list(_rx_tail)[-n:])
+        now = time.monotonic()
+        return {
+            "bytes": len(data),
+            **makcu_controller._fmt(data),
+            "nontext_bytes_total": _rx_nontext[0],
+            "nontext_events": [
+                {"age_s": round(now - t, 2), **makcu_controller._fmt(d)} for t, d in list(_rx_events)
+            ],
+        }
+
+    @staticmethod
+    def rx_nontext():
+        """(count of non-text bytes received so far, hex of the latest frame or None)."""
+        last = _rx_events[-1][1] if _rx_events else None
+        return _rx_nontext[0], (makcu_controller._fmt(last)["hex"] if last else None)
 
     @staticmethod
     def device_summary():
