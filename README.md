@@ -497,7 +497,7 @@ Helix is tested on MAKCU firmware **v3.7**, flashed on **both** the left (device
 
 The library build has to match the firmware. With a mismatched build, programmatic M4/M5 clicks fail — this affects the Flashlight when its mouse button is set to M4 or M5. Everything else Helix does goes through the same library calls on both builds.
 
-**Firmware V4.x is not yet confirmed on hardware.** Everything Helix sends through the library (`km.move`, `km.left/right/middle/side1/side2`, `km.buttons`, and the binary baud-change frame at connect) is listed as available on the [MAKCU V4 API page](https://makcu.com/en/api/). Per that page, use **V4.039 or later** with the 3.7 library build: earlier V4 builds reject the baud-change frame, and V4.036–V4.038 interpolate moves by default, which smears recoil compensation. Test on your hardware after any firmware change.
+**Firmware V4.x is not yet confirmed on hardware.** Everything Helix sends through the library (`km.move`, `km.left/right/middle/side1/side2`, `km.buttons`, and the binary baud-change frame at connect) is listed as available on the [MAKCU V4 API page](https://makcu.com/en/api/). Per that page, use **V4.039 or later** with the 3.7 library build: earlier V4 builds reject the baud-change frame. From V4.041 the firmware's default mouse interpolation is AUTO (it adapts 1–64 ms to the interval between injected moves) instead of V3-style immediate sends, which can change recoil timing; it is only adjustable through the binary MAK_API (opcode `0x1F`), not a text command. Test on your hardware after any firmware change.
 
 ### Updating Firmware
 
