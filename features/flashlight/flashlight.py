@@ -17,9 +17,13 @@ def shutdown_executor():
 class flashlight:
 
     @staticmethod
-    def _delayed_click(keybind: str, delay: float):
+    def _delayed_fire(keybind: str, key: str, delay: float):
         time.sleep(delay)
-        makcu_controller.click_button(keybind)
+        # The key press is firmware-timed and returns at once; the click holds ~30 ms.
+        if key != "NONE":
+            makcu_controller.press_key(key)
+        if keybind != "NONE":
+            makcu_controller.click_button(keybind)
 
     @staticmethod
     def run_flashlight(state: AppState):
@@ -30,6 +34,7 @@ class flashlight:
         - Hold threshold prevents short UI clicks from triggering
         - Cooldown prevents rapid re-triggers
         - Click dispatched on a capped executor thread (max 1 pending)
+        - Fires the mouse button and/or the keyboard key, whichever is set
         """
         lmb_was_pressed     = False
         lmb_press_time      = 0.0
@@ -41,10 +46,11 @@ class flashlight:
             fl_on      = state.get_is_flashlight_enabled()
             recoil_on  = state.get_is_enabled()
             keybind    = state.get_flashlight_keybind()
+            key        = state.get_flashlight_key()
 
-            if not fl_on or not recoil_on or keybind == "NONE":
+            if not fl_on or not recoil_on or (keybind == "NONE" and key == "NONE"):
                 if not _dbg_printed:
-                    print(f"[Flashlight] Waiting — fl={fl_on} recoil={recoil_on} kb={keybind}")
+                    print(f"[Flashlight] Waiting — fl={fl_on} recoil={recoil_on} kb={keybind} key={key}")
                     _dbg_printed = True
                 lmb_was_pressed     = False
                 threshold_triggered = False
@@ -67,9 +73,10 @@ class flashlight:
                     if now >= cooldown_until:
                         cooldown_until = now + state.get_cooldown_seconds()
                         pre_fire = state.get_pre_fire_delay()
-                        print(f"[Flashlight] Firing {keybind} (pre-fire {pre_fire*1000:.0f}ms)")
+                        what = " + ".join(x for x in (keybind, f"key {key}") if x not in ("NONE", "key NONE"))
+                        print(f"[Flashlight] Firing {what} (pre-fire {pre_fire*1000:.0f}ms)")
                         try:
-                            _click_executor.submit(flashlight._delayed_click, keybind, pre_fire)
+                            _click_executor.submit(flashlight._delayed_fire, keybind, key, pre_fire)
                         except RuntimeError:
                             pass  # Executor shut down during app exit — ignore
                     else:

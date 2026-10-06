@@ -90,6 +90,7 @@ html,body{height:100%;background:var(--bg0);color:var(--text);font-family:var(--
 .crow:last-child{border-bottom:none;}
 .crow>.lbl{font-family:var(--fu);font-size:11px;color:var(--text2);width:170px;flex-shrink:0;line-height:1.3;}
 .crow>.ctl{margin-left:auto;display:flex;align-items:center;gap:6px;}
+.fl-key{width:96px;text-align:center;cursor:pointer;}
 
 /* ── Toggle ───────────────────────────────────────────────────────── */
 .tog{position:relative;width:34px;height:18px;flex-shrink:0;}
@@ -537,6 +538,7 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
     <div class="cb">
       <div class="crow"><span class="lbl">Enable Flashlight</span><div class="ctl"><label class="tog"><input type="checkbox" id="fl-en" onchange="p('/api/flashlight',{enabled:this.checked})"><div class="tog-tr"></div></label></div></div>
       <div class="crow"><span class="lbl">Flashlight Mouse Button</span><div class="ctl"><select id="fl-kb" onchange="p('/api/flashlight',{keybind:this.value})"><option>NONE</option><option>LMB</option><option>RMB</option><option>MMB</option><option>M4</option><option>M5</option></select></div></div>
+      <div class="crow"><span class="lbl">Flashlight Key</span><div class="ctl"><input type="text" id="fl-key" class="fl-key" value="NONE" autocomplete="off" spellcheck="false" title="Click, then press the key your game uses for the flashlight. On a phone, type its name (f, f1, space, shift) and press Enter."><button class="btn sm" id="fl-key-clear" onclick="flKeySet('NONE')">Clear</button></div></div>
     </div>
   </div>
   <div class="card">
@@ -547,7 +549,7 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
       <div class="crow"><span class="lbl">Pre-Fire Delay (ms)</span><div class="ctl"><div class="ms-row"><input type="number" id="fl-pfmin" min="0" max="500" value="15" onchange="p('/api/flashlight',{pre_fire_min_ms:fv(this)||0})"><span class="ms-sep">to</span><input type="number" id="fl-pfmax" min="0" max="500" value="15" onchange="p('/api/flashlight',{pre_fire_max_ms:fv(this)||0})"></div></div></div>
     </div>
   </div>
-  <div class="card"><p class="note">Flashlight only fires when <strong>Recoil is ON</strong> — prevents triggering in menus.</p></div>
+  <div class="card"><p class="note">Flashlight only fires when <strong>Recoil is ON</strong> — prevents triggering in menus. It clicks the mouse button and presses the key, whichever are set; with both on NONE it never fires.</p></div>
 </div>
 </div>
 
@@ -947,7 +949,7 @@ async function loadState(){
     slid('r-sc','v-sc',toUi('r-sc',r.recoil_scalar??1));slid('r-xc','v-xc',toUi('r-xc',r.x_control??1));
     slid('r-yc','v-yc',toUi('r-yc',r.y_control??1));slid('r-rs','v-rs',toUi('r-rs',r.randomisation_strength??0.5));
     slid('r-rspd','v-rspd',toUi('r-rspd',r.return_speed??0.5));
-    chk('fl-en',fl.enabled);sel('fl-kb',fl.keybind||'NONE');
+    chk('fl-en',fl.enabled);sel('fl-kb',fl.keybind||'NONE');flKeyShow(fl.key||'NONE');
     num('fl-ht',fl.hold_threshold_ms??50);num('fl-cd',fl.cooldown_ms??500);
     num('fl-pfmin',fl.pre_fire_min_ms??15);num('fl-pfmax',fl.pre_fire_max_ms??15);
     const games=['Manual','Arena Breakout Infinite','CS2','Gray Zone Warfare','Hunt: Showdown','Marathon','Marvel Rivals','PUBG: Battlegrounds','Valorant'];
@@ -1665,6 +1667,47 @@ function calcRPM(){
   const rpm=fv($('t-rpm'))||0,mag=fv($('t-mag'))||0;
   if(rpm>0){const ms=60000/rpm;$('t-ms').textContent=ms.toFixed(1);if(mag>0)$('t-dur').textContent=((mag*ms)/1000).toFixed(2)+'s';}
 }
+// ── Flashlight Key: click the box, press a key (phones: type the name, Enter) ──
+const _FL_CODES={Enter:'enter',Backspace:'backspace',Tab:'tab',Space:'space',Minus:'minus',Equal:'equals',
+  BracketLeft:'leftbracket',BracketRight:'rightbracket',Backslash:'backslash',Semicolon:'semicolon',Quote:'quote',
+  Backquote:'grave',Comma:'comma',Period:'period',Slash:'slash',CapsLock:'capslock',PrintScreen:'printscreen',
+  ScrollLock:'scrolllock',Pause:'pause',Insert:'insert',Home:'home',PageUp:'pageup',Delete:'delete',End:'end',
+  PageDown:'pagedown',ArrowRight:'right',ArrowLeft:'left',ArrowDown:'down',ArrowUp:'up',NumLock:'numlock',
+  NumpadDivide:'kpdivide',NumpadMultiply:'kpmultiply',NumpadSubtract:'kpminus',NumpadAdd:'kpplus',
+  NumpadEnter:'kpenter',NumpadDecimal:'kpperiod',ControlLeft:'leftctrl',ShiftLeft:'leftshift',AltLeft:'leftalt',
+  MetaLeft:'leftgui',ControlRight:'rightctrl',ShiftRight:'rightshift',AltRight:'rightalt',MetaRight:'rightgui'};
+let _flKey='NONE',_flKeyCapturing=false;
+function flKeyFromCode(c){
+  let m;
+  if((m=/^Key([A-Z])$/.exec(c)))return m[1].toLowerCase();
+  if((m=/^Digit(\d)$/.exec(c)))return m[1];
+  if((m=/^F(\d{1,2})$/.exec(c))&&+m[1]>=1&&+m[1]<=12)return 'f'+m[1];
+  if((m=/^Numpad(\d)$/.exec(c)))return 'kp'+m[1];
+  return _FL_CODES[c]||null;
+}
+function flKeyLabel(k){return !k||k==='NONE'?'NONE':(k.length===1||/^f\d+$/.test(k))?k.toUpperCase():k;}
+function flKeyShow(k){_flKey=k||'NONE';const i=$('fl-key');if(i&&!_flKeyCapturing)i.value=flKeyLabel(_flKey);}
+async function flKeySet(k){
+  const i=$('fl-key');_flKeyCapturing=false;
+  try{await api('/api/flashlight',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k})});flKeyShow(k.toLowerCase()==='none'?'NONE':k.trim().toLowerCase());}
+  catch(e){notify(recErr(e));flKeyShow(_flKey);}
+  if(i&&document.activeElement===i)i.blur();
+}
+(function(){
+  const i=$('fl-key');if(!i)return;
+  i.addEventListener('focus',()=>{_flKeyCapturing=true;i.value='';i.placeholder='Press a key…';});
+  i.addEventListener('blur',()=>{
+    const typed=i.value.trim();i.placeholder='';
+    if(_flKeyCapturing&&typed){flKeySet(typed);return;}
+    _flKeyCapturing=false;i.value=flKeyLabel(_flKey);
+  });
+  i.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){e.preventDefault();_flKeyCapturing=false;i.value=flKeyLabel(_flKey);i.blur();return;}
+    if(e.key==='Enter'&&i.value.trim()){e.preventDefault();flKeySet(i.value.trim());return;}
+    const k=flKeyFromCode(e.code);
+    if(k){e.preventDefault();flKeySet(k);}
+  });
+})();
 function useBurst(ms){$('m-burst').value=ms;calcMeasured();notify('Burst '+ms+'ms → Measured');}
 $('burst-list').addEventListener('click',function(e){const row=e.target.closest('.burst-row[data-burst]');if(row)useBurst(Number(row.dataset.burst));});
 function calcMeasured(){

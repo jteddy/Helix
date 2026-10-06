@@ -6,6 +6,8 @@ from collections import deque
 import serial
 from makcu import create_controller, MouseButton
 
+from mouse.keys import key_usage
+
 # The library's listener thread consumes the serial port, so the only place to see the
 # raw bytes is a wrapper around the serial class's read(). It feeds the binary frame
 # decoder, and keeps the latest non-text bytes (anything but printable ASCII and CR/LF,
@@ -352,6 +354,15 @@ class makcu_controller:
         finally:
             with makcu_controller._button_lock:
                 makcu_controller._clicking_button = None
+
+    @staticmethod
+    def press_key(key_name):
+        """Tap a keyboard key through the MAKCU (km.press, firmware-timed, so no lock is
+        held while it is down). Takes a name from mouse/keys.py; sends its HID usage."""
+        usage = key_usage(key_name)
+        if usage is None or not makcu_controller.is_connected():
+            return False
+        return makcu_controller.send_text(f"km.press({usage},{CLICK_HOLD_MS})")
 
     @staticmethod
     def _release_button(mck, button):

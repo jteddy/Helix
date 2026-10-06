@@ -236,11 +236,12 @@ The Flashlight feature automates your in-game torch/flashlight key to fire autom
 |---------|-------------|
 | Enable Flashlight | Master switch for the flashlight feature (same as tapping the Flashlight status card). |
 | Flashlight Mouse Button | Which mouse button (LMB, RMB, MMB, M4, M5) the MAKCU clicks to trigger your in-game flashlight key. |
+| Flashlight Key | A keyboard key the MAKCU presses (30 ms) to trigger your in-game flashlight. Click the box and press the key; on a phone, type its name (`f`, `f1`, `space`, `shift`) and press Enter. Esc cancels, **Clear** sets NONE. If a mouse button is also selected, both fire. Uses the MAKCU's keyboard command `km.press` (V4 firmware). |
 | Hold Threshold (ms) | How long you must hold the fire button before the flashlight triggers. Short tap shots (burst fire) won't activate it — only sustained fire will. |
 | Cooldown (ms) | Minimum time between flashlight activations to avoid rapid re-triggering. |
 | Pre-Fire Delay (ms) | A randomised delay (min → max) added after the hold threshold is met before the flashlight actually turns on. |
 
-> Flashlight only fires when **Recoil is ON** and a mouse button is selected — prevents it from triggering in menus.
+> Flashlight only fires when **Recoil is ON** and a mouse button or key is selected — prevents it from triggering in menus.
 
 ---
 
@@ -474,7 +475,7 @@ Same storage as scripts (`saved_scripts/<game>/<weapon>.json`). The bundled web 
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/flashlight` | Update flashlight settings (partial update). Fields: `enabled`, `keybind`, `hold_threshold_ms`, `cooldown_ms`, `pre_fire_min_ms`, `pre_fire_max_ms` |
+| POST | `/api/flashlight` | Update flashlight settings (partial update). Fields: `enabled`, `keybind`, `key` (keyboard key name such as `f`, `f1`, `space`, or `NONE`; unknown names return 400), `hold_threshold_ms`, `cooldown_ms`, `pre_fire_min_ms`, `pre_fire_max_ms` |
 | POST | `/api/flashlight/toggle` | Toggle flashlight on/off |
 
 ### Settings

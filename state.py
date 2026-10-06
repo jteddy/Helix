@@ -39,6 +39,7 @@ class AppState:
         # ── Flashlight ────────────────────────────────────────────────────────
         self.flashlight_enabled = False
         self.flashlight_keybind = "NONE"
+        self.flashlight_key = "NONE"      # keyboard key name (mouse/keys.py), pressed too
         self.hold_threshold_ms: float = 50.0
         self.cooldown_ms: float = 800.0
         self.pre_fire_min_ms: float = 50.0
@@ -177,6 +178,10 @@ class AppState:
     def get_flashlight_keybind(self) -> str:
         with self._lock:
             return self.flashlight_keybind
+
+    def get_flashlight_key(self) -> str:
+        with self._lock:
+            return self.flashlight_key
 
     def get_hold_threshold(self) -> float:
         with self._lock:
@@ -385,6 +390,7 @@ class AppState:
                 "flashlight": {
                     "enabled": self.flashlight_enabled,
                     "keybind": self.flashlight_keybind,
+                    "key": self.flashlight_key,
                     "hold_threshold_ms": self.hold_threshold_ms,
                     "cooldown_ms": self.cooldown_ms,
                     "pre_fire_min_ms": self.pre_fire_min_ms,
@@ -431,6 +437,7 @@ class AppState:
             fl = data.get("flashlight", {})
             self.flashlight_enabled = fl.get("enabled", False)
             self.flashlight_keybind = fl.get("keybind", "NONE")
+            self.flashlight_key     = fl.get("key", "NONE")
             self.hold_threshold_ms  = float(fl.get("hold_threshold_ms", 50.0))
             self.cooldown_ms        = float(fl.get("cooldown_ms", 500.0))
             self.pre_fire_min_ms    = float(fl.get("pre_fire_min_ms", 15.0))
