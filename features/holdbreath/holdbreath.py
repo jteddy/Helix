@@ -28,9 +28,12 @@ def run_hold_breath(state, kb=None, stop=None, clock=time.monotonic, sleep=time.
             ctrl = _controller()
             if ctrl is not None and ctrl is not last_ctrl:
                 # First connect or a reconnect: a key may still be down on the gaming PC
-                # from before (crash, kill, dropped link). Release it and start clean.
+                # from before (crash, kill, dropped link). Release it and start clean;
+                # release_all() also covers a key-up lost while the MAKCU was gone, even
+                # if the key setting has changed since.
                 if cfg.key != "NONE":
                     kb.up(cfg.key)
+                kb.release_all()
                 machine.reset()
             last_ctrl = ctrl
             active = (settings["enabled"] and state.get_is_enabled()

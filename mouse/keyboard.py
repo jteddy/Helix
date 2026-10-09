@@ -5,7 +5,8 @@ ERR to another key command (press, string, down, up, multidown, multiup) sent wh
 is running (mak-suite protocol/KM_API.md, "Timing"). Helix does not read those replies,
 so it never overlaps them instead: commands go out in order from one worker thread, and
 after a tap the worker waits out the hold before sending the next. The queue also
-remembers which keys it holds down, so they can be released on shutdown."""
+remembers which keys it holds down, and which key-ups failed to send (MAKCU gone), so
+release_all() can release them on reconnect and shutdown."""
 import queue
 import threading
 import time
@@ -23,6 +24,7 @@ class KeyboardQueue:
         self._q = queue.Queue()
         self._lock = threading.Lock()
         self._held = set()      # HID usages Helix is holding down
+        self._stuck = set()     # usages whose key-up failed to send: maybe still down on the PC
         self._pending = 0       # commands queued or being sent
         threading.Thread(target=self._run, daemon=True, name="keyboard").start()
 
@@ -50,15 +52,18 @@ class KeyboardQueue:
             return False
         with self._lock:
             self._held.discard(usage)
-        self._put(f"km.up({usage})", 0.0)
+            self._stuck.discard(usage)
+        self._put(f"km.up({usage})", 0.0, up=usage)
         return True
 
     def release_all(self):
-        """Queue a key up for every key Helix is holding down."""
+        """Queue a key up for every key Helix is holding down, and again for every key
+        whose key-up failed to send."""
         with self._lock:
-            held, self._held = sorted(self._held), set()
+            held = sorted(self._held | self._stuck)
+            self._held, self._stuck = set(), set()
         for usage in held:
-            self._put(f"km.up({usage})", 0.0)
+            self._put(f"km.up({usage})", 0.0, up=usage)
 
     def held(self):
         with self._lock:
@@ -74,16 +79,18 @@ class KeyboardQueue:
             time.sleep(0.005)
         return False
 
-    def _put(self, cmd, wait_s):
+    def _put(self, cmd, wait_s, up=None):
         with self._lock:
             self._pending += 1
-        self._q.put((cmd, wait_s))
+        self._q.put((cmd, wait_s, up))
 
     def _run(self):
         while True:
-            cmd, wait_s = self._q.get()
+            cmd, wait_s, up = self._q.get()
+            sent = False
             try:
-                if not self._send(cmd):
+                sent = self._send(cmd)
+                if not sent:
                     print(f"[Keyboard] Not sent (MAKCU not connected?): {cmd}")
                 if wait_s:
                     self._sleep(wait_s)
@@ -91,4 +98,6 @@ class KeyboardQueue:
                 print(f"[Keyboard] {cmd} failed: {e}")
             finally:
                 with self._lock:
+                    if up is not None and not sent:
+                        self._stuck.add(up)     # release_all() sends it again
                     self._pending -= 1
