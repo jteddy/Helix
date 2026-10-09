@@ -105,6 +105,7 @@ def diagnostics():
         "effective_scalar": scalar,
         "settings": cfg["settings"],
         "flashlight": cfg["flashlight"],
+        "hold_breath": cfg["hold_breath"],
         "script": script,
         "buttons": makcu_controller.button_summary(),
         "device": makcu_controller.device_summary(),

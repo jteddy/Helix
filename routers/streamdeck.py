@@ -19,6 +19,8 @@ async def streamdeck_state():
             "flashlight": state.flashlight_enabled and state.recoil_enabled,
             "makcu":      makcu_controller.is_connected(),
             "script":     state.loaded_script,
+            "hold_breath":     state.hb_enabled and state.recoil_enabled,
+            "hold_breath_ads": state.hb_ads_mode,
         },
         headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
     )

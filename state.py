@@ -45,6 +45,16 @@ class AppState:
         self.pre_fire_min_ms: float = 50.0
         self.pre_fire_max_ms: float = 180.0
 
+        # ── Hold Breath ───────────────────────────────────────────────────────
+        self.hb_enabled = False
+        self.hb_trigger = "RMB"             # aim button: RMB | MMB | M4 | M5
+        self.hb_ads_mode = "hold"           # hold | toggle (how the game aims)
+        self.hb_breath_mode = "hold"        # hold | toggle (how the game's hold breath works)
+        self.hb_key = "NONE"                # key name from mouse/keys.py, or NONE
+        self.hb_tap_on_release = False      # toggle breath: tap again when aiming ends
+        self.hb_delay_ms: float = 0.0       # wait after aiming starts (scope-in)
+        self.hb_max_hold_ms: float = 0.0    # stop after this long; 0 = no limit
+
         # ── Settings ──────────────────────────────────────────────────────────
         self.game_scalar: str = "Manual"
         self.game_sensitivity: float = 1.0
@@ -198,6 +208,29 @@ class AppState:
             if lo > hi:
                 lo, hi = hi, lo
             return random.uniform(lo, hi) / 1000.0
+
+    # ── Hold Breath interface ─────────────────────────────────────────────────
+
+    def toggle_hold_breath(self):
+        with self._lock:
+            self.hb_enabled = not self.hb_enabled
+
+    def get_hold_breath(self) -> dict:
+        with self._lock:
+            return self._hold_breath_dict()
+
+    def _hold_breath_dict(self) -> dict:
+        # Caller holds self._lock.
+        return {
+            "enabled": self.hb_enabled,
+            "trigger": self.hb_trigger,
+            "ads_mode": self.hb_ads_mode,
+            "breath_mode": self.hb_breath_mode,
+            "key": self.hb_key,
+            "tap_on_release": self.hb_tap_on_release,
+            "delay_ms": self.hb_delay_ms,
+            "max_hold_ms": self.hb_max_hold_ms,
+        }
 
     # ── Script management ─────────────────────────────────────────────────────
 
@@ -396,6 +429,7 @@ class AppState:
                     "pre_fire_min_ms": self.pre_fire_min_ms,
                     "pre_fire_max_ms": self.pre_fire_max_ms,
                 },
+                "hold_breath": self._hold_breath_dict(),
                 "settings": {
                     "game_scalar": self.game_scalar,
                     "game_sensitivity": self.game_sensitivity,
@@ -442,6 +476,16 @@ class AppState:
             self.cooldown_ms        = float(fl.get("cooldown_ms", 500.0))
             self.pre_fire_min_ms    = float(fl.get("pre_fire_min_ms", 15.0))
             self.pre_fire_max_ms    = float(fl.get("pre_fire_max_ms", 15.0))
+
+            hb = data.get("hold_breath", {})
+            self.hb_enabled        = bool(hb.get("enabled", False))
+            self.hb_trigger        = hb.get("trigger", "RMB")
+            self.hb_ads_mode       = hb.get("ads_mode", "hold")
+            self.hb_breath_mode    = hb.get("breath_mode", "hold")
+            self.hb_key            = hb.get("key", "NONE")
+            self.hb_tap_on_release = bool(hb.get("tap_on_release", False))
+            self.hb_delay_ms       = float(hb.get("delay_ms", 0.0))
+            self.hb_max_hold_ms    = float(hb.get("max_hold_ms", 0.0))
 
             s = data.get("settings", {})
             self.game_scalar      = s.get("game_scalar", "Manual")

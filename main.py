@@ -37,7 +37,7 @@ import config_manager
 from features.recoil.recoil import recoil as recoil_feature
 from features.flashlight.flashlight import flashlight as flashlight_feature, shutdown_executor as _shutdown_flashlight_executor
 
-from routers import recoil, scripts, flashlight, settings, cs2, streamdeck, device
+from routers import recoil, scripts, flashlight, settings, cs2, streamdeck, device, holdbreath
 from routers import recorder as recorder_router
 from routers import server as server_router
 from routers import diagnostics as diagnostics_router
@@ -150,6 +150,7 @@ async def get_state():
 app.include_router(recoil.router)
 app.include_router(scripts.router)
 app.include_router(flashlight.router)
+app.include_router(holdbreath.router)
 app.include_router(settings.router)
 app.include_router(cs2.router)
 app.include_router(streamdeck.router)
@@ -159,37 +160,46 @@ app.include_router(server_router.router)
 app.include_router(diagnostics_router.router)
 
 # ── Background tasks ───────────────────────────────────────────────────────────
+def _ws_payload() -> dict:
+    """The /ws status message (pushed only when its hash changes)."""
+    snapshot = state.to_dict()
+    r = snapshot["recoil"]
+    fl = snapshot["flashlight"]
+    s = snapshot["settings"]
+    hb = snapshot["hold_breath"]
+    return {
+        "makcu_connected":          makcu_controller.is_connected(),
+        "recoil_enabled":           r["enabled"],
+        "flashlight_enabled":       fl["enabled"],
+        "flashlight_active":        fl["enabled"] and r["enabled"],
+        "loaded_script":            r["loaded_script"],
+        "lmb_pressed":              makcu_controller.get_button_state("LMB"),
+        "recoil_scalar":            r["recoil_scalar"],
+        "x_control":                r["x_control"],
+        "y_control":                r["y_control"],
+        "randomisation_strength":   r["randomisation_strength"],
+        "return_speed":             r["return_speed"],
+        "randomisation":            r["randomisation"],
+        "return_crosshair":         r["return_crosshair"],
+        "require_aim":              r["require_aim"],
+        "loop_recoil":              r["loop_recoil"],
+        "toggle_keybind":           r["toggle_keybind"],
+        "cycle_keybind":            r["cycle_keybind"],
+        "theme":                    s["theme"],
+        "burst_history":            state.get_burst_history(),
+        "cs2_weapon":               s["cs2_weapon"],
+        "script_sensitivity":       r.get("script_sensitivity", 1.0),
+        "hold_breath_enabled":      hb["enabled"],
+        "hold_breath_active":       hb["enabled"] and r["enabled"],
+        "hold_breath_ads_mode":     hb["ads_mode"],
+    }
+
+
 async def _broadcast_loop():
     global _last_broadcast_hash
     while True:
         if ws_clients:
-            snapshot = state.to_dict()
-            r = snapshot["recoil"]
-            fl = snapshot["flashlight"]
-            s = snapshot["settings"]
-            msg = json.dumps({
-                "makcu_connected":          makcu_controller.is_connected(),
-                "recoil_enabled":           r["enabled"],
-                "flashlight_enabled":       fl["enabled"],
-                "flashlight_active":        fl["enabled"] and r["enabled"],
-                "loaded_script":            r["loaded_script"],
-                "lmb_pressed":              makcu_controller.get_button_state("LMB"),
-                "recoil_scalar":            r["recoil_scalar"],
-                "x_control":                r["x_control"],
-                "y_control":                r["y_control"],
-                "randomisation_strength":   r["randomisation_strength"],
-                "return_speed":             r["return_speed"],
-                "randomisation":            r["randomisation"],
-                "return_crosshair":         r["return_crosshair"],
-                "require_aim":              r["require_aim"],
-                "loop_recoil":              r["loop_recoil"],
-                "toggle_keybind":           r["toggle_keybind"],
-                "cycle_keybind":            r["cycle_keybind"],
-                "theme":                    s["theme"],
-                "burst_history":            state.get_burst_history(),
-                "cs2_weapon":               s["cs2_weapon"],
-                "script_sensitivity":       r.get("script_sensitivity", 1.0),
-            })
+            msg = json.dumps(_ws_payload())
             h = hashlib.md5(msg.encode()).hexdigest()
             if h != _last_broadcast_hash:
                 _last_broadcast_hash = h
