@@ -203,7 +203,9 @@ class makcu_controller:
                 makcu_controller._spray_active.is_set()
                 or makcu_controller._recording.is_set()
                 or makcu_controller._clicking_button is not None
-                or makcu_controller.button_states["LMB"]   # a re-enable restarts the stream's baseline
+                # A re-enable restarts the stream's baseline: not while LMB (recoil) or
+                # the Hold Breath aim button is held.
+                or any(makcu_controller.button_states.values())
             ):
                 continue
 
