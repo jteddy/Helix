@@ -63,7 +63,7 @@ values apply from the next step. The header card and `/ws` show "active" as enab
 Recoil ON, like the Flashlight card, even when no key is bound.
 
 Each key action is logged once, for example
-`[HoldBreath] down leftshift (aimed 152 ms)` or `[HoldBreath] up leftshift (held 2.4 s)`.
+`[HoldBreath] down leftshift` and `[HoldBreath] up leftshift`.
 
 ## Architecture
 

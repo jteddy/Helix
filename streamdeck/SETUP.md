@@ -29,6 +29,7 @@ A custom Stream Deck plugin that polls the Helix API every second and renders li
 |--------|-----------|------------|
 | **Toggle Recoil** | Toggles recoil on/off | Green crosshair (ON) or dim red crosshair (OFF) |
 | **Toggle Flashlight** | Toggles flashlight on/off | Yellow bolt (ON) or dim red bolt (OFF) |
+| **Toggle Hold Breath** | Toggles hold breath on/off | Cyan scope with HOLD/TOGGLE (ON) or dim red scope (OFF) |
 | **Cycle Script** | Cycles to next script | Blue arrows + current script name |
 | **MAKCU Status** | *(display only)* | Green chip (connected) or red chip (error) |
 
@@ -41,6 +42,8 @@ A custom Stream Deck plugin that polls the Helix API every second and renders li
    ```
 3. Restart the Stream Deck software.
 4. Look for the **Helix** category in the action list.
+
+When updating, replace the whole `com.helix.sdPlugin` folder and restart the Stream Deck software.
 
 ### Configure
 
@@ -70,6 +73,8 @@ com.helix.sdPlugin/icons/
 ├── recoil-off.svg      (red crosshair)
 ├── flashlight-on.svg   (yellow lightning bolt)
 ├── flashlight-off.svg  (red lightning bolt)
+├── holdbreath-on.svg   (cyan scope)
+├── holdbreath-off.svg  (red scope)
 ├── cycle.svg           (blue circular arrows + script name)
 ├── makcu-ok.svg        (green USB chip)
 └── makcu-err.svg       (red USB chip)
@@ -203,6 +208,7 @@ These are the endpoints used by both options above.
 |--------|----------|---------|
 | POST | `/api/recoil/toggle` | Toggle recoil on/off |
 | POST | `/api/flashlight/toggle` | Toggle flashlight on/off |
+| POST | `/api/hold_breath/toggle` | Toggle hold breath on/off |
 | POST | `/api/scripts/cycle` | Cycle to next script |
 | POST | `/api/scripts/load/{name}` | Load a flat script |
 | POST | `/api/scripts/load/{game}/{name}` | Load a game-scoped script |
@@ -215,9 +221,13 @@ These are the endpoints used by both options above.
     "recoil": true,
     "flashlight": false,
     "makcu": true,
-    "script": "CS2/ak47"
+    "script": "CS2/ak47",
+    "hold_breath": false,
+    "hold_breath_ads": "hold"
 }
 ```
+
+`hold_breath` is true only when Hold Breath and Recoil are both enabled; `hold_breath_ads` is `hold` or `toggle`.
 
 ---
 

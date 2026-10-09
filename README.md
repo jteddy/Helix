@@ -178,12 +178,13 @@ After this the launcher will detect `systemd-user` mode and all controls work wi
 
 ## Status Panel
 
-The header shows the app version and a **MAKCU** dot — green = connected, red = not connected (or the WebSocket to the server is down). Below it are three live cards — readable at a glance on a phone:
+The header shows the app version and a **MAKCU** dot — green = connected, red = not connected (or the WebSocket to the server is down). Below it are four live cards — readable at a glance on a phone:
 
 | Card | Meaning |
 |------|---------|
 | **Recoil** | `ON` green / `OFF` — tap to toggle from the browser |
 | **Flashlight** | `ON` only when both flashlight and recoil are enabled — tap to toggle the flashlight master switch (shown as `Master: ON/OFF` on the card) |
+| **Hold Breath** | `ON` only when both Hold Breath and Recoil are enabled — tap to toggle the Hold Breath master switch. The card also shows `Master: ON/OFF` and the ADS mode (`hold` or `toggle`) |
 | **Script** | Name of the currently loaded recoil script (`CS2: <weapon>` while a CS2 built-in pattern is selected) |
 
 Status is pushed over WebSocket (checked every 200 ms, sent when it changes), with a 7 s REST poll of `/api/streamdeck` as a fallback for the MAKCU dot and cards.
@@ -242,6 +243,25 @@ The Flashlight feature automates your in-game torch/flashlight key to fire autom
 | Pre-Fire Delay (ms) | A randomised delay (min → max) added after the hold threshold is met before the flashlight actually turns on. |
 
 > Flashlight only fires when **Recoil is ON** and a mouse button or key is selected — prevents it from triggering in menus.
+
+---
+
+### Hold Breath Tab
+
+When you aim, the MAKCU presses your game's hold-breath key for you, so the scope steadies.
+
+| Setting | What it does |
+|---------|-------------|
+| Enable Hold Breath | Master switch (same as tapping the Hold Breath status card). |
+| Aim Mouse Button | The button you aim with: RMB (default), MMB, M4 or M5. |
+| ADS | **Hold**: you aim while the button is held. **Toggle**: each click starts or stops aiming. Match your game's setting. |
+| Breath Key | **Hold**: the key is held down while breathing. **Toggle**: one tap starts hold breath, another stops it. Match your game. |
+| Tap Again When Aiming Ends | Toggle breath only: tap the key again when you stop aiming. Turn it on if your game keeps holding breath after you stop aiming. |
+| Hold Breath Key | The game's hold-breath key. Click the box and press the key; on a phone, type its name (`shift`, `f`, `space`) and press Enter. Esc cancels, **Clear** sets NONE. |
+| Delay After Aiming (ms) | Wait this long after you start aiming before holding breath (0–2000), so the scope-in animation can finish. |
+| Max Hold (ms) | Stop holding breath after this long while still aiming (0–30000; 0 = no limit), so you don't run out of breath. |
+
+> Hold Breath only works when **Recoil is ON** and a key is bound. With ADS set to Toggle, Helix counts your clicks; if the game leaves aim without a click (sprint, reload, inventory), right-click twice to get back in step. Any key Helix is holding is released when you stop aiming, when Hold Breath, Recoil or the key changes, when the MAKCU reconnects, and when the server stops.
 
 ---
 
@@ -364,7 +384,7 @@ If a `.json` and a `.txt` share a name, the `.json` is used. Saving a script alw
 
 ## Stream Deck
 
-A custom Stream Deck plugin is included with live state-aware icons — buttons update automatically when state changes from any source (web UI, MAKCU side button, API). It provides four actions: **Toggle Recoil**, **Toggle Flashlight**, **Cycle Script** and a display-only **MAKCU Status**, and polls `GET /api/streamdeck` once per second.
+A custom Stream Deck plugin is included with live state-aware icons — buttons update automatically when state changes from any source (web UI, MAKCU side button, API). It provides five actions: **Toggle Recoil**, **Toggle Flashlight**, **Toggle Hold Breath**, **Cycle Script** and a display-only **MAKCU Status**, and polls `GET /api/streamdeck` once per second. After updating Helix, copy the plugin folder to the Stream Deck PC again (plugin version 1.1.0 adds Toggle Hold Breath).
 
 **Quick install:** copy `streamdeck/com.helix.sdPlugin` into your Stream Deck plugins folder, restart the software, and set your server URL:
 
@@ -392,6 +412,7 @@ helix/
 │   ├── recoil.py                 ← POST /api/recoil, /api/recoil/toggle
 │   ├── scripts.py                ← /api/scripts/*, /api/patterns/*
 │   ├── flashlight.py             ← /api/flashlight, /api/flashlight/toggle
+│   ├── holdbreath.py             ← POST /api/hold_breath, /api/hold_breath/toggle
 │   ├── settings.py               ← POST /api/settings
 │   ├── cs2.py                    ← GET /api/cs2/weapons, POST /api/cs2/weapon
 │   ├── device.py                 ← GET /api/device
@@ -400,13 +421,16 @@ helix/
 │   ├── recorder.py               ← /api/recorder/*
 │   └── streamdeck.py             ← /api/streamdeck, /streamdeck/setup
 ├── mouse/makcu.py                ← MAKCU USB HID controller
+├── mouse/keyboard.py             ← Keyboard command queue (one key command at a time)
+├── mouse/keys.py                 ← Key names → HID usages (vendor key table)
 ├── menu/games.py                 ← Game sensitivity table
 ├── features/
 │   ├── recoil/recoil.py          ← Recoil loop
 │   ├── flashlight/               ← Flashlight loop
+│   ├── holdbreath/               ← Hold Breath state machine and loop
 │   ├── recorder/recorder.py      ← Pattern recorder (getpos sampling, steps conversion)
 │   └── cs2/weapon_data.py        ← Built-in CS2 recoil patterns (AK-47, M4A1-S)
-├── static/index.html             ← Entire frontend (Recoil, Flashlight, Tools, Settings tabs; self-contained)
+├── static/index.html             ← Entire frontend (Recoil, Flashlight, Hold Breath, Tools, Settings tabs; self-contained)
 ├── launcher.py                   ← PyQt6 desktop launcher (optional, desktop Linux only)
 ├── install-launcher.sh           ← Installs launcher to app menu + desktop shortcut
 ├── icons/helix.svg               ← App icon (used by launcher + .desktop file)
@@ -478,6 +502,15 @@ Same storage as scripts (`saved_scripts/<game>/<weapon>.json`). The bundled web 
 | POST | `/api/flashlight` | Update flashlight settings (partial update). Fields: `enabled`, `keybind`, `key` (keyboard key name such as `f`, `f1`, `space`, or `NONE`; unknown names return 400), `hold_threshold_ms`, `cooldown_ms`, `pre_fire_min_ms`, `pre_fire_max_ms` |
 | POST | `/api/flashlight/toggle` | Toggle flashlight on/off |
 
+### Hold Breath
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/hold_breath` | Update Hold Breath settings (partial update). Fields: `enabled`, `trigger` (`RMB`, `MMB`, `M4`, `M5`), `ads_mode` and `breath_mode` (`hold` or `toggle`), `key` (key name such as `shift`, `f`, `space`, or `NONE`), `tap_on_release`, `delay_ms` (0–2000), `max_hold_ms` (0–30000, 0 = no limit). Any invalid field returns 400 and nothing changes |
+| POST | `/api/hold_breath/toggle` | Toggle Hold Breath on/off; returns `{"enabled": bool}` |
+
+`GET /api/state` includes the same fields under `hold_breath`. The `/ws` message adds `hold_breath_enabled`, `hold_breath_active` (enabled and Recoil ON) and `hold_breath_ads_mode`.
+
 ### Settings
 
 | Method | Endpoint | Description |
@@ -526,9 +559,13 @@ When a CS2 weapon is selected it overrides the loaded script for the recoil loop
   "recoil":     true,
   "flashlight": false,
   "makcu":      true,
-  "script":     "ABI/ak47"
+  "script":     "ABI/ak47",
+  "hold_breath": false,
+  "hold_breath_ads": "hold"
 }
 ```
+
+`hold_breath` is true only when Hold Breath and Recoil are both enabled.
 
 
 ---
