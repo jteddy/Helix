@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <rect width="144" height="144" rx="18" fill="#0f1012" stroke="#2a1818" stroke-width="1.5"/>
+  <g transform="translate(72,36)" opacity="0.45">
+    <circle r="20" fill="none" stroke="#ff4444" stroke-width="2.5"/>
+    <path d="M-14 0 Q-7 -8 0 0 T14 0" fill="none" stroke="#ff4444" stroke-width="2.5" stroke-linecap="round"/>
+    <circle r="2.5" fill="#ff4444"/>
+  </g>
+  <text x="72" y="100" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="19" fill="#ff4444" letter-spacing="2" opacity="0.55">BREATH</text>
+  <text x="72" y="128" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="24" fill="#ff4444" opacity="0.5">OFF</text>
+</svg>

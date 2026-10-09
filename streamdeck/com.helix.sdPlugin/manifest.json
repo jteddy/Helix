@@ -8,7 +8,7 @@
     "Icon": "icons/recoil-on",
     "Category": "Helix",
     "CategoryIcon": "icons/recoil-on",
-    "Version": "1.0.0",
+    "Version": "1.1.0",
     "OS": [
         {
             "Platform": "windows",
@@ -40,6 +40,17 @@
             "SupportedInMultiActions": true,
             "Tooltip": "Toggle Helix flashlight trigger on/off. Icon updates automatically.",
             "UUID": "com.helix.flashlight"
+        },
+        {
+            "Icon": "icons/holdbreath-on",
+            "Name": "Toggle Hold Breath",
+            "States": [
+                { "Image": "icons/holdbreath-off" },
+                { "Image": "icons/holdbreath-on" }
+            ],
+            "SupportedInMultiActions": true,
+            "Tooltip": "Toggle Helix hold breath on/off. Icon shows ON/OFF and the ADS mode.",
+            "UUID": "com.helix.holdbreath"
         },
         {
             "Icon": "icons/cycle",

@@ -54,6 +54,7 @@ function onKeyDown(msg) {
     var endpoint = null;
     if (action === 'com.helix.recoil')     endpoint = '/api/recoil/toggle';
     if (action === 'com.helix.flashlight') endpoint = '/api/flashlight/toggle';
+    if (action === 'com.helix.holdbreath') endpoint = '/api/hold_breath/toggle';
     if (action === 'com.helix.cycle')      endpoint = '/api/scripts/cycle';
 
     if (endpoint && url) {
@@ -194,6 +195,8 @@ function setIconForContext(ctx, action, state) {
         svg = renderRecoilIcon(err ? false : state.recoil, err);
     } else if (action === 'com.helix.flashlight') {
         svg = renderFlashlightIcon(err ? false : state.flashlight, err);
+    } else if (action === 'com.helix.holdbreath') {
+        svg = renderHoldBreathIcon(err ? false : state.hold_breath, err ? null : state.hold_breath_ads, err);
     } else if (action === 'com.helix.cycle') {
         svg = renderCycleIcon(err ? null : state.script, err);
     } else if (action === 'com.helix.status') {
@@ -253,6 +256,29 @@ function renderFlashlightIcon(on, error) {
         + '<polygon points="2,-26 -10,0 -1,0 -6,26 12,0 3,0" fill="' + c + '" stroke="' + c + '" stroke-width="0.5" stroke-linejoin="round"/>'
         + '</g>'
         + '<text x="72" y="100" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="19" fill="' + c + '" letter-spacing="2" opacity="' + (on ? 1 : 0.55) + '">FLASH</text>'
+        + '<text x="72" y="128" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="24" fill="' + c + '" opacity="' + (on ? 0.9 : 0.5) + '">' + lb + '</text>'
+        + '</svg>';
+}
+
+function renderHoldBreathIcon(on, ads, error) {
+    var c  = error ? '#ff4444' : (on ? '#33ccff' : '#ff4444');
+    var bc = error ? '#2a1818' : (on ? '#15303a' : '#2a1818');
+    var op = error ? 0.3 : (on ? 1 : 0.45);
+    var lb = error ? '—' : (on ? 'ON' : 'OFF');
+    var mode = (error || !ads) ? '' : (ads === 'toggle' ? 'TOGGLE' : 'HOLD');
+
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">'
+        + '<defs><filter id="g"><feGaussianBlur stdDeviation="3.5" result="b"/>'
+        + '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>'
+        + '<rect width="144" height="144" rx="18" fill="#0f1012" stroke="' + bc + '" stroke-width="1.5"/>'
+        + (on ? '<rect x="16" y="137" width="112" height="4" rx="2" fill="' + c + '" opacity="0.35"/>' : '')
+        + '<g transform="translate(72,36)" opacity="' + op + '"' + (on ? ' filter="url(#g)"' : '') + '>'
+        + '<circle r="20" fill="none" stroke="' + c + '" stroke-width="2.5"/>'
+        + '<path d="M-14 0 Q-7 -8 0 0 T14 0" fill="none" stroke="' + c + '" stroke-width="2.5" stroke-linecap="round"/>'
+        + '<circle r="2.5" fill="' + c + '"/>'
+        + '</g>'
+        + (mode ? '<text x="72" y="73" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="12" fill="' + c + '" letter-spacing="1.5" opacity="' + (on ? 0.8 : 0.45) + '">' + mode + '</text>' : '')
+        + '<text x="72" y="100" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="19" fill="' + c + '" letter-spacing="2" opacity="' + (on ? 1 : 0.55) + '">BREATH</text>'
         + '<text x="72" y="128" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="24" fill="' + c + '" opacity="' + (on ? 0.9 : 0.5) + '">' + lb + '</text>'
         + '</svg>';
 }

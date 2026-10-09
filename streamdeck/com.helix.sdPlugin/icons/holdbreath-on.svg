@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="144" height="144" rx="18" fill="#0f1012" stroke="#15303a" stroke-width="1.5"/>
+  <rect x="16" y="137" width="112" height="4" rx="2" fill="#33ccff" opacity="0.35"/>
+  <g transform="translate(72,36)" filter="url(#glow)">
+    <circle r="20" fill="none" stroke="#33ccff" stroke-width="2.5"/>
+    <path d="M-14 0 Q-7 -8 0 0 T14 0" fill="none" stroke="#33ccff" stroke-width="2.5" stroke-linecap="round"/>
+    <circle r="2.5" fill="#33ccff"/>
+  </g>
+  <text x="72" y="100" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="19" fill="#33ccff" letter-spacing="2">BREATH</text>
+  <text x="72" y="128" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="24" fill="#33ccff" opacity="0.9">ON</text>
+</svg>
