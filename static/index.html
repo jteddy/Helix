@@ -42,7 +42,7 @@ html,body{height:100%;background:var(--bg0);color:var(--text);font-family:var(--
 #ws-dot.err{background:var(--red);box-shadow:0 0 5px var(--red);}
 
 /* ═══ STATUS PANEL ═══ */
-#sp{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:7px 10px;background:var(--bg0);border-bottom:1px solid var(--border);flex-shrink:0;}
+#sp{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:7px 10px;background:var(--bg0);border-bottom:1px solid var(--border);flex-shrink:0;}
 .sc{position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:5px 10px 7px 12px;min-height:52px;transition:border-color .3s,background .3s;}
 .sc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;background:var(--border2);transition:background .3s;}
 .sc.on{border-color:rgba(68,255,119,.2);background:rgba(68,255,119,.04);}
@@ -56,6 +56,7 @@ html,body{height:100%;background:var(--bg0);color:var(--text);font-family:var(--
 .sc.err .sc-val{color:var(--red);}
 .sc-hint{position:absolute;bottom:3px;right:6px;font-size:9px;color:var(--text3);}
 .sc-master{position:absolute;bottom:4px;left:12px;font-size:9px;color:var(--text3);}
+.sc-master.hb{right:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .sc.wide{grid-column:1/-1;min-height:auto;flex-direction:row;align-items:center;gap:8px;padding:5px 10px 5px 12px;}
 .sc.wide .sc-lbl{margin-bottom:0;min-width:52px;}
 .sc.wide .sc-val{font-size:12px;font-weight:500;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -439,6 +440,7 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
 <div id="sp">
   <div class="sc tap" id="sc-recoil" onclick="toggleRecoil()"><div class="sc-lbl">Recoil</div><div class="sc-val" id="sc-recoil-v">OFF</div><div class="sc-hint">tap</div></div>
   <div class="sc tap" id="sc-flash" onclick="toggleFlashlight()"><div class="sc-lbl">Flashlight</div><div class="sc-val" id="sc-flash-v">OFF</div><div class="sc-master" id="sc-flash-master">Master: OFF</div><div class="sc-hint">tap</div></div>
+  <div class="sc tap" id="sc-hb" onclick="toggleHoldBreath()"><div class="sc-lbl">Hold Breath</div><div class="sc-val" id="sc-hb-v">OFF</div><div class="sc-master hb" id="sc-hb-master">Master: OFF · hold</div></div>
   <div class="sc wide" id="sc-script"><div class="sc-lbl">Script</div><div class="sc-val" id="sc-script-v">NONE</div></div>
 </div>
 
@@ -446,6 +448,7 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
 <div id="tabbar">
   <div class="tab active" data-tab="recoil"     onclick="st('recoil')">Recoil</div>
   <div class="tab"        data-tab="flashlight" onclick="st('flashlight')">Flashlight</div>
+  <div class="tab"        data-tab="holdbreath" onclick="st('holdbreath')">Hold Breath</div>
   <div class="tab"        data-tab="tools"      onclick="st('tools')">Tools</div>
   <div class="tab"        data-tab="settings"   onclick="st('settings')">Settings</div>
 </div>
@@ -550,6 +553,31 @@ html[data-theme="cearum"] .vis-mode-btn.adv{color:var(--green);border-color:var(
     </div>
   </div>
   <div class="card"><p class="note">Flashlight only fires when <strong>Recoil is ON</strong> — prevents triggering in menus. It clicks the mouse button and presses the key, whichever are set; with both on NONE it never fires.</p></div>
+</div>
+</div>
+
+<!-- ═══ HOLD BREATH ═══ -->
+<div class="panel" id="tab-holdbreath">
+<div class="cfg">
+  <div class="card">
+    <div class="ch">Control</div>
+    <div class="cb">
+      <div class="crow"><span class="lbl">Enable Hold Breath</span><div class="ctl"><label class="tog"><input type="checkbox" id="hb-en" onchange="hbSet({enabled:this.checked})"><div class="tog-tr"></div></label></div></div>
+      <div class="crow"><span class="lbl">Aim Mouse Button</span><div class="ctl"><select id="hb-trig" onchange="hbSet({trigger:this.value})"><option>RMB</option><option>MMB</option><option>M4</option><option>M5</option></select></div></div>
+      <div class="crow"><span class="lbl">ADS</span><div class="ctl"><select id="hb-ads" onchange="hbSet({ads_mode:this.value})" title="Hold: the game aims while the button is held. Toggle: each click starts or stops aiming."><option value="hold">Hold</option><option value="toggle">Toggle</option></select></div></div>
+      <div class="crow"><span class="lbl">Breath Key</span><div class="ctl"><select id="hb-bm" onchange="hbSet({breath_mode:this.value});hbShowTap()" title="Hold: the key is held down while breathing. Toggle: one tap starts, another tap stops."><option value="hold">Hold</option><option value="toggle">Toggle</option></select></div></div>
+      <div class="crow" id="hb-tap-row" style="display:none"><span class="lbl">Tap Again When Aiming Ends</span><div class="ctl"><label class="tog"><input type="checkbox" id="hb-tap" onchange="hbSet({tap_on_release:this.checked})"><div class="tog-tr"></div></label></div></div>
+      <div class="crow"><span class="lbl">Hold Breath Key</span><div class="ctl"><input type="text" id="hb-key" class="fl-key" value="NONE" autocomplete="off" spellcheck="false" title="Click, then press the key your game uses to hold breath. On a phone, type its name (shift, f, space) and press Enter."><button class="btn sm" id="hb-key-clear" onclick="_hbKB.set('NONE')">Clear</button></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch">Timing</div>
+    <div class="cb">
+      <div class="crow"><span class="lbl">Delay After Aiming (ms)</span><div class="ctl"><input type="number" id="hb-delay" min="0" max="2000" value="0" onchange="hbSet({delay_ms:fv(this)||0})"></div></div>
+      <div class="crow"><span class="lbl">Max Hold (ms, 0 = no limit)</span><div class="ctl"><input type="number" id="hb-max" min="0" max="30000" value="0" onchange="hbSet({max_hold_ms:fv(this)||0})"></div></div>
+    </div>
+  </div>
+  <div class="card"><p class="note">Hold Breath only works when <strong>Recoil is ON</strong> and a key is bound. When you aim, Helix waits the delay, then holds or taps the key; it lets go when you stop aiming or after the max hold. With ADS set to Toggle, Helix counts your clicks: if the game leaves aim without a click (sprint, reload, inventory), right-click twice to get back in step.</p></div>
 </div>
 </div>
 
@@ -891,6 +919,8 @@ function applyStatus(d){
   card('sc-recoil',d.recoil_enabled?'on':'');$('sc-recoil-v').textContent=d.recoil_enabled?'ON':'OFF';
   card('sc-flash',d.flashlight_active?'on':'');$('sc-flash-v').textContent=d.flashlight_active?'ON':'OFF';
   if(d.flashlight_enabled!==undefined){const m=$('sc-flash-master');if(m)m.textContent=d.flashlight_enabled?'Master: ON':'Master: OFF';}
+  if(d.hold_breath_active!==undefined){card('sc-hb',d.hold_breath_active?'on':'');$('sc-hb-v').textContent=d.hold_breath_active?'ON':'OFF';}
+  if(d.hold_breath_enabled!==undefined){const m=$('sc-hb-master');if(m)m.textContent=`Master: ${d.hold_breath_enabled?'ON':'OFF'} · ${d.hold_breath_ads_mode||'hold'}`;chk('hb-en',d.hold_breath_enabled);}
   const hs=d.loaded_script&&d.loaded_script!=='NONE';
   card('sc-script',hs?'on':'');$('sc-script-v').textContent=d.loaded_script||'NONE';
   if(d.loaded_script!==undefined&&d.loaded_script!==_activeScript){_activeScript=d.loaded_script;updateDraftUi();}
@@ -950,6 +980,7 @@ async function loadState(){
     slid('r-yc','v-yc',toUi('r-yc',r.y_control??1));slid('r-rs','v-rs',toUi('r-rs',r.randomisation_strength??0.5));
     slid('r-rspd','v-rspd',toUi('r-rspd',r.return_speed??0.5));
     chk('fl-en',fl.enabled);sel('fl-kb',fl.keybind||'NONE');flKeyShow(fl.key||'NONE');
+    hbApply(d.hold_breath||{});
     num('fl-ht',fl.hold_threshold_ms??50);num('fl-cd',fl.cooldown_ms??500);
     num('fl-pfmin',fl.pre_fire_min_ms??15);num('fl-pfmax',fl.pre_fire_max_ms??15);
     const games=['Manual','Arena Breakout Infinite','CS2','Gray Zone Warfare','Hunt: Showdown','Marathon','Marvel Rivals','PUBG: Battlegrounds','Valorant'];
@@ -970,7 +1001,8 @@ async function loadState(){
     renderScripts([],r.loaded_script||'NONE');
     await refreshScripts(defaultGame);
     if(r.loaded_script&&r.loaded_script!=='NONE') await loadScriptContent(r.loaded_script);
-    applyStatus({makcu_connected:d.makcu_connected,recoil_enabled:r.enabled,flashlight_active:fl.enabled&&r.enabled,loaded_script:r.loaded_script,script_sensitivity:r.script_sensitivity??1.0});
+    applyStatus({makcu_connected:d.makcu_connected,recoil_enabled:r.enabled,flashlight_active:fl.enabled&&r.enabled,loaded_script:r.loaded_script,script_sensitivity:r.script_sensitivity??1.0,
+      hold_breath_enabled:d.hold_breath?.enabled,hold_breath_active:d.hold_breath&&d.hold_breath.enabled&&r.enabled,hold_breath_ads_mode:d.hold_breath?.ads_mode});
   }catch(e){console.error('loadState:',e);}
 }
 function chk(id,v){const el=$(id);if(el)el.checked=!!v;}
@@ -1659,6 +1691,10 @@ async function toggleFlashlight(){
   try{const d=await api('/api/flashlight/toggle',{method:'POST'});chk('fl-en',d.enabled);notify(d.enabled?'● Flash ON':'● Flash OFF');}
   catch(e){notify('Toggle failed');}
 }
+async function toggleHoldBreath(){
+  try{const d=await api('/api/hold_breath/toggle',{method:'POST'});chk('hb-en',d.enabled);notify(d.enabled?'● Hold Breath ON':'● Hold Breath OFF');}
+  catch(e){notify('Toggle failed');}
+}
 
 
 
@@ -1667,8 +1703,9 @@ function calcRPM(){
   const rpm=fv($('t-rpm'))||0,mag=fv($('t-mag'))||0;
   if(rpm>0){const ms=60000/rpm;$('t-ms').textContent=ms.toFixed(1);if(mag>0)$('t-dur').textContent=((mag*ms)/1000).toFixed(2)+'s';}
 }
-// ── Flashlight Key: click the box, press a key (phones: type the name, Enter) ──
-const _FL_CODES={Enter:'enter',Backspace:'backspace',Tab:'tab',Space:'space',Minus:'minus',Equal:'equals',
+// ── Key binding boxes (Flashlight Key, Hold Breath Key): click the box, press a key ──
+// (phones: type the key name, Enter). Esc cancels. POSTs {key} to the box's endpoint.
+const _KEY_CODES={Enter:'enter',Backspace:'backspace',Tab:'tab',Space:'space',Minus:'minus',Equal:'equals',
   BracketLeft:'leftbracket',BracketRight:'rightbracket',Backslash:'backslash',Semicolon:'semicolon',Quote:'quote',
   Backquote:'grave',Comma:'comma',Period:'period',Slash:'slash',CapsLock:'capslock',PrintScreen:'printscreen',
   ScrollLock:'scrolllock',Pause:'pause',Insert:'insert',Home:'home',PageUp:'pageup',Delete:'delete',End:'end',
@@ -1676,38 +1713,55 @@ const _FL_CODES={Enter:'enter',Backspace:'backspace',Tab:'tab',Space:'space',Min
   NumpadDivide:'kpdivide',NumpadMultiply:'kpmultiply',NumpadSubtract:'kpminus',NumpadAdd:'kpplus',
   NumpadEnter:'kpenter',NumpadDecimal:'kpperiod',ControlLeft:'leftctrl',ShiftLeft:'leftshift',AltLeft:'leftalt',
   MetaLeft:'leftgui',ControlRight:'rightctrl',ShiftRight:'rightshift',AltRight:'rightalt',MetaRight:'rightgui'};
-let _flKey='NONE',_flKeyCapturing=false;
-function flKeyFromCode(c){
+function keyFromCode(c){
   let m;
   if((m=/^Key([A-Z])$/.exec(c)))return m[1].toLowerCase();
   if((m=/^Digit(\d)$/.exec(c)))return m[1];
   if((m=/^F(\d{1,2})$/.exec(c))&&+m[1]>=1&&+m[1]<=12)return 'f'+m[1];
   if((m=/^Numpad(\d)$/.exec(c)))return 'kp'+m[1];
-  return _FL_CODES[c]||null;
+  return _KEY_CODES[c]||null;
 }
-function flKeyLabel(k){return !k||k==='NONE'?'NONE':(k.length===1||/^f\d+$/.test(k))?k.toUpperCase():k;}
-function flKeyShow(k){_flKey=k||'NONE';const i=$('fl-key');if(i&&!_flKeyCapturing)i.value=flKeyLabel(_flKey);}
-async function flKeySet(k){
-  const i=$('fl-key');_flKeyCapturing=false;
-  try{await api('/api/flashlight',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k})});flKeyShow(k.toLowerCase()==='none'?'NONE':k.trim().toLowerCase());}
-  catch(e){notify(recErr(e));flKeyShow(_flKey);}
-  if(i&&document.activeElement===i)i.blur();
+function keyLabel(k){return !k||k==='NONE'?'NONE':(k.length===1||/^f\d+$/.test(k))?k.toUpperCase():k;}
+function keyBinder(inputId,url){
+  const b={key:'NONE',capturing:false};
+  b.show=k=>{b.key=k||'NONE';const i=$(inputId);if(i&&!b.capturing)i.value=keyLabel(b.key);};
+  b.set=async k=>{
+    const i=$(inputId);b.capturing=false;
+    try{await api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k})});b.show(k.toLowerCase()==='none'?'NONE':k.trim().toLowerCase());}
+    catch(e){notify(recErr(e));b.show(b.key);}
+    if(i&&document.activeElement===i)i.blur();
+  };
+  const i=$(inputId);
+  if(i){
+    i.addEventListener('focus',()=>{b.capturing=true;i.value='';i.placeholder='Press a key…';});
+    i.addEventListener('blur',()=>{
+      const typed=i.value.trim();i.placeholder='';
+      if(b.capturing&&typed){b.set(typed);return;}
+      b.capturing=false;i.value=keyLabel(b.key);
+    });
+    i.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){e.preventDefault();b.capturing=false;i.value=keyLabel(b.key);i.blur();return;}
+      if(e.key==='Enter'&&i.value.trim()){e.preventDefault();b.set(i.value.trim());return;}
+      const k=keyFromCode(e.code);
+      if(k){e.preventDefault();b.set(k);}
+    });
+  }
+  return b;
 }
-(function(){
-  const i=$('fl-key');if(!i)return;
-  i.addEventListener('focus',()=>{_flKeyCapturing=true;i.value='';i.placeholder='Press a key…';});
-  i.addEventListener('blur',()=>{
-    const typed=i.value.trim();i.placeholder='';
-    if(_flKeyCapturing&&typed){flKeySet(typed);return;}
-    _flKeyCapturing=false;i.value=flKeyLabel(_flKey);
-  });
-  i.addEventListener('keydown',e=>{
-    if(e.key==='Escape'){e.preventDefault();_flKeyCapturing=false;i.value=flKeyLabel(_flKey);i.blur();return;}
-    if(e.key==='Enter'&&i.value.trim()){e.preventDefault();flKeySet(i.value.trim());return;}
-    const k=flKeyFromCode(e.code);
-    if(k){e.preventDefault();flKeySet(k);}
-  });
-})();
+const _flKB=keyBinder('fl-key','/api/flashlight'),_hbKB=keyBinder('hb-key','/api/hold_breath');
+function flKeyShow(k){_flKB.show(k);}
+function flKeySet(k){return _flKB.set(k);}
+// ── Hold Breath tab ──
+function hbShowTap(){const r=$('hb-tap-row');if(r)r.style.display=$('hb-bm').value==='toggle'?'':'none';}
+function hbApply(h){
+  chk('hb-en',h.enabled);sel('hb-trig',h.trigger||'RMB');sel('hb-ads',h.ads_mode||'hold');sel('hb-bm',h.breath_mode||'hold');
+  chk('hb-tap',h.tap_on_release);num('hb-delay',h.delay_ms??0);num('hb-max',h.max_hold_ms??0);_hbKB.show(h.key||'NONE');hbShowTap();
+}
+async function hbLoad(){try{const d=await api('/api/state');hbApply(d.hold_breath||{});}catch(e){}}
+async function hbSet(body){
+  try{await api('/api/hold_breath',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}
+  catch(e){notify(recErr(e));hbLoad();}   // show why, and put the controls back to what the server has
+}
 function useBurst(ms){$('m-burst').value=ms;calcMeasured();notify('Burst '+ms+'ms → Measured');}
 $('burst-list').addEventListener('click',function(e){const row=e.target.closest('.burst-row[data-burst]');if(row)useBurst(Number(row.dataset.burst));});
 function calcMeasured(){
@@ -1940,7 +1994,7 @@ async function recSave(){
 async function pollMakcu(){
   try{
     const d=await(await fetch('/api/streamdeck')).json();
-    applyStatus({makcu_connected:d.makcu,recoil_enabled:d.recoil,flashlight_active:d.flashlight,loaded_script:d.script});
+    applyStatus({makcu_connected:d.makcu,recoil_enabled:d.recoil,flashlight_active:d.flashlight,loaded_script:d.script,hold_breath_active:d.hold_breath});
   }catch(e){}
   devRefresh();
 }
