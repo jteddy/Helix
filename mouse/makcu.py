@@ -7,6 +7,7 @@ import serial
 from makcu import create_controller, MouseButton
 
 from mouse.keys import key_usage
+from mouse.keyboard import KeyboardQueue
 
 # The library's listener thread consumes the serial port, so the only place to see the
 # raw bytes is a wrapper around the serial class's read(). It feeds the binary frame
@@ -357,12 +358,11 @@ class makcu_controller:
 
     @staticmethod
     def press_key(key_name):
-        """Tap a keyboard key through the MAKCU (km.press, firmware-timed, so no lock is
-        held while it is down). Takes a name from mouse/keys.py; sends its HID usage."""
-        usage = key_usage(key_name)
-        if usage is None or not makcu_controller.is_connected():
+        """Tap a keyboard key (km.press, firmware-timed) through the shared keyboard
+        queue, so it never overlaps another key command. Takes a name from mouse/keys.py."""
+        if key_usage(key_name) is None or not makcu_controller.is_connected():
             return False
-        return makcu_controller.send_text(f"km.press({usage},{CLICK_HOLD_MS})")
+        return keyboard.tap(key_name, CLICK_HOLD_MS)
 
     @staticmethod
     def _release_button(mck, button):
@@ -905,3 +905,8 @@ class makcu_controller:
                 makcu_controller.is_connected_flag = False
         makcu_controller._clear_button_states()
         print("[MAKCU] Disconnected")
+
+
+# Every keyboard command goes through this one queue (see mouse/keyboard.py). The lambda
+# looks send_text up at call time, so the controller can be swapped or stubbed.
+keyboard = KeyboardQueue(lambda cmd: makcu_controller.send_text(cmd))
