@@ -36,6 +36,8 @@ from shared import state, makcu_controller, save_async
 import config_manager
 from features.recoil.recoil import recoil as recoil_feature
 from features.flashlight.flashlight import flashlight as flashlight_feature, shutdown_executor as _shutdown_flashlight_executor
+from features.holdbreath.holdbreath import run_hold_breath
+from mouse.makcu import keyboard
 
 from routers import recoil, scripts, flashlight, settings, cs2, streamdeck, device, holdbreath
 from routers import recorder as recorder_router
@@ -77,6 +79,7 @@ async def lifespan(app: FastAPI):
     threading.Thread(target=_connect,                                              daemon=True).start()
     threading.Thread(target=recoil_feature.run_recoil,     args=(state,),         daemon=True).start()
     threading.Thread(target=flashlight_feature.run_flashlight, args=(state,),     daemon=True).start()
+    threading.Thread(target=run_hold_breath, args=(state,), daemon=True, name="hold-breath").start()
 
     t1 = asyncio.create_task(_broadcast_loop(), name="broadcast")
     t2 = asyncio.create_task(_autosave_loop(), name="autosave")
@@ -87,6 +90,8 @@ async def lifespan(app: FastAPI):
     yield
 
     _shutdown_flashlight_executor()
+    keyboard.release_all()     # never leave a key held down on the gaming PC
+    keyboard.drain(1.0)
     makcu_controller.disconnect()
     print("[Helix] Shutdown complete")
 
